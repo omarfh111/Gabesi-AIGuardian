@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gabes Map Intelligence</title>
+    <meta name="description" content="AI-powered geographic intelligence system for Gabes, Tunisia">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: #1a1f35;
+            --bg-card-hover: #222845;
+            --border: #2a3050;
+            --text-primary: #f0f2f8;
+            --text-secondary: #8b95b0;
+            --text-muted: #5a6380;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-purple: #8b5cf6;
+            --cat-industrial: #ef4444;
+            --cat-agriculture: #10b981;
+            --cat-coastal: #06b6d4;
+            --cat-urban: #f59e0b;
+            --glass: rgba(26, 31, 53, 0.85);
+            --radius: 12px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-card));
+            border-bottom: 1px solid var(--border);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(12px);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .status-text {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* ── Layout ── */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            height: calc(100vh - 65px);
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Search Section ── */
+        .search-section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .search-box {
+            display: flex;
+            gap: 8px;
+        }
+
+        .search-input {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-btn {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+            border: none;
+            border-radius: var(--radius);
+            padding: 12px 20px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s, opacity 0.2s;
+            white-space: nowrap;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-1px);
+            opacity: 0.9;
+        }
+
+        .search-btn:active { transform: translateY(0); }
+
+        .search-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .search-feedback {
+            margin-top: 10px;
+            font-size: 13px;
+            min-height: 20px;
+            transition: all 0.3s;
+        }
+
+        .feedback-success { color: var(--accent-green); }
+        .feedback-error { color: var(--accent-red); }
+        .feedback-loading { color: var(--accent-cyan); }
+
+        /* ── Stats Bar ── */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 8px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-count {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .stat-industrial .stat-count { color: var(--cat-industrial); }
+        .stat-agriculture .stat-count { color: var(--cat-agriculture); }
+        .stat-coastal .stat-count { color: var(--cat-coastal); }
+        .stat-urban .stat-count { color: var(--cat-urban); }
+
+        /* ── Tabs ── */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab:hover { color: var(--text-secondary); }
+        .tab.active {
+            color: var(--accent-cyan);
+            border-bottom-color: var(--accent-cyan);
+        }
+
+        /* ── Panel Content ── */
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .panel-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .panel-content::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        /* ── Location Cards ── */
+        .location-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .location-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-blue);
+            transform: translateX(4px);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .card-name {
+            font-size: 14px;
+            font-weight: 600;
+            flex: 1;
+            margin-right: 8px;
+        }
+
+        .card-badge {
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-industrial { background: rgba(239,68,68,0.15); color: var(--cat-industrial); }
+        .badge-agriculture { background: rgba(16,185,129,0.15); color: var(--cat-agriculture); }
+        .badge-coastal { background: rgba(6,182,212,0.15); color: var(--cat-coastal); }
+        .badge-urban { background: rgba(245,158,11,0.15); color: var(--cat-urban); }
+
+        .card-details {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .card-zone {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .card-coords {
+            color: var(--text-muted);
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+        }
+
+        .card-delete {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 4px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: all 0.2s;
+        }
+
+        .location-card:hover .card-delete { opacity: 1; }
+        .card-delete:hover { color: var(--accent-red); background: rgba(239,68,68,0.1); }
+
+        /* ── Log Entries ── */
+        .log-entry {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+
+        .log-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+
+        .log-success .log-icon { background: rgba(16,185,129,0.15); }
+        .log-error .log-icon { background: rgba(239,68,68,0.15); }
+        .log-rejected .log-icon { background: rgba(245,158,11,0.15); }
+
+        .log-body { flex: 1; min-width: 0; }
+
+        .log-query {
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .log-detail {
+            color: var(--text-muted);
+            font-size: 11px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .log-time {
+            color: var(--text-muted);
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        .log-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .log-badge-cache { background: rgba(139,92,246,0.15); color: var(--accent-purple); }
+        .log-badge-time { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+
+        /* ── Map Container ── */
+        .map-container {
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ── Empty State ── */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+        }
+
+        .empty-state-text {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* ── Loading Spinner ── */
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 900px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: 50% 50%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">&#127758;</div>
+            <h1>Gabes Map Intelligence</h1>
+        </div>
+        <div class="header-right">
+            <div class="status-dot"></div>
+            <span class="status-text">System Active</span>
+        </div>
+    </header>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+
+            <!-- Search -->
+            <div class="search-section">
+                <div class="search-box">
+                    <input type="text" id="searchInput" class="search-input"
+                           placeholder="Search location in Gabes..."
+                           autocomplete="off">
+                    <button id="searchBtn" class="search-btn" onclick="searchLocation()">Search</button>
+                </div>
+                <div id="searchFeedback" class="search-feedback"></div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-bar">
+                <div class="stat-item stat-industrial">
+                    <div class="stat-count" id="countIndustrial">0</div>
+                    <div class="stat-label">Industrial</div>
+                </div>
+                <div class="stat-item stat-agriculture">
+                    <div class="stat-count" id="countAgriculture">0</div>
+                    <div class="stat-label">Agriculture</div>
+                </div>
+                <div class="stat-item stat-coastal">
+                    <div class="stat-count" id="countCoastal">0</div>
+                    <div class="stat-label">Coastal</div>
+                </div>
+                <div class="stat-item stat-urban">
+                    <div class="stat-count" id="countUrban">0</div>
+                    <div class="stat-label">Urban</div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs">
+                <div class="tab active" data-tab="locations" onclick="switchTab('locations')">Locations</div>
+                <div class="tab" data-tab="logs" onclick="switchTab('logs')">Logs</div>
+            </div>
+
+            <!-- Panel Content -->
+            <div class="panel-content" id="panelContent">
+                <div class="empty-state">
+                    <div class="empty-state-icon">&#128205;</div>
+                    <div class="empty-state-text">
+                        No locations yet.<br>Search for a place to get started.
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- Map -->
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // ── State ──
+        let currentTab = 'locations';
+        let allLocations = [];
+        let allLogs = [];
+        let markers = [];
+
+        // ── Category colors ──
+        const CAT_COLORS = {
+            industrial: '#ef4444',
+            agriculture: '#10b981',
+            coastal: '#06b6d4',
+            urban: '#f59e0b'
+        };
+
+        // ── Init Map ──
+        const map = L.map('map', {
+            zoomControl: true
+        }).setView([33.88, 10.10], 11);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            maxZoom: 19
+        }).addTo(map);
+
+        // ── Custom Marker ──
+        function createMarkerIcon(category) {
+            const color = CAT_COLORS[category] || '#8b95b0';
+            return L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="
+                    width: 24px; height: 24px;
+                    background: ${color};
+                    border: 3px solid white;
+                    border-radius: 50%;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+                    position: relative;
+                "></div>
+                <div style="
+                    width: 2px; height: 8px;
+                    background: ${color};
+                    margin: 0 auto;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                "></div>`,
+                iconSize: [24, 34],
+                iconAnchor: [12, 34],
+                popupAnchor: [0, -36]
+            });
+        }
+
+        // ── Search ──
+        async function searchLocation() {
+            const input = document.getElementById('searchInput');
+            const btn = document.getElementById('searchBtn');
+            const feedback = document.getElementById('searchFeedback');
+            const query = input.value.trim();
+
+            if (!query) return;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Searching...';
+            feedback.className = 'search-feedback feedback-loading';
+            feedback.textContent = 'Searching via SerpAPI + classifying with AI...';
+
+            try {
+                const res = await fetch('/search-location', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+
+                const data = await res.json();
+
+                if (data.valid) {
+                    feedback.className = 'search-feedback feedback-success';
+                    feedback.textContent = `${data.name} -> ${data.category} / ${data.zone} (${data.elapsed}s)`;
+                    input.value = '';
+
+                    // Fly to new location
+                    map.flyTo([data.lat, data.lng], 14, { duration: 1.5 });
+
+                    // Reload data
+                    loadLocations();
+                    loadLogs();
+                } else {
+                    feedback.className = 'search-feedback feedback-error';
+                    feedback.textContent = data.error || 'Failed to add location.';
+                    loadLogs();
+                }
+            } catch (err) {
+                feedback.className = 'search-feedback feedback-error';
+                feedback.textContent = 'Network error: ' + err.message;
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Search';
+        }
+
+        // ── Enter key ──
+        document.getElementById('searchInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') searchLocation();
+        });
+
+        // ── Load Locations ──
+        async function loadLocations() {
+            try {
+                const res = await fetch('/locations');
+                const data = await res.json();
+                allLocations = data.locations || [];
+                updateStats();
+                updateMarkers();
+                if (currentTab === 'locations') renderLocations();
+            } catch (err) {
+                console.error('Failed to load locations:', err);
+            }
+        }
+
+        // ── Load Logs ──
+        async function loadLogs() {
+            try {
+                const res = await fetch('/logs');
+                const data = await res.json();
+                allLogs = (data.logs || []).reverse();
+                if (currentTab === 'logs') renderLogs();
+            } catch (err) {
+                console.error('Failed to load logs:', err);
+            }
+        }
+
+        // ── Update Stats ──
+        function updateStats() {
+            const counts = { industrial: 0, agriculture: 0, coastal: 0, urban: 0 };
+            allLocations.forEach(loc => {
+                if (counts[loc.category] !== undefined) counts[loc.category]++;
+            });
+            document.getElementById('countIndustrial').textContent = counts.industrial;
+            document.getElementById('countAgriculture').textContent = counts.agriculture;
+            document.getElementById('countCoastal').textContent = counts.coastal;
+            document.getElementById('countUrban').textContent = counts.urban;
+        }
+
+        // ── Update Markers ──
+        function updateMarkers() {
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            allLocations.forEach(loc => {
+                const marker = L.marker([loc.lat, loc.lng], {
+                    icon: createMarkerIcon(loc.category)
+                }).addTo(map);
+
+                marker.bindPopup(`
+                    <div style="font-family: Inter, sans-serif; min-width: 200px;">
+                        <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px;">${loc.name}</div>
+                        <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                            <span style="background: ${CAT_COLORS[loc.category]}22; color: ${CAT_COLORS[loc.category]};
+                                padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;
+                                text-transform: uppercase;">${loc.category}</span>
+                            <span style="background: #8b5cf622; color: #8b5cf6;
+                                padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">${loc.zone || '?'}</span>
+                        </div>
+                        <div style="font-size: 12px; color: #666;">
+                            <div>Lat: ${loc.lat.toFixed(6)}</div>
+                            <div>Lng: ${loc.lng.toFixed(6)}</div>
+                        </div>
+                    </div>
+                `);
+
+                markers.push(marker);
+            });
+
+            // Fit bounds if we have markers
+            if (markers.length > 0) {
+                const group = L.featureGroup(markers);
+                map.fitBounds(group.getBounds().pad(0.1));
+            }
+        }
+
+        // ── Render Locations Panel ──
+        function renderLocations() {
+            const panel = document.getElementById('panelContent');
+
+            if (allLocations.length === 0) {
+                panel.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#128205;</div>
+                        <div class="empty-state-text">No locations yet.<br>Search for a place to get started.</div>
+                    </div>`;
+                return;
+            }
+
+            panel.innerHTML = allLocations.map(loc => `
+                <div class="location-card" onclick="flyTo(${loc.lat}, ${loc.lng})">
+                    <button class="card-delete" onclick="event.stopPropagation(); deleteLocation(${loc.id})" title="Delete">&#10005;</button>
+                    <div class="card-header">
+                        <span class="card-name">${loc.name}</span>
+                        <span class="card-badge badge-${loc.category}">${loc.category}</span>
+                    </div>
+                    <div class="card-details">
+                        <span class="card-zone">&#128204; ${loc.zone || 'unknown'}</span>
+                        <span class="card-coords">${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ── Render Logs Panel ──
+        function renderLogs() {
+            const panel = document.getElementById('panelContent');
+
+            if (allLogs.length === 0) {
+                panel.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#128196;</div>
+                        <div class="empty-state-text">No logs yet.</div>
+                    </div>`;
+                return;
+            }
+
+            panel.innerHTML = allLogs.map(log => {
+                const statusClass = log.status === 'success' ? 'log-success' :
+                                   log.status === 'rejected' ? 'log-rejected' : 'log-error';
+                const icon = log.status === 'success' ? '&#10003;' :
+                            log.status === 'rejected' ? '&#8635;' : '&#10007;';
+                const time = new Date(log.timestamp).toLocaleTimeString();
+
+                let badges = '';
+                if (log.cacheHit) badges += '<span class="log-badge log-badge-cache">CACHE</span> ';
+                if (log.elapsed) badges += `<span class="log-badge log-badge-time">${log.elapsed}s</span>`;
+
+                return `
+                    <div class="log-entry ${statusClass}">
+                        <div class="log-icon">${icon}</div>
+                        <div class="log-body">
+                            <div class="log-query">${log.query}</div>
+                            <div class="log-detail">${log.detail || ''}</div>
+                        </div>
+                        ${badges}
+                        <span class="log-time">${time}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ── Tab Switch ──
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.tab === tab);
+            });
+            if (tab === 'locations') renderLocations();
+            else renderLogs();
+        }
+
+        // ── Fly To ──
+        function flyTo(lat, lng) {
+            map.flyTo([lat, lng], 15, { duration: 1 });
+        }
+
+        // ── Delete Location ──
+        async function deleteLocation(id) {
+            try {
+                await fetch(`/locations/${id}`, { method: 'DELETE' });
+                loadLocations();
+                loadLogs();
+            } catch (err) {
+                console.error('Delete failed:', err);
+            }
+        }
+
+        // ── Initial Load ──
+        loadLocations();
+        loadLogs();
+    </script>
+
+</body>
+</html>
