@@ -37,28 +37,28 @@ FACILITIES = {
         'linked_location': 'Ghannouch Industrial Zone',
         'zone_type': 'industrial'
     },
-    # → matches location id 7: Ghannouch Coastal Town
+    # → matches location id 23: GCT Ammonitrate Plant
     'usine_C_ammonitrate': {
         'file': 'usine_C_ammonitrate.json',
-        'lat': 33.9430531,
-        'lng': 10.0667387,
-        'linked_location': 'Ghannouch Coastal Town',
+        'lat': 33.9200,
+        'lng': 10.0880,
+        'linked_location': 'GCT Ammonitrate Plant',
         'zone_type': 'industrial'
     },
-    # → matches location id 21: Bouchamma area (ALKIMIA plant)
+    # → matches location id 24: ALKIMIA Chemical Plant
     'usine_D_stpp': {
         'file': 'usine_D_stpp.json',
-        'lat': 33.8900,
-        'lng': 10.0850,
-        'linked_location': 'Bouchamma Residential Area',
+        'lat': 33.9225,
+        'lng': 10.0903,
+        'linked_location': 'ALKIMIA Chemical Plant',
         'zone_type': 'industrial'
     },
-    # → near location id 3: Fishing Port area (ICF plant)
+    # → matches location id 25: ICF Industries Chimiques du Fluor
     'usine_E_fluor': {
         'file': 'usine_E_fluor.json',
-        'lat': 33.8957021,
-        'lng': 10.1162302,
-        'linked_location': 'Fishing Port of Gabes',
+        'lat': 33.9058,
+        'lng': 10.0972,
+        'linked_location': 'ICF Industries Chimiques du Fluor',
         'zone_type': 'industrial'
     },
     # ── Other industrial sites ──

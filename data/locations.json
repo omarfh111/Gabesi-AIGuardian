@@ -284,5 +284,44 @@
     "environmentType": "thermal",
     "recommendations": [],
     "createdAt": "2026-04-15T22:09:57.316683"
+  },
+  {
+    "id": 23,
+    "name": "GCT Ammonitrate Plant",
+    "lat": 33.9200,
+    "lng": 10.0880,
+    "category": "industrial",
+    "zone": "ghannouch",
+    "query": "gct ammonitrate plant ghannouch gabes",
+    "riskScore": null,
+    "environmentType": "chemical",
+    "recommendations": [],
+    "createdAt": "2026-04-16T09:20:00.000000"
+  },
+  {
+    "id": 24,
+    "name": "ALKIMIA Chemical Plant",
+    "lat": 33.9225,
+    "lng": 10.0903,
+    "category": "industrial",
+    "zone": "ghannouch",
+    "query": "alkimia chemical plant ghannouch gabes",
+    "riskScore": null,
+    "environmentType": "chemical",
+    "recommendations": [],
+    "createdAt": "2026-04-16T09:20:01.000000"
+  },
+  {
+    "id": 25,
+    "name": "ICF Industries Chimiques du Fluor",
+    "lat": 33.9058,
+    "lng": 10.0972,
+    "category": "industrial",
+    "zone": "gabes_port",
+    "query": "icf industries chimiques fluor gabes",
+    "riskScore": null,
+    "environmentType": "chemical",
+    "recommendations": [],
+    "createdAt": "2026-04-16T09:20:02.000000"
   }
 ]
