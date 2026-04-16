@@ -1,0 +1,19 @@
+{
+    "GCT_Gabes": {
+        "lat": 33.9089,
+        "lon": 10.1256,
+        "description": "Groupe Chimique Tunisien industrial complex",
+        "primary_pollutants": [
+            "SO2",
+            "fluoride",
+            "phosphogypsum"
+        ],
+        "source": "PDL Gabes 2023"
+    },
+    "Ghannouch_industrial_zone": {
+        "lat": 33.9333,
+        "lon": 10.0833,
+        "description": "Industrial zone Ghannouch adjacent to GCT",
+        "source": "PDL Gabes 2023"
+    }
+}

@@ -1,0 +1,53 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+*.so
+
+# Environment — NEVER commit secrets
+.env
+*.env
+!.env.example
+
+# Data — too large for git, contains sensitive documents
+data/papers/
+data/pdl_reports/
+data/references/
+data/processed/
+
+# Logs
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Future: model weights, checkpoints
+*.bin
+*.pt
+*.ckpt
+models/
+
+# Future: frontend build artifacts
+node_modules/
+.next/
+dist/
+build/

@@ -1,0 +1,21 @@
+# Python 3.12.0
+# Preprocessing only — ingestion dependencies added separately later
+
+# Document parsing
+python-docx==1.2.0
+pypdf==6.10.1
+
+# Utilities
+pathlib2==2.3.7.post1; python_version < "3.4"
+tqdm==4.67.1
+
+# Use CPU-compatible torch wheels for sentence-transformers
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Ingestion pipeline
+qdrant-client==1.16.2
+openai==1.78.0
+tiktoken==0.7.0
+chonkie[semantic]==0.5.1
+sentence-transformers==4.1.0
+python-dotenv==1.1.0
