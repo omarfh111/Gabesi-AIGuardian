@@ -3,39 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gabes Map Intelligence</title>
-    <meta name="description" content="AI-powered geographic intelligence system for Gabes, Tunisia">
+    <title>Gabesi AIGuardian — Environmental Intelligence</title>
+    <meta name="description" content="AI Decision Support Platform for Environmental Risk in Gabès, Tunisia. Real-time CO₂ monitoring, risk analysis, and AI-powered recommendations.">
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --bg-primary: #0a0e1a;
-            --bg-secondary: #111827;
-            --bg-card: #1a1f35;
-            --bg-card-hover: #222845;
-            --border: #2a3050;
-            --text-primary: #f0f2f8;
-            --text-secondary: #8b95b0;
-            --text-muted: #5a6380;
+            --bg-primary: #06080f;
+            --bg-secondary: #0c1020;
+            --bg-card: #111630;
+            --bg-card-hover: #181e42;
+            --bg-glass: rgba(12, 16, 32, 0.88);
+            --border: #1e2548;
+            --border-glow: rgba(59, 130, 246, 0.3);
+            --text-primary: #eef0f8;
+            --text-secondary: #8b95b8;
+            --text-muted: #4d567a;
             --accent-blue: #3b82f6;
             --accent-cyan: #06b6d4;
             --accent-green: #10b981;
+            --accent-emerald: #34d399;
             --accent-orange: #f59e0b;
+            --accent-amber: #fbbf24;
             --accent-red: #ef4444;
+            --accent-rose: #f43f5e;
             --accent-purple: #8b5cf6;
             --cat-industrial: #ef4444;
             --cat-agriculture: #10b981;
             --cat-coastal: #06b6d4;
             --cat-urban: #f59e0b;
-            --glass: rgba(26, 31, 53, 0.85);
+            --risk-danger: #ef4444;
+            --risk-warning: #f59e0b;
+            --risk-safe: #10b981;
             --radius: 12px;
-            --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+            --radius-lg: 16px;
+            --shadow: 0 4px 32px rgba(0, 0, 0, 0.4);
+            --shadow-glow: 0 0 30px rgba(59, 130, 246, 0.1);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -48,43 +57,117 @@
             overflow-x: hidden;
         }
 
-        /* ── Header ── */
+        /* ══════════════════════════════════════════
+           HEADER
+        ══════════════════════════════════════════ */
         .header {
-            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-card));
+            background: linear-gradient(135deg, rgba(12, 16, 32, 0.95), rgba(17, 22, 48, 0.95));
             border-bottom: 1px solid var(--border);
-            padding: 16px 32px;
+            padding: 12px 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             position: sticky;
             top: 0;
             z-index: 1000;
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
         }
 
         .header-left {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
         }
 
         .logo {
-            width: 36px;
-            height: 36px;
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
-            border-radius: 10px;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #10b981, #06b6d4, #3b82f6);
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 20px;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+            animation: logoPulse 3s ease-in-out infinite;
+        }
+
+        @keyframes logoPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(6, 182, 212, 0.5); }
+        }
+
+        .header-title {
+            display: flex;
+            flex-direction: column;
         }
 
         .header h1 {
-            font-size: 20px;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            font-size: 18px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #10b981, #06b6d4, #3b82f6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.3px;
+        }
+
+        .header-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 400;
+            letter-spacing: 0.5px;
+        }
+
+        .header-center {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .global-risk-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: 1px solid;
+            transition: all 0.3s;
+        }
+
+        .risk-danger-badge {
+            background: rgba(239, 68, 68, 0.12);
+            color: var(--risk-danger);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .risk-warning-badge {
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--risk-warning);
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+
+        .risk-safe-badge {
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--risk-safe);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .risk-badge-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: riskPulse 2s infinite;
+        }
+
+        @keyframes riskPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.3); }
         }
 
         .header-right {
@@ -98,27 +181,31 @@
             height: 8px;
             background: var(--accent-green);
             border-radius: 50%;
-            animation: pulse 2s infinite;
+            animation: statusPulse 2s infinite;
         }
 
-        @keyframes pulse {
+        @keyframes statusPulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.4; }
         }
 
         .status-text {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--text-secondary);
         }
 
-        /* ── Layout ── */
+        /* ══════════════════════════════════════════
+           LAYOUT
+        ══════════════════════════════════════════ */
         .main-layout {
             display: grid;
-            grid-template-columns: 380px 1fr;
-            height: calc(100vh - 65px);
+            grid-template-columns: 400px 1fr;
+            height: calc(100vh - 60px);
         }
 
-        /* ── Sidebar ── */
+        /* ══════════════════════════════════════════
+           SIDEBAR
+        ══════════════════════════════════════════ */
         .sidebar {
             background: var(--bg-secondary);
             border-right: 1px solid var(--border);
@@ -127,9 +214,9 @@
             overflow: hidden;
         }
 
-        /* ── Search Section ── */
+        /* ── Search ── */
         .search-section {
-            padding: 20px;
+            padding: 16px 16px 12px;
             border-bottom: 1px solid var(--border);
         }
 
@@ -143,111 +230,125 @@
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 12px 16px;
+            padding: 10px 14px;
             color: var(--text-primary);
-            font-size: 14px;
+            font-size: 13px;
             font-family: inherit;
             outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            transition: all 0.25s;
         }
 
         .search-input:focus {
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.12);
         }
 
-        .search-input::placeholder {
-            color: var(--text-muted);
-        }
+        .search-input::placeholder { color: var(--text-muted); }
 
         .search-btn {
             background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
             border: none;
             border-radius: var(--radius);
-            padding: 12px 20px;
+            padding: 10px 18px;
             color: white;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.15s, opacity 0.2s;
+            transition: all 0.2s;
             white-space: nowrap;
         }
 
-        .search-btn:hover {
-            transform: translateY(-1px);
-            opacity: 0.9;
-        }
-
+        .search-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3); }
         .search-btn:active { transform: translateY(0); }
-
-        .search-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
+        .search-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
         .search-feedback {
-            margin-top: 10px;
-            font-size: 13px;
-            min-height: 20px;
-            transition: all 0.3s;
+            margin-top: 8px;
+            font-size: 12px;
+            min-height: 18px;
         }
 
         .feedback-success { color: var(--accent-green); }
         .feedback-error { color: var(--accent-red); }
         .feedback-loading { color: var(--accent-cyan); }
 
-        /* ── Stats Bar ── */
-        .stats-bar {
+        /* ── Overview Bar ── */
+        .overview-bar {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 8px;
-            padding: 16px 20px;
+            padding: 12px 16px;
             border-bottom: 1px solid var(--border);
         }
 
-        .stat-item {
+        .overview-card {
             text-align: center;
-            padding: 8px;
+            padding: 10px 6px;
             background: var(--bg-card);
-            border-radius: 8px;
+            border-radius: 10px;
             border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s;
         }
 
-        .stat-count {
-            font-size: 20px;
-            font-weight: 700;
+        .overview-card:hover {
+            border-color: var(--border-glow);
+            transform: translateY(-1px);
         }
 
-        .stat-label {
-            font-size: 10px;
+        .overview-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+        }
+
+        .overview-card.risk-card::before { background: linear-gradient(90deg, var(--risk-danger), var(--risk-warning)); }
+        .overview-card.emission-card::before { background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue)); }
+        .overview-card.facility-card::before { background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue)); }
+
+        .overview-value {
+            font-size: 22px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .overview-label {
+            font-size: 9px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.6px;
             color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .overview-sub {
+            font-size: 10px;
+            color: var(--text-secondary);
             margin-top: 2px;
         }
-
-        .stat-industrial .stat-count { color: var(--cat-industrial); }
-        .stat-agriculture .stat-count { color: var(--cat-agriculture); }
-        .stat-coastal .stat-count { color: var(--cat-coastal); }
-        .stat-urban .stat-count { color: var(--cat-urban); }
 
         /* ── Tabs ── */
         .tabs {
             display: flex;
             border-bottom: 1px solid var(--border);
+            background: var(--bg-secondary);
         }
 
         .tab {
             flex: 1;
-            padding: 12px;
+            padding: 10px 8px;
             text-align: center;
-            font-size: 13px;
-            font-weight: 500;
+            font-size: 11px;
+            font-weight: 600;
             color: var(--text-muted);
             cursor: pointer;
             border-bottom: 2px solid transparent;
-            transition: all 0.2s;
+            transition: all 0.25s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .tab:hover { color: var(--text-secondary); }
@@ -260,25 +361,19 @@
         .panel-content {
             flex: 1;
             overflow-y: auto;
-            padding: 12px;
+            padding: 10px;
         }
 
-        .panel-content::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .panel-content::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 4px;
-        }
+        .panel-content::-webkit-scrollbar { width: 4px; }
+        .panel-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
         /* ── Location Cards ── */
         .location-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 14px;
-            margin-bottom: 8px;
+            padding: 12px;
+            margin-bottom: 6px;
             cursor: pointer;
             transition: all 0.2s;
             position: relative;
@@ -287,41 +382,41 @@
         .location-card:hover {
             background: var(--bg-card-hover);
             border-color: var(--accent-blue);
-            transform: translateX(4px);
+            transform: translateX(3px);
         }
 
         .card-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .card-name {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             flex: 1;
             margin-right: 8px;
         }
 
         .card-badge {
-            font-size: 11px;
-            padding: 3px 10px;
-            border-radius: 20px;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 16px;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
         }
 
-        .badge-industrial { background: rgba(239,68,68,0.15); color: var(--cat-industrial); }
-        .badge-agriculture { background: rgba(16,185,129,0.15); color: var(--cat-agriculture); }
-        .badge-coastal { background: rgba(6,182,212,0.15); color: var(--cat-coastal); }
-        .badge-urban { background: rgba(245,158,11,0.15); color: var(--cat-urban); }
+        .badge-industrial { background: rgba(239,68,68,0.12); color: var(--cat-industrial); }
+        .badge-agriculture { background: rgba(16,185,129,0.12); color: var(--cat-agriculture); }
+        .badge-coastal { background: rgba(6,182,212,0.12); color: var(--cat-coastal); }
+        .badge-urban { background: rgba(245,158,11,0.12); color: var(--cat-urban); }
 
         .card-details {
             display: flex;
-            gap: 16px;
-            font-size: 12px;
+            gap: 12px;
+            font-size: 11px;
             color: var(--text-secondary);
         }
 
@@ -334,19 +429,19 @@
         .card-coords {
             color: var(--text-muted);
             font-family: 'Courier New', monospace;
-            font-size: 11px;
+            font-size: 10px;
         }
 
         .card-delete {
             position: absolute;
-            top: 8px;
-            right: 8px;
+            top: 6px;
+            right: 6px;
             background: none;
             border: none;
             color: var(--text-muted);
             cursor: pointer;
-            font-size: 14px;
-            padding: 4px;
+            font-size: 13px;
+            padding: 3px;
             border-radius: 4px;
             opacity: 0;
             transition: all 0.2s;
@@ -355,33 +450,300 @@
         .location-card:hover .card-delete { opacity: 1; }
         .card-delete:hover { color: var(--accent-red); background: rgba(239,68,68,0.1); }
 
+        /* ── Pollution Cards ── */
+        .pollution-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.25s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pollution-card:hover {
+            border-color: var(--accent-cyan);
+            transform: translateX(3px);
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.08);
+        }
+
+        .pollution-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+        }
+
+        .pollution-card.risk-danger::before { background: var(--risk-danger); }
+        .pollution-card.risk-warning::before { background: var(--risk-warning); }
+        .pollution-card.risk-safe::before { background: var(--risk-safe); }
+
+        .pollution-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .pollution-name {
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .pollution-risk-badge {
+            font-size: 9px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-risk-danger { background: rgba(239,68,68,0.15); color: var(--risk-danger); }
+        .badge-risk-warning { background: rgba(245,158,11,0.15); color: var(--risk-warning); }
+        .badge-risk-safe { background: rgba(16,185,129,0.15); color: var(--risk-safe); }
+
+        .pollution-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .pollution-stat {
+            text-align: center;
+            padding: 4px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+        }
+
+        .pollution-stat-value {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .pollution-stat-label {
+            font-size: 8px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.3px;
+        }
+
+        /* ── Sparkline ── */
+        .sparkline-container {
+            height: 32px;
+            position: relative;
+            margin-top: 4px;
+        }
+
+        .sparkline-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ── Risk Progress Bar ── */
+        .risk-bar-container {
+            height: 4px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .risk-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 1s ease-out;
+        }
+
+        /* ── AI Analysis Panel ── */
+        .analysis-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            margin-bottom: 10px;
+        }
+
+        .analysis-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .analysis-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .analysis-title {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .analysis-subtitle {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .analysis-btn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            border: none;
+            border-radius: var(--radius);
+            padding: 12px;
+            color: white;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .analysis-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(139, 92, 246, 0.3);
+        }
+
+        .analysis-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .analysis-btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .analysis-btn:hover::after { left: 100%; }
+
+        .analysis-result {
+            margin-top: 14px;
+        }
+
+        .analysis-section {
+            margin-bottom: 12px;
+        }
+
+        .analysis-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--accent-cyan);
+            margin-bottom: 6px;
+        }
+
+        .analysis-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .rec-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            transition: all 0.2s;
+        }
+
+        .rec-card:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: var(--accent-purple);
+        }
+
+        .rec-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .rec-priority {
+            font-size: 9px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .rec-critique { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+        .rec-important { background: rgba(245,158,11,0.15); color: var(--accent-orange); }
+        .rec-souhaitable { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+
+        .rec-title {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .rec-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .rec-meta {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .rec-meta-tag {
+            font-size: 9px;
+            padding: 1px 6px;
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--accent-purple);
+            border-radius: 4px;
+        }
+
         /* ── Log Entries ── */
         .log-entry {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
+            gap: 8px;
+            padding: 8px 10px;
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 8px;
-            margin-bottom: 6px;
-            font-size: 12px;
+            margin-bottom: 4px;
+            font-size: 11px;
         }
 
         .log-icon {
-            width: 28px;
-            height: 28px;
+            width: 24px;
+            height: 24px;
             border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 13px;
+            font-size: 11px;
             flex-shrink: 0;
         }
 
-        .log-success .log-icon { background: rgba(16,185,129,0.15); }
-        .log-error .log-icon { background: rgba(239,68,68,0.15); }
-        .log-rejected .log-icon { background: rgba(245,158,11,0.15); }
+        .log-success .log-icon { background: rgba(16,185,129,0.12); }
+        .log-error .log-icon { background: rgba(239,68,68,0.12); }
+        .log-rejected .log-icon { background: rgba(245,158,11,0.12); }
 
         .log-body { flex: 1; min-width: 0; }
 
@@ -395,7 +757,7 @@
 
         .log-detail {
             color: var(--text-muted);
-            font-size: 11px;
+            font-size: 10px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -403,19 +765,19 @@
 
         .log-time {
             color: var(--text-muted);
-            font-size: 11px;
+            font-size: 10px;
             flex-shrink: 0;
         }
 
         .log-badge {
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 4px;
+            font-size: 9px;
+            padding: 1px 5px;
+            border-radius: 3px;
             flex-shrink: 0;
         }
 
-        .log-badge-cache { background: rgba(139,92,246,0.15); color: var(--accent-purple); }
-        .log-badge-time { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+        .log-badge-cache { background: rgba(139,92,246,0.12); color: var(--accent-purple); }
+        .log-badge-time { background: rgba(59,130,246,0.12); color: var(--accent-blue); }
 
         /* ── Map Container ── */
         .map-container {
@@ -427,28 +789,120 @@
             height: 100%;
         }
 
+        /* ── Map Legend ── */
+        .map-legend {
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 18px;
+            z-index: 800;
+            box-shadow: var(--shadow);
+        }
+
+        .legend-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .legend-circle {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+
+        .legend-size {
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+        }
+
+        .legend-size-circle {
+            border: 1px solid var(--text-muted);
+            border-radius: 50%;
+            opacity: 0.5;
+        }
+
+        .legend-size-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            margin-left: 4px;
+        }
+
+        /* ── Map Stats Overlay ── */
+        .map-overlay {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            z-index: 800;
+            display: flex;
+            gap: 8px;
+        }
+
+        .map-stat-chip {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 6px 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            box-shadow: var(--shadow);
+        }
+
+        .chip-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
         /* ── Empty State ── */
         .empty-state {
             text-align: center;
-            padding: 40px 20px;
+            padding: 32px 20px;
             color: var(--text-muted);
         }
 
         .empty-state-icon {
-            font-size: 40px;
-            margin-bottom: 12px;
+            font-size: 36px;
+            margin-bottom: 10px;
         }
 
         .empty-state-text {
-            font-size: 14px;
+            font-size: 13px;
             line-height: 1.6;
         }
 
-        /* ── Loading Spinner ── */
+        /* ── Spinner ── */
         .spinner {
             display: inline-block;
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             border: 2px solid rgba(255,255,255,0.3);
             border-top-color: white;
             border-radius: 50%;
@@ -461,22 +915,109 @@
             to { transform: rotate(360deg); }
         }
 
+        /* ── Facility Selector Dropdown ── */
+        .facility-select {
+            width: 100%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 10px 14px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.25s;
+            margin-bottom: 10px;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3e%3cpath fill='%234d567a' d='M6 8L1 3h10z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+        }
+
+        .facility-select:focus {
+            border-color: var(--accent-cyan);
+        }
+
+        /* ── Carbon/Regulatory Alerts ── */
+        .alert-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-top: 8px;
+        }
+
+        .alert-card-title {
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .alert-card-text {
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* ── Leaflet popup override ── */
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-card) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: var(--radius) !important;
+            box-shadow: var(--shadow) !important;
+            color: var(--text-primary) !important;
+        }
+
+        .leaflet-popup-tip {
+            background: var(--bg-card) !important;
+            border: 1px solid var(--border) !important;
+        }
+
+        .leaflet-popup-close-button {
+            color: var(--text-muted) !important;
+        }
+
         /* ── Responsive ── */
         @media (max-width: 900px) {
             .main-layout {
                 grid-template-columns: 1fr;
                 grid-template-rows: 50% 50%;
             }
+            .header-center { display: none; }
+        }
+
+        /* ── Fade-in animation ── */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
         }
     </style>
 </head>
 <body>
 
     <!-- Header -->
-    <header class="header">
+    <header class="header" id="mainHeader">
         <div class="header-left">
             <div class="logo">&#127758;</div>
-            <h1>Gabes Map Intelligence</h1>
+            <div class="header-title">
+                <h1>Gabesi AIGuardian</h1>
+                <span class="header-subtitle">Environmental Intelligence Platform</span>
+            </div>
+        </div>
+        <div class="header-center">
+            <div class="global-risk-badge risk-warning-badge" id="globalRiskBadge">
+                <div class="risk-badge-dot" style="background: var(--risk-warning);"></div>
+                <span id="globalRiskText">Loading...</span>
+            </div>
         </div>
         <div class="header-right">
             <div class="status-dot"></div>
@@ -494,46 +1035,45 @@
             <div class="search-section">
                 <div class="search-box">
                     <input type="text" id="searchInput" class="search-input"
-                           placeholder="Search location in Gabes..."
+                           placeholder="Search location in Gabès..."
                            autocomplete="off">
                     <button id="searchBtn" class="search-btn" onclick="searchLocation()">Search</button>
                 </div>
                 <div id="searchFeedback" class="search-feedback"></div>
             </div>
 
-            <!-- Stats -->
-            <div class="stats-bar">
-                <div class="stat-item stat-industrial">
-                    <div class="stat-count" id="countIndustrial">0</div>
-                    <div class="stat-label">Industrial</div>
+            <!-- Overview Stats -->
+            <div class="overview-bar" id="overviewBar">
+                <div class="overview-card risk-card">
+                    <div class="overview-value" id="ovRiskScore" style="color: var(--risk-warning);">--</div>
+                    <div class="overview-label">Risk Score</div>
+                    <div class="overview-sub" id="ovRiskLabel"></div>
                 </div>
-                <div class="stat-item stat-agriculture">
-                    <div class="stat-count" id="countAgriculture">0</div>
-                    <div class="stat-label">Agriculture</div>
+                <div class="overview-card emission-card">
+                    <div class="overview-value" id="ovTotalCO2" style="color: var(--accent-cyan);">--</div>
+                    <div class="overview-label">Avg CO₂ t/m</div>
+                    <div class="overview-sub" id="ovCO2Sub"></div>
                 </div>
-                <div class="stat-item stat-coastal">
-                    <div class="stat-count" id="countCoastal">0</div>
-                    <div class="stat-label">Coastal</div>
-                </div>
-                <div class="stat-item stat-urban">
-                    <div class="stat-count" id="countUrban">0</div>
-                    <div class="stat-label">Urban</div>
+                <div class="overview-card facility-card">
+                    <div class="overview-value" id="ovFacilities" style="color: var(--accent-purple);">--</div>
+                    <div class="overview-label">Facilities</div>
+                    <div class="overview-sub" id="ovFacilitySub"></div>
                 </div>
             </div>
 
             <!-- Tabs -->
             <div class="tabs">
-                <div class="tab active" data-tab="locations" onclick="switchTab('locations')">Locations</div>
-                <div class="tab" data-tab="logs" onclick="switchTab('logs')">Logs</div>
+                <div class="tab active" data-tab="pollution" onclick="switchTab('pollution')">&#128308; Pollution</div>
+                <div class="tab" data-tab="locations" onclick="switchTab('locations')">&#128205; Locations</div>
+                <div class="tab" data-tab="analysis" onclick="switchTab('analysis')">&#129504; AI Analysis</div>
+                <div class="tab" data-tab="logs" onclick="switchTab('logs')">&#128196; Logs</div>
             </div>
 
             <!-- Panel Content -->
             <div class="panel-content" id="panelContent">
                 <div class="empty-state">
-                    <div class="empty-state-icon">&#128205;</div>
-                    <div class="empty-state-text">
-                        No locations yet.<br>Search for a place to get started.
-                    </div>
+                    <div class="empty-state-icon">&#9203;</div>
+                    <div class="empty-state-text">Loading data...</div>
                 </div>
             </div>
 
@@ -542,6 +1082,49 @@
         <!-- Map -->
         <div class="map-container">
             <div id="map"></div>
+
+            <!-- Map Overlay Stats -->
+            <div class="map-overlay" id="mapOverlay">
+                <div class="map-stat-chip">
+                    <div class="chip-dot" style="background: var(--cat-industrial);"></div>
+                    <span id="chipIndustrial">0</span> Industrial
+                </div>
+                <div class="map-stat-chip">
+                    <div class="chip-dot" style="background: var(--cat-agriculture);"></div>
+                    <span id="chipAgriculture">0</span> Agriculture
+                </div>
+                <div class="map-stat-chip">
+                    <div class="chip-dot" style="background: var(--cat-coastal);"></div>
+                    <span id="chipCoastal">0</span> Coastal
+                </div>
+                <div class="map-stat-chip">
+                    <div class="chip-dot" style="background: var(--cat-urban);"></div>
+                    <span id="chipUrban">0</span> Urban
+                </div>
+            </div>
+
+            <!-- Map Legend -->
+            <div class="map-legend">
+                <div class="legend-title">CO₂ Risk Level</div>
+                <div class="legend-item">
+                    <div class="legend-circle" style="background: var(--risk-danger);"></div>
+                    <span>Danger (score &gt; 70)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-circle" style="background: var(--risk-warning);"></div>
+                    <span>Warning (40 – 70)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-circle" style="background: var(--risk-safe);"></div>
+                    <span>Safe (score &lt; 40)</span>
+                </div>
+                <div class="legend-size">
+                    <div class="legend-size-circle" style="width:8px;height:8px;"></div>
+                    <div class="legend-size-circle" style="width:14px;height:14px;"></div>
+                    <div class="legend-size-circle" style="width:20px;height:20px;"></div>
+                    <span class="legend-size-label">Circle ∝ emission</span>
+                </div>
+            </div>
         </div>
 
     </div>
@@ -550,11 +1133,19 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // ── State ──
-        let currentTab = 'locations';
+        // ══════════════════════════════════════════
+        // STATE
+        // ══════════════════════════════════════════
+        let currentTab = 'pollution';
         let allLocations = [];
         let allLogs = [];
+        let allCircles = [];
+        let allFacilitiesData = [];
+        let overviewData = null;
         let markers = [];
+        let pollutionCircles = [];
+        let selectedFacility = null;
+        let currentAnalysis = null;
 
         // ── Category colors ──
         const CAT_COLORS = {
@@ -564,42 +1155,88 @@
             urban: '#f59e0b'
         };
 
-        // ── Init Map ──
-        const map = L.map('map', {
-            zoomControl: true
-        }).setView([33.88, 10.10], 11);
+        const RISK_COLORS = {
+            danger: '#ef4444',
+            warning: '#f59e0b',
+            safe: '#10b981'
+        };
+
+        // ══════════════════════════════════════════
+        // MAP INIT
+        // ══════════════════════════════════════════
+        const map = L.map('map', { zoomControl: true }).setView([33.88, 10.08], 11);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap &copy; CARTO',
             maxZoom: 19
         }).addTo(map);
 
-        // ── Custom Marker ──
+        // ══════════════════════════════════════════
+        // CUSTOM MARKER
+        // ══════════════════════════════════════════
         function createMarkerIcon(category) {
-            const color = CAT_COLORS[category] || '#8b95b0';
+            const color = CAT_COLORS[category] || '#8b95b8';
             return L.divIcon({
                 className: 'custom-marker',
                 html: `<div style="
-                    width: 24px; height: 24px;
+                    width: 18px; height: 18px;
                     background: ${color};
-                    border: 3px solid white;
+                    border: 2px solid rgba(255,255,255,0.7);
                     border-radius: 50%;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-                    position: relative;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 12px ${color}44;
                 "></div>
                 <div style="
-                    width: 2px; height: 8px;
+                    width: 2px; height: 6px;
                     background: ${color};
                     margin: 0 auto;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                    opacity: 0.7;
                 "></div>`,
-                iconSize: [24, 34],
-                iconAnchor: [12, 34],
-                popupAnchor: [0, -36]
+                iconSize: [18, 26],
+                iconAnchor: [9, 26],
+                popupAnchor: [0, -28]
             });
         }
 
-        // ── Search ──
+        // ══════════════════════════════════════════
+        // SPARKLINE GENERATOR
+        // ══════════════════════════════════════════
+        function generateSparkline(data, color, width = 280, height = 28) {
+            if (!data || data.length === 0) return '';
+
+            const values = data.map(d => d.co2 || d);
+            const max = Math.max(...values);
+            const min = Math.min(...values);
+            const range = max - min || 1;
+
+            const padding = 2;
+            const step = (width - padding * 2) / (values.length - 1);
+
+            const points = values.map((v, i) => {
+                const x = padding + i * step;
+                const y = height - padding - ((v - min) / range) * (height - padding * 2);
+                return `${x},${y}`;
+            }).join(' ');
+
+            // Area fill
+            const firstX = padding;
+            const lastX = padding + (values.length - 1) * step;
+            const areaPoints = `${firstX},${height} ${points} ${lastX},${height}`;
+
+            return `<svg class="sparkline-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+                <defs>
+                    <linearGradient id="grad-${color.replace('#','')}" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
+                        <stop offset="100%" stop-color="${color}" stop-opacity="0.02"/>
+                    </linearGradient>
+                </defs>
+                <polygon points="${areaPoints}" fill="url(#grad-${color.replace('#','')})" />
+                <polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>`;
+        }
+
+        // ══════════════════════════════════════════
+        // SEARCH
+        // ══════════════════════════════════════════
         async function searchLocation() {
             const input = document.getElementById('searchInput');
             const btn = document.getElementById('searchBtn');
@@ -624,13 +1261,9 @@
 
                 if (data.valid) {
                     feedback.className = 'search-feedback feedback-success';
-                    feedback.textContent = `${data.name} -> ${data.category} / ${data.zone} (${data.elapsed}s)`;
+                    feedback.textContent = `✓ ${data.name} → ${data.category} / ${data.zone} (${data.elapsed}s)`;
                     input.value = '';
-
-                    // Fly to new location
                     map.flyTo([data.lat, data.lng], 14, { duration: 1.5 });
-
-                    // Reload data
                     loadLocations();
                     loadLogs();
                 } else {
@@ -647,18 +1280,19 @@
             btn.textContent = 'Search';
         }
 
-        // ── Enter key ──
         document.getElementById('searchInput').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') searchLocation();
         });
 
-        // ── Load Locations ──
+        // ══════════════════════════════════════════
+        // DATA LOADING
+        // ══════════════════════════════════════════
         async function loadLocations() {
             try {
                 const res = await fetch('/locations');
                 const data = await res.json();
                 allLocations = data.locations || [];
-                updateStats();
+                updateMapChips();
                 updateMarkers();
                 if (currentTab === 'locations') renderLocations();
             } catch (err) {
@@ -666,7 +1300,6 @@
             }
         }
 
-        // ── Load Logs ──
         async function loadLogs() {
             try {
                 const res = await fetch('/logs');
@@ -678,19 +1311,97 @@
             }
         }
 
-        // ── Update Stats ──
-        function updateStats() {
+        async function loadRiskMap() {
+            try {
+                const res = await fetch('/risk-map');
+                const data = await res.json();
+                allCircles = data.circles || [];
+                updatePollutionCircles();
+                if (currentTab === 'pollution') renderPollution();
+            } catch (err) {
+                console.error('Failed to load risk map:', err);
+            }
+        }
+
+        async function loadEmissions() {
+            try {
+                const res = await fetch('/emissions');
+                const data = await res.json();
+                allFacilitiesData = data.facilities || [];
+            } catch (err) {
+                console.error('Failed to load emissions:', err);
+            }
+        }
+
+        async function loadOverview() {
+            try {
+                const res = await fetch('/overview');
+                overviewData = await res.json();
+                updateOverviewBar();
+                updateGlobalRiskBadge();
+            } catch (err) {
+                console.error('Failed to load overview:', err);
+            }
+        }
+
+        // ══════════════════════════════════════════
+        // UI UPDATES
+        // ══════════════════════════════════════════
+        function updateGlobalRiskBadge() {
+            if (!overviewData) return;
+            const badge = document.getElementById('globalRiskBadge');
+            const text = document.getElementById('globalRiskText');
+            const risk = overviewData.globalRisk || 0;
+            const level = overviewData.globalRiskLevel || {};
+
+            text.textContent = `Global Risk: ${risk}/100`;
+
+            badge.className = 'global-risk-badge';
+            const dot = badge.querySelector('.risk-badge-dot');
+
+            if (level.level === 'danger') {
+                badge.classList.add('risk-danger-badge');
+                dot.style.background = 'var(--risk-danger)';
+            } else if (level.level === 'warning') {
+                badge.classList.add('risk-warning-badge');
+                dot.style.background = 'var(--risk-warning)';
+            } else {
+                badge.classList.add('risk-safe-badge');
+                dot.style.background = 'var(--risk-safe)';
+            }
+        }
+
+        function updateOverviewBar() {
+            if (!overviewData) return;
+
+            document.getElementById('ovRiskScore').textContent = overviewData.globalRisk || '--';
+            const riskLevel = overviewData.globalRiskLevel || {};
+            document.getElementById('ovRiskScore').style.color = riskLevel.color || 'var(--risk-warning)';
+            document.getElementById('ovRiskLabel').textContent = riskLevel.label || '';
+
+            document.getElementById('ovTotalCO2').textContent = overviewData.totalMeanCO2 || '--';
+            const synthesis = overviewData.gctSynthesis || {};
+            document.getElementById('ovCO2Sub').textContent = synthesis.exceedanceRate ? `${synthesis.exceedanceRate} exceed` : '';
+
+            document.getElementById('ovFacilities').textContent = overviewData.facilityCount || '--';
+            const topRisk = overviewData.topRisks?.[0];
+            document.getElementById('ovFacilitySub').textContent = topRisk ? `Top: ${topRisk.label.split(' - ')[1] || topRisk.label}` : '';
+        }
+
+        function updateMapChips() {
             const counts = { industrial: 0, agriculture: 0, coastal: 0, urban: 0 };
             allLocations.forEach(loc => {
                 if (counts[loc.category] !== undefined) counts[loc.category]++;
             });
-            document.getElementById('countIndustrial').textContent = counts.industrial;
-            document.getElementById('countAgriculture').textContent = counts.agriculture;
-            document.getElementById('countCoastal').textContent = counts.coastal;
-            document.getElementById('countUrban').textContent = counts.urban;
+            document.getElementById('chipIndustrial').textContent = counts.industrial;
+            document.getElementById('chipAgriculture').textContent = counts.agriculture;
+            document.getElementById('chipCoastal').textContent = counts.coastal;
+            document.getElementById('chipUrban').textContent = counts.urban;
         }
 
-        // ── Update Markers ──
+        // ══════════════════════════════════════════
+        // MAP MARKERS
+        // ══════════════════════════════════════════
         function updateMarkers() {
             markers.forEach(m => map.removeLayer(m));
             markers = [];
@@ -700,17 +1411,18 @@
                     icon: createMarkerIcon(loc.category)
                 }).addTo(map);
 
+                const color = CAT_COLORS[loc.category] || '#8b95b8';
                 marker.bindPopup(`
-                    <div style="font-family: Inter, sans-serif; min-width: 200px;">
+                    <div style="font-family: Inter, sans-serif; min-width: 200px; padding: 4px;">
                         <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px;">${loc.name}</div>
                         <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-                            <span style="background: ${CAT_COLORS[loc.category]}22; color: ${CAT_COLORS[loc.category]};
-                                padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;
+                            <span style="background: ${color}18; color: ${color};
+                                padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;
                                 text-transform: uppercase;">${loc.category}</span>
-                            <span style="background: #8b5cf622; color: #8b5cf6;
-                                padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">${loc.zone || '?'}</span>
+                            <span style="background: #8b5cf618; color: #8b5cf6;
+                                padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">${loc.zone || '?'}</span>
                         </div>
-                        <div style="font-size: 12px; color: #666;">
+                        <div style="font-size: 11px; color: var(--text-secondary);">
                             <div>Lat: ${loc.lat.toFixed(6)}</div>
                             <div>Lng: ${loc.lng.toFixed(6)}</div>
                         </div>
@@ -719,15 +1431,122 @@
 
                 markers.push(marker);
             });
-
-            // Fit bounds if we have markers
-            if (markers.length > 0) {
-                const group = L.featureGroup(markers);
-                map.fitBounds(group.getBounds().pad(0.1));
-            }
         }
 
-        // ── Render Locations Panel ──
+        // ══════════════════════════════════════════
+        // POLLUTION CIRCLES
+        // ══════════════════════════════════════════
+        function updatePollutionCircles() {
+            pollutionCircles.forEach(c => map.removeLayer(c));
+            pollutionCircles = [];
+
+            allCircles.forEach(circle => {
+                const riskColor = circle.color;
+                const isDanger = circle.riskLevel === 'danger';
+
+                const c = L.circle([circle.lat, circle.lng], {
+                    radius: circle.radius,
+                    fillColor: riskColor,
+                    fillOpacity: isDanger ? 0.25 : 0.18,
+                    color: riskColor,
+                    weight: isDanger ? 2 : 1.5,
+                    opacity: isDanger ? 0.7 : 0.5,
+                    className: isDanger ? 'danger-circle' : ''
+                }).addTo(map);
+
+                // Build a mini sparkline for the popup
+                const sparkData = circle.monthlyData || [];
+                const sparkHtml = generateSparkline(sparkData, riskColor, 200, 30);
+
+                c.bindPopup(`
+                    <div style="font-family: Inter, sans-serif; min-width: 240px; padding: 4px;">
+                        <div style="font-weight: 800; font-size: 14px; margin-bottom: 4px;">${circle.label}</div>
+                        <div style="font-size: 10px; color: #8b95b8; margin-bottom: 8px;">${circle.anchor}</div>
+                        <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+                            <span style="background: ${riskColor}1a; color: ${riskColor};
+                                padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 700;
+                                text-transform: uppercase; letter-spacing: 0.5px;">${circle.riskLabel} — ${circle.riskScore}/100</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px;">
+                            <div style="text-align:center; padding: 4px; background: rgba(255,255,255,0.04); border-radius: 6px;">
+                                <div style="font-size: 14px; font-weight: 700; color: var(--accent-cyan);">${circle.meanCO2}</div>
+                                <div style="font-size: 8px; text-transform: uppercase; color: #4d567a;">Avg t/m</div>
+                            </div>
+                            <div style="text-align:center; padding: 4px; background: rgba(255,255,255,0.04); border-radius: 6px;">
+                                <div style="font-size: 14px; font-weight: 700; color: ${riskColor};">${circle.maxCO2}</div>
+                                <div style="font-size: 8px; text-transform: uppercase; color: #4d567a;">Max</div>
+                            </div>
+                            <div style="text-align:center; padding: 4px; background: rgba(255,255,255,0.04); border-radius: 6px;">
+                                <div style="font-size: 14px; font-weight: 700;">${circle.threshold}</div>
+                                <div style="font-size: 8px; text-transform: uppercase; color: #4d567a;">Seuil</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 6px;">
+                            <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #4d567a; margin-bottom: 2px;">Trend 6 months</div>
+                            ${sparkHtml}
+                        </div>
+                    </div>
+                `);
+
+                pollutionCircles.push(c);
+            });
+        }
+
+        // ══════════════════════════════════════════
+        // RENDER PANELS
+        // ══════════════════════════════════════════
+        function renderPollution() {
+            const panel = document.getElementById('panelContent');
+
+            if (allCircles.length === 0) {
+                panel.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#128200;</div>
+                        <div class="empty-state-text">Loading pollution data...</div>
+                    </div>`;
+                return;
+            }
+
+            // Sort by risk score descending
+            const sorted = [...allCircles].sort((a, b) => b.riskScore - a.riskScore);
+
+            panel.innerHTML = sorted.map((c, i) => {
+                const riskClass = `risk-${c.riskLevel}`;
+                const badgeClass = `badge-risk-${c.riskLevel}`;
+                const sparkHtml = generateSparkline(c.monthlyData, c.color);
+                const barWidth = Math.min(100, c.riskScore);
+
+                return `
+                    <div class="pollution-card ${riskClass} fade-in" style="animation-delay: ${i * 0.05}s"
+                         onclick="flyToCircle(${c.lat}, ${c.lng}, '${c.key}')">
+                        <div class="pollution-header">
+                            <span class="pollution-name">${c.label}</span>
+                            <span class="pollution-risk-badge ${badgeClass}">${c.riskLabel} ${c.riskScore}</span>
+                        </div>
+                        <div class="pollution-stats">
+                            <div class="pollution-stat">
+                                <div class="pollution-stat-value" style="color: var(--accent-cyan);">${c.meanCO2}</div>
+                                <div class="pollution-stat-label">Avg t/m</div>
+                            </div>
+                            <div class="pollution-stat">
+                                <div class="pollution-stat-value" style="color: ${c.color};">${c.maxCO2}</div>
+                                <div class="pollution-stat-label">Max</div>
+                            </div>
+                            <div class="pollution-stat">
+                                <div class="pollution-stat-value">${c.exceedanceCount}</div>
+                                <div class="pollution-stat-label">Exceed</div>
+                            </div>
+                        </div>
+                        <div class="sparkline-container">
+                            ${sparkHtml}
+                        </div>
+                        <div class="risk-bar-container">
+                            <div class="risk-bar-fill" style="width: ${barWidth}%; background: ${c.color};"></div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
         function renderLocations() {
             const panel = document.getElementById('panelContent');
 
@@ -740,8 +1559,9 @@
                 return;
             }
 
-            panel.innerHTML = allLocations.map(loc => `
-                <div class="location-card" onclick="flyTo(${loc.lat}, ${loc.lng})">
+            panel.innerHTML = allLocations.map((loc, i) => `
+                <div class="location-card fade-in" style="animation-delay: ${i * 0.03}s"
+                     onclick="flyTo(${loc.lat}, ${loc.lng})">
                     <button class="card-delete" onclick="event.stopPropagation(); deleteLocation(${loc.id})" title="Delete">&#10005;</button>
                     <div class="card-header">
                         <span class="card-name">${loc.name}</span>
@@ -755,7 +1575,137 @@
             `).join('');
         }
 
-        // ── Render Logs Panel ──
+        function renderAnalysis() {
+            const panel = document.getElementById('panelContent');
+
+            const facilityOptions = allCircles.map(c =>
+                `<option value="${c.key}" ${selectedFacility === c.key ? 'selected' : ''}>${c.label} (Risk: ${c.riskScore})</option>`
+            ).join('');
+
+            let resultHtml = '';
+
+            if (currentAnalysis) {
+                const a = currentAnalysis;
+                const analysis = a.analysis || {};
+                const diag = analysis.diagnostic || {};
+                const metrics = analysis.metrics || {};
+                const recs = a.recommendations || {};
+                const recommendations = recs.recommendations || [];
+                const carbon = recs.carbonMarket || {};
+                const regulatory = recs.regulatoryAlert || {};
+
+                resultHtml = `
+                    <div class="analysis-result fade-in">
+                        <div class="analysis-section">
+                            <div class="analysis-section-title">&#128202; Diagnostic</div>
+                            <div class="analysis-text">${diag.summary || 'N/A'}</div>
+                        </div>
+
+                        <div class="analysis-section">
+                            <div class="analysis-section-title">&#128200; Tendance</div>
+                            <div class="analysis-text">
+                                <strong>${diag.trend || '?'}</strong> — ${diag.trendDetail || ''}
+                            </div>
+                        </div>
+
+                        <div class="analysis-section">
+                            <div class="analysis-section-title">&#127774; Pattern saisonnier</div>
+                            <div class="analysis-text">${diag.seasonalPattern || 'N/A'}</div>
+                        </div>
+
+                        <div class="analysis-section">
+                            <div class="analysis-section-title">&#9888;&#65039; Conformité</div>
+                            <div class="analysis-text">
+                                <strong style="color: ${diag.complianceStatus === 'critique' ? 'var(--risk-danger)' : diag.complianceStatus === 'attention' ? 'var(--risk-warning)' : 'var(--risk-safe)'}">
+                                    ${diag.complianceStatus || '?'}
+                                </strong>
+                                — ${diag.complianceDetail || ''}
+                            </div>
+                        </div>
+
+                        ${metrics.peakMonth ? `
+                        <div class="analysis-section">
+                            <div class="analysis-section-title">&#128200; Métriques clés</div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                                <div style="padding: 6px 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+                                    <div style="font-size: 10px; color: var(--text-muted);">Pic</div>
+                                    <div style="font-size: 13px; font-weight: 700; color: var(--risk-danger);">${metrics.peakValue} t</div>
+                                    <div style="font-size: 9px; color: var(--text-muted);">${metrics.peakMonth}</div>
+                                </div>
+                                <div style="padding: 6px 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+                                    <div style="font-size: 10px; color: var(--text-muted);">Min</div>
+                                    <div style="font-size: 13px; font-weight: 700; color: var(--risk-safe);">${metrics.lowestValue} t</div>
+                                    <div style="font-size: 9px; color: var(--text-muted);">${metrics.lowestMonth}</div>
+                                </div>
+                            </div>
+                        </div>` : ''}
+
+                        ${recommendations.length > 0 ? `
+                        <div class="analysis-section">
+                            <div class="analysis-section-title">&#128161; Recommandations</div>
+                            ${recommendations.map(r => `
+                                <div class="rec-card">
+                                    <div class="rec-header">
+                                        <span class="rec-priority rec-${r.priority}">${r.priority}</span>
+                                        <span class="rec-title">${r.title}</span>
+                                    </div>
+                                    <div class="rec-desc">${r.description}</div>
+                                    <div class="rec-meta">
+                                        <span class="rec-meta-tag">${r.timeline || ''}</span>
+                                        <span class="rec-meta-tag">${r.category || ''}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>` : ''}
+
+                        ${carbon.eligible !== undefined ? `
+                        <div class="alert-card">
+                            <div class="alert-card-title">
+                                &#127981; Marché Carbone
+                                <span style="color: ${carbon.eligible ? 'var(--risk-safe)' : 'var(--risk-danger)'}; font-size: 10px;">
+                                    ${carbon.eligible ? '✓ Éligible' : '✗ Non éligible'}
+                                </span>
+                            </div>
+                            <div class="alert-card-text">${carbon.detail || ''}</div>
+                        </div>` : ''}
+
+                        ${regulatory.hasAlert ? `
+                        <div class="alert-card" style="border-color: rgba(239,68,68,0.3);">
+                            <div class="alert-card-title" style="color: var(--risk-danger);">
+                                &#9888;&#65039; Alerte Réglementaire
+                            </div>
+                            <div class="alert-card-text">${regulatory.detail || ''}</div>
+                        </div>` : ''}
+
+                        <div style="margin-top: 8px; font-size: 10px; color: var(--text-muted); text-align: center;">
+                            Analysis completed in ${a.elapsed || '?'}s via GPT-4o-mini
+                        </div>
+                    </div>`;
+            }
+
+            panel.innerHTML = `
+                <div class="analysis-panel">
+                    <div class="analysis-header">
+                        <div class="analysis-icon">&#129504;</div>
+                        <div>
+                            <div class="analysis-title">AI Environmental Analysis</div>
+                            <div class="analysis-subtitle">Powered by GPT-4o-mini — Analyzes real data only</div>
+                        </div>
+                    </div>
+
+                    <select class="facility-select" id="facilitySelect" onchange="selectedFacility = this.value">
+                        <option value="">Select a facility to analyze...</option>
+                        ${facilityOptions}
+                    </select>
+
+                    <button class="analysis-btn" id="analyzeBtn" onclick="runAnalysis()">
+                        &#129504; Analyze with AI Agent
+                    </button>
+
+                    ${resultHtml}
+                </div>`;
+        }
+
         function renderLogs() {
             const panel = document.getElementById('panelContent');
 
@@ -793,22 +1743,77 @@
             }).join('');
         }
 
-        // ── Tab Switch ──
+        // ══════════════════════════════════════════
+        // AI ANALYSIS
+        // ══════════════════════════════════════════
+        async function runAnalysis() {
+            const facility = selectedFacility || document.getElementById('facilitySelect')?.value;
+            if (!facility) {
+                alert('Please select a facility to analyze.');
+                return;
+            }
+
+            selectedFacility = facility;
+            const btn = document.getElementById('analyzeBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Analyzing with AI...';
+
+            try {
+                const res = await fetch('/analyze-zone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        facility: facility,
+                        zoneType: 'industrial'
+                    })
+                });
+
+                currentAnalysis = await res.json();
+                renderAnalysis();
+                loadLogs();
+            } catch (err) {
+                console.error('Analysis failed:', err);
+                btn.disabled = false;
+                btn.textContent = '🧠 Analyze with AI Agent';
+            }
+        }
+
+        // ══════════════════════════════════════════
+        // TAB SWITCHING
+        // ══════════════════════════════════════════
         function switchTab(tab) {
             currentTab = tab;
             document.querySelectorAll('.tab').forEach(t => {
                 t.classList.toggle('active', t.dataset.tab === tab);
             });
-            if (tab === 'locations') renderLocations();
-            else renderLogs();
+
+            if (tab === 'pollution') renderPollution();
+            else if (tab === 'locations') renderLocations();
+            else if (tab === 'analysis') renderAnalysis();
+            else if (tab === 'logs') renderLogs();
         }
 
-        // ── Fly To ──
+        // ══════════════════════════════════════════
+        // NAVIGATION
+        // ══════════════════════════════════════════
         function flyTo(lat, lng) {
             map.flyTo([lat, lng], 15, { duration: 1 });
         }
 
-        // ── Delete Location ──
+        function flyToCircle(lat, lng, key) {
+            map.flyTo([lat, lng], 13, { duration: 1.2 });
+            // Open the circle popup
+            pollutionCircles.forEach(c => {
+                const pos = c.getLatLng();
+                if (Math.abs(pos.lat - lat) < 0.001 && Math.abs(pos.lng - lng) < 0.001) {
+                    c.openPopup();
+                }
+            });
+        }
+
+        // ══════════════════════════════════════════
+        // DELETE
+        // ══════════════════════════════════════════
         async function deleteLocation(id) {
             try {
                 await fetch(`/locations/${id}`, { method: 'DELETE' });
@@ -819,9 +1824,24 @@
             }
         }
 
-        // ── Initial Load ──
-        loadLocations();
-        loadLogs();
+        // ══════════════════════════════════════════
+        // INITIAL LOAD
+        // ══════════════════════════════════════════
+        async function initApp() {
+            // Load all data in parallel
+            await Promise.all([
+                loadLocations(),
+                loadLogs(),
+                loadRiskMap(),
+                loadEmissions(),
+                loadOverview()
+            ]);
+
+            // Default tab
+            renderPollution();
+        }
+
+        initApp();
     </script>
 
 </body>

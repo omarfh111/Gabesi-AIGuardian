@@ -31,6 +31,11 @@ from services.storage import (
     load_cache, save_cache,
     load_logs, add_log
 )
+from services.emissions_service import (
+    load_facility_data, load_all_facilities, load_gct_analysis,
+    compute_risk_score, get_risk_level, get_risk_map_data, get_overview_data
+)
+from services.analysis_agent import analyze_zone
 
 load_dotenv()
 
@@ -286,19 +291,153 @@ def health_check():
     })
 
 
+# ══════════════════════════════════════════════
+# NEW: Environmental Intelligence Endpoints
+# ══════════════════════════════════════════════
+
+
+# ─────────────────────────────────────────────
+# GET /emissions — All facilities emission data
+# ─────────────────────────────────────────────
+@app.route('/emissions', methods=['GET'])
+def get_emissions():
+    try:
+        facilities = load_all_facilities()
+        results = []
+        for f in facilities:
+            risk_score = compute_risk_score(f)
+            risk_info = get_risk_level(risk_score)
+            results.append({
+                'key': f['key'],
+                'label': f['label'],
+                'anchor': f['anchor'],
+                'lat': f['lat'],
+                'lng': f['lng'],
+                'threshold': f['threshold'],
+                'months': f['months'],
+                'exceedances': f['exceedances'],
+                'statistics': f['statistics'],
+                'notes': f['notes'],
+                'riskScore': risk_score,
+                'riskLevel': risk_info['level'],
+                'riskLabel': risk_info['label'],
+                'riskColor': risk_info['color']
+            })
+        return jsonify({
+            'count': len(results),
+            'facilities': results
+        })
+    except Exception as e:
+        print(f'[ERROR] /emissions: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
+# ─────────────────────────────────────────────
+# GET /emissions/<facility_key> — Single facility
+# ─────────────────────────────────────────────
+@app.route('/emissions/<facility_key>', methods=['GET'])
+def get_facility_emissions(facility_key):
+    try:
+        data = load_facility_data(facility_key)
+        if not data:
+            return jsonify({'error': f'Facility "{facility_key}" not found.'}), 404
+
+        risk_score = compute_risk_score(data)
+        risk_info = get_risk_level(risk_score)
+        data['riskScore'] = risk_score
+        data['riskLevel'] = risk_info['level']
+        data['riskLabel'] = risk_info['label']
+        data['riskColor'] = risk_info['color']
+
+        return jsonify(data)
+    except Exception as e:
+        print(f'[ERROR] /emissions/<key>: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
+# ─────────────────────────────────────────────
+# GET /risk-map — Data for pollution map circles
+# ─────────────────────────────────────────────
+@app.route('/risk-map', methods=['GET'])
+def get_risk_map():
+    try:
+        circles = get_risk_map_data()
+        return jsonify({
+            'count': len(circles),
+            'circles': circles
+        })
+    except Exception as e:
+        print(f'[ERROR] /risk-map: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
+# ─────────────────────────────────────────────
+# POST /analyze-zone — AI analysis of a zone
+# ─────────────────────────────────────────────
+@app.route('/analyze-zone', methods=['POST'])
+def analyze_zone_endpoint():
+    try:
+        data = request.get_json()
+
+        if not data or 'facility' not in data:
+            return jsonify({'error': 'Missing "facility" key in request body.'}), 400
+
+        facility_key = data['facility']
+        zone_type = data.get('zoneType', 'industrial')
+
+        facility_data = load_facility_data(facility_key)
+        if not facility_data:
+            return jsonify({'error': f'Facility "{facility_key}" not found.'}), 404
+
+        start_time = time.time()
+        result = analyze_zone(facility_data, zone_type)
+        elapsed = round(time.time() - start_time, 2)
+
+        result['elapsed'] = elapsed
+        add_log('ai_analysis', facility_key, 'success',
+                f'AI analysis completed in {elapsed}s', elapsed=elapsed)
+
+        return jsonify(result)
+
+    except Exception as e:
+        print(f'[ERROR] /analyze-zone: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
+# ─────────────────────────────────────────────
+# GET /overview — Dashboard overview data
+# ─────────────────────────────────────────────
+@app.route('/overview', methods=['GET'])
+def get_overview():
+    try:
+        overview = get_overview_data()
+        return jsonify(overview)
+    except Exception as e:
+        print(f'[ERROR] /overview: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
 # ─────────────────────────────────────────────
 # Start server
 # ─────────────────────────────────────────────
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 3000))
 
-    print(f'\n[*] Gabes Map Backend running on http://localhost:{port}')
+    print(f'\n[*] Gabesi AIGuardian running on http://localhost:{port}')
+    print(f'    ── Existing Endpoints ──')
     print(f'    POST /search-location  - Search & classify a location')
     print(f'    GET  /locations         - List all stored locations')
     print(f'    GET  /logs              - View execution logs')
     print(f'    GET  /stats             - View statistics')
     print(f'    GET  /health            - Health check')
-    print(f'    ---  Frontend           - http://localhost:{port}/\n')
+    print(f'    ── Environmental Intelligence ──')
+    print(f'    GET  /emissions         - All facilities CO2 data')
+    print(f'    GET  /emissions/<key>   - Single facility data')
+    print(f'    GET  /risk-map          - Pollution map circles')
+    print(f'    POST /analyze-zone      - AI zone analysis')
+    print(f'    GET  /overview          - Dashboard overview')
+    print(f'    ── Frontend ──')
+    print(f'    GET  /                  - http://localhost:{port}/\n')
 
     if not os.getenv('SERPAPI_KEY'):
         print('[!] WARNING: SERPAPI_KEY is not set in .env')

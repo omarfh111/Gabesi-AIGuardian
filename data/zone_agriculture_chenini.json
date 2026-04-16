@@ -1,0 +1,53 @@
+{
+  "facility_label": "Zone Oasis Chenini — Agriculture",
+  "public_anchor": "Oasis de Chenini, patrimoine agricole de Gabès",
+  "exceedances": [],
+  "notes": "Émissions indirectes liées au pompage d'irrigation, aux tracteurs agricoles et au transport de récoltes. Zone naturellement absorbante grâce à la végétation de l'oasis.",
+  "start_month_assumption": "2026-01",
+  "period_months": 6,
+  "unit": "tonnes_CO2/month",
+  "bounds": {
+    "min": 0,
+    "max": 800
+  },
+  "internal_exceedance_threshold": 1850,
+  "months": [
+    {
+      "month": "2026-01",
+      "co2": 285,
+      "tags": ["hiver", "irrigation minimale", "repos végétatif"]
+    },
+    {
+      "month": "2026-02",
+      "co2": 310,
+      "tags": ["pré-printemps", "préparation sols", "pompage modéré"]
+    },
+    {
+      "month": "2026-03",
+      "co2": 260,
+      "tags": ["Ramadan", "activité réduite", "faible mécanisation"]
+    },
+    {
+      "month": "2026-04",
+      "co2": 380,
+      "tags": ["printemps", "irrigation accrue", "récolte dattes tardives"]
+    },
+    {
+      "month": "2026-05",
+      "co2": 420,
+      "tags": ["été précoce", "pompage intensif", "transport récoltes"]
+    },
+    {
+      "month": "2026-06",
+      "co2": 450,
+      "tags": ["été", "irrigation maximale", "pompage 24h", "pas d'absorption nette"]
+    }
+  ],
+  "statistics": {
+    "mean": 350.8,
+    "variance_sample": 5223.4,
+    "lag1_autocorrelation": 0.52,
+    "min": 260,
+    "max": 450
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "facility_label": "Usine D - Phosphates spéciaux STPP / MAP",
+  "public_anchor": "Société Chimique ALKIMIA, zone industrielle de Ghannouch",
+  "exceedances": [],
+  "notes": "Série plus plate, cohérente avec une activité davantage pilotée par les intrants et les marchés export.",
+  "start_month_assumption": "2026-01",
+  "period_months": 6,
+  "unit": "tonnes_CO2/month",
+  "bounds": {
+    "min": 1200,
+    "max": 2000
+  },
+  "internal_exceedance_threshold": 1850,
+  "months": [
+    {
+      "month": "2026-01",
+      "co2": 1510,
+      "tags": ["export", "fonctionnement normal", "hiver"]
+    },
+    {
+      "month": "2026-02",
+      "co2": 1540,
+      "tags": ["pré-Ramadan", "cadence régulière", "port actif"]
+    },
+    {
+      "month": "2026-03",
+      "co2": 1430,
+      "tags": ["Ramadan", "baisse d'équipes", "ajustement production"]
+    },
+    {
+      "month": "2026-04",
+      "co2": 1360,
+      "tags": ["feedstock coûteux", "inspection", "sous-charge"]
+    },
+    {
+      "month": "2026-05",
+      "co2": 1480,
+      "tags": ["reprise modérée", "demandes export", "température en hausse"]
+    },
+    {
+      "month": "2026-06",
+      "co2": 1560,
+      "tags": ["été", "auxiliaires électriques", "production stabilisée"]
+    }
+  ],
+  "statistics": {
+    "mean": 1480.0,
+    "variance_sample": 5560.0,
+    "lag1_autocorrelation": 0.186,
+    "min": 1360,
+    "max": 1560
+  }
+}

@@ -1,0 +1,168 @@
+{
+  "facility": "GCT Phosphate Processing Complex",
+  "location": "Ghannouch – Gabès, Tunisie",
+  "unit": "tonnes_CO2_equiv_per_day",
+  "seuil_depassement": 1800,
+  "note_methodologique": "Données synthétiques réalistes basées sur profil saisonnier tunisien, Ramadan 2026 (18 fév–19 mars), vétusté équipements GCT documentée, et audit BAD juillet 2025.",
+  "data": [
+    {
+      "month": "2026-01",
+      "label": "Janvier 2026",
+      "saison": "hiver",
+      "ramadan": false,
+      "avg_daily_co2": 1847,
+      "min_daily_co2": 1654,
+      "max_daily_co2": 1978,
+      "monthly_total_co2": 57257,
+      "jours_depassement": 12,
+      "weekly_avg": [1890, 1848, 1782, 1822, 1958],
+      "evenements_depassement": [
+        {
+          "date": "2026-01-06",
+          "valeur": 1923,
+          "cause": "Pic de production hivernal – forte demande engrais marché domestique"
+        },
+        {
+          "date": "2026-01-29",
+          "valeur": 1978,
+          "cause": "Incident équipement – fuite joint réacteur phosphorique, combustion résiduelle"
+        }
+      ],
+      "contexte": "Production hivernale maximale. Demande énergétique élevée. Anticipation saison agricole printanière. Équipes complètes 3×8. Semaine 5 : anomalie équipement (vétusté documentée)."
+    },
+    {
+      "month": "2026-02",
+      "label": "Février 2026",
+      "saison": "hiver_tardif",
+      "ramadan": "partiel (début ~18 fév)",
+      "avg_daily_co2": 1648,
+      "min_daily_co2": 1387,
+      "max_daily_co2": 1834,
+      "monthly_total_co2": 46144,
+      "jours_depassement": 4,
+      "weekly_avg": [1792, 1815, 1574, 1412],
+      "evenements_depassement": [
+        {
+          "date": "2026-02-11",
+          "valeur": 1834,
+          "cause": "Surcharge unité acide phosphorique – maintenance retardée"
+        }
+      ],
+      "contexte": "Semaines 1–2 : production normale, léger pic pré-Ramadan (stockage). Semaines 3–4 : Ramadan entame – réduction équipes de nuit, ralentissement progressif. Conforme au pattern annuel historique."
+    },
+    {
+      "month": "2026-03",
+      "label": "Mars 2026",
+      "saison": "printemps_precoce",
+      "ramadan": "complet (18 fév – 19 mars)",
+      "avg_daily_co2": 1347,
+      "min_daily_co2": 1214,
+      "max_daily_co2": 1521,
+      "monthly_total_co2": 41757,
+      "jours_depassement": 0,
+      "weekly_avg": [1352, 1284, 1310, 1395, 1421],
+      "evenements_depassement": [],
+      "contexte": "Mois Ramadan complet : effectifs réduits, horaires décalés, maintenance programmée sur unités sulfuriques. Aucun dépassement. Creux saisonnier le plus bas. Fin mars : Aïd El-Fitr ~19 mars, arrêt partiel 3 jours."
+    },
+    {
+      "month": "2026-04",
+      "label": "Avril 2026",
+      "saison": "printemps",
+      "ramadan": false,
+      "avg_daily_co2": 1628,
+      "min_daily_co2": 1361,
+      "max_daily_co2": 1912,
+      "monthly_total_co2": 48840,
+      "jours_depassement": 5,
+      "weekly_avg": [1376, 1582, 1724, 1842],
+      "evenements_depassement": [
+        {
+          "date": "2026-04-24",
+          "valeur": 1912,
+          "cause": "Redémarrage brutal unité DAP – montée en charge non régulée post-Ramadan"
+        }
+      ],
+      "contexte": "Post-Aïd : reprise progressive. Semaine 1 encore lente (congés). Semaines 2–3 : montée en charge. Semaine 4 : production pleine + pic demande engrais export avant saison estivale européenne. Incident de redémarrage typique des équipements vétustes."
+    },
+    {
+      "month": "2026-05",
+      "label": "Mai 2026",
+      "saison": "printemps_plein",
+      "ramadan": false,
+      "avg_daily_co2": 1838,
+      "min_daily_co2": 1712,
+      "max_daily_co2": 1964,
+      "monthly_total_co2": 56978,
+      "jours_depassement": 13,
+      "weekly_avg": [1853, 1782, 1924, 1876, 1762],
+      "evenements_depassement": [
+        {
+          "date": "2026-05-08",
+          "valeur": 1887,
+          "cause": "Pleine cadence production engrais NPK – commandes export Europe et Maghreb"
+        },
+        {
+          "date": "2026-05-17",
+          "valeur": 1964,
+          "cause": "Pic exceptionnel : surproduction phosphorique + dysfonctionnement scrubber SO₂ (unité 3)"
+        },
+        {
+          "date": "2026-05-23",
+          "valeur": 1901,
+          "cause": "Cumul : production DAP max + chaleur précoce → consommation énergétique refroidissement"
+        }
+      ],
+      "contexte": "Pic de production printanière. Forte pression export engrais phosphatés (prix internationaux élevés). Chaleur précoce début. Semaine 3 : dysfonctionnement épurateur gaz documenté similaire aux incidents 2025. Semaine 5 : légère baisse pour entretien correctif."
+    },
+    {
+      "month": "2026-06",
+      "label": "Juin 2026",
+      "saison": "été",
+      "ramadan": false,
+      "avg_daily_co2": 1931,
+      "min_daily_co2": 1843,
+      "max_daily_co2": 1998,
+      "monthly_total_co2": 57930,
+      "jours_depassement": 22,
+      "weekly_avg": [1893, 1944, 1971, 1924],
+      "evenements_depassement": [
+        {
+          "date": "2026-06-04",
+          "valeur": 1893,
+          "cause": "Chaleur estivale : surconsommation systèmes refroidissement compresseurs"
+        },
+        {
+          "date": "2026-06-11",
+          "valeur": 1944,
+          "cause": "Stress thermique équipements + production continue sans arrêt planifié"
+        },
+        {
+          "date": "2026-06-17",
+          "valeur": 1998,
+          "cause": "CRITIQUE : fuite torchère + combustion résiduelle prolongée – proche du seuil absolu"
+        },
+        {
+          "date": "2026-06-24",
+          "valeur": 1956,
+          "cause": "Canicule + production maximale = consommation énergétique record"
+        }
+      ],
+      "contexte": "Période la plus critique. Chaleur > 38°C → stress thermique sévère sur équipements vétustes. 22 jours de dépassement sur 30. Incident du 17 juin : torchère défaillante, émanations nocturnes. Profil conforme aux alertes documentées (Sept 2025). Aucune mesure corrective structurelle depuis audit BAD."
+    }
+  ],
+  "synthese": {
+    "total_6_mois_co2": 308906,
+    "mois_le_plus_pollant": "2026-06",
+    "mois_le_moins_pollant": "2026-03",
+    "total_jours_depassement": 56,
+    "taux_depassement_global": "31%",
+    "tendance": "hausse_structurelle",
+    "facteurs_cles": [
+      "Vétusté équipements non réparés depuis 2017",
+      "Pression production x5 d'ici 2030",
+      "Absence de système épuration gaz fonctionnel",
+      "Stress thermique estival amplifié par changement climatique",
+      "Ramadan = seul creux naturel observable"
+    ]
+  }
+}
