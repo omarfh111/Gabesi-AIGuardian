@@ -18,4 +18,8 @@ openai==1.78.0
 tiktoken==0.7.0
 chonkie[semantic]==0.5.1
 sentence-transformers==4.1.0
-python-dotenv==1.1.0
+python-dotenv==1.1.1
+
+# Evaluation pipeline
+deepeval==3.9.7
+ollama==0.4.8

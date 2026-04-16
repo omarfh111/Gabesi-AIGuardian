@@ -9,6 +9,7 @@ diagnostics — powered by satellite data and a grounded RAG knowledge base.**
 [![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)](https://python.org)
 [![LangGraph](https://img.shields.io/badge/LangGraph-agentic-purple)](https://github.com/langchain-ai/langgraph)
 [![Qdrant](https://img.shields.io/badge/Qdrant-vector_db-red)](https://qdrant.tech)
+[![DeepEval](https://img.shields.io/badge/DeepEval-evaluation-orange)](https://deepeval.com)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 </div>
@@ -32,7 +33,7 @@ The farmers who bear this cost have **zero access to the data that documents it*
 A farmer opens the app and asks: *"Why are my palm trees yellowing?"*
 
 The system:
-1. Retrieves pollution exposure history for their plot from Sentinel-5P satellite data
+1. Retrieves pollution exposure history for their plot from satellite data
 2. Checks current soil salinity index from Sentinel-2 imagery
 3. Cross-references symptoms against a grounded knowledge base of scientific
    research on fluoride damage, heavy metal contamination, and oasis ecology
@@ -48,9 +49,9 @@ No other system does this for Gabès.
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    FARMER CHATBOT                        │
-│                  (Gemini 2.0 Flash)                      │
+│                   (LangGraph Agent)                      │
 └────────────────────┬────────────────────────────────────┘
-                     │ LangGraph Agent
+                     │
         ┌────────────┼────────────┬──────────────┐
         ▼            ▼            ▼              ▼
    RAG Search   NASA POWER   Open-Meteo    Sentinel APIs
@@ -59,7 +60,7 @@ No other system does this for Gabès.
         ▼
 ┌──────────────────────────────────────┐
 │         gabes_knowledge              │
-│  1718 chunks across 21 documents     │
+│  1718 chunks · 21 documents          │
 │  • PDL Gabès 2023 (municipal audit)  │
 │  • 6 scientific papers               │
 │  • 9 EU environmental project reports│
@@ -75,18 +76,22 @@ No other system does this for Gabès.
 
 ```
 Gabesi-AIGuardian/
-├── data/                        # Knowledge corpus (gitignored, large files)
-│   ├── papers/                  # Scientific PDFs (open access)
-│   ├── pdl_reports/             # Municipal + EU project reports
-│   ├── processed/               # Preprocessed markdown (PDL tables preserved)
-│   ├── references/              # FAO-56 irrigation reference
-│   └── structured/              # JSON: oasis zones, GCT coords, crop Kc values
+├── data/                          # Knowledge corpus (gitignored — large files)
+│   ├── papers/                    # Scientific PDFs (open access)
+│   ├── pdl_reports/               # Municipal + EU project reports
+│   ├── processed/                 # Preprocessed markdown (41 PDL tables preserved)
+│   ├── references/                # FAO-56 irrigation reference
+│   └── structured/                # JSON: oasis zones, GCT coords, crop Kc values
+├── eval_data/                     # Synthetic golden dataset (gitignored)
+│   └── goldens.json               # 68 synthetic Q&A pairs (80% domain relevance)
+├── eval_results/                  # Evaluation run outputs (gitignored)
 ├── scripts/
-│   ├── preprocess_docx.py       # Convert PDL docx tables to clean markdown
-│   ├── ingest.py                # Load, chunk, embed, upsert to Qdrant
-│   └── smoke_test.py            # Retrieval verification (6 targeted queries)
-├── .env.example                 # Environment variable template
-├── requirements.txt             # Pinned Python dependencies
+│   ├── preprocess_docx.py         # Convert PDL docx → markdown, preserve tables
+│   ├── ingest.py                  # Chunk, embed, upsert to Qdrant
+│   ├── smoke_test.py              # 6-query retrieval verification
+│   └── evaluate_retrieval.py      # DeepEval retrieval evaluation pipeline
+├── .env.example                   # Environment variable template
+├── requirements.txt               # Pinned Python dependencies
 └── README.md
 ```
 
@@ -97,9 +102,8 @@ Gabesi-AIGuardian/
 ### Prerequisites
 
 - Python 3.12
-- A [Qdrant Cloud](https://cloud.qdrant.io) account (free tier works)
-- OpenAI API key (for embeddings — ~$0.04 per full ingestion)
-- Google Gemini API key (for the LLM agent)
+- [Qdrant Cloud](https://cloud.qdrant.io) account (free tier works)
+- OpenAI API key (embeddings + evaluation judge — ~$0.04 per full ingestion)
 
 ### Installation
 
@@ -118,30 +122,64 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Edit .env and fill in your API keys
+# Fill in: QDRANT_URL, QDRANT_API_KEY, OPENAI_API_KEY
 ```
 
-### Data
+### Reproduce the Knowledge Base
 
-The `data/` folder is gitignored because it contains large PDFs and
-proprietary municipal documents. To reproduce the knowledge base:
+The `data/` folder is gitignored (large PDFs, proprietary municipal documents).
+To reproduce:
 
-1. Obtain the source documents (see `data/` folder structure above)
-2. Run preprocessing: `python scripts/preprocess_docx.py`
-3. Run ingestion: `python scripts/ingest.py`
-4. Verify: `python scripts/smoke_test.py`
+```bash
+python scripts/preprocess_docx.py   # PDL docx → markdown
+python scripts/ingest.py            # chunk + embed + upsert to Qdrant
+python scripts/smoke_test.py        # verify retrieval works
+```
 
 ---
 
-## 📊 Knowledge Base Stats
+## 📊 Knowledge Base
 
 | Collection | Documents | Chunks | Purpose |
 |---|---|---|---|
-| `gabes_knowledge` | 21 | 1,718 | Static knowledge RAG |
+| `gabes_knowledge` | 21 | 1,718 | Static domain knowledge RAG |
 | `satellite_timeseries` | — | 0* | Weekly oasis plot snapshots |
 | `farmer_context` | — | 0* | Per-farmer memory |
 
 *Populated at runtime by the agent pipeline.
+
+**Ingestion specs:** `text-embedding-3-large` · Chonkie SemanticChunker ·
+dense + sparse (BM25/IDF) vectors · payload indexes on `source_type`, `language`, `doc_name`
+
+---
+
+## 📈 Retrieval Evaluation
+
+Evaluated with DeepEval on 68 synthetic goldens generated from real Qdrant chunks
+(80% domain relevance rate, GPT-4o-mini as synthesis + judge model).
+
+| Metric | Score | Pass Rate | Verdict |
+|---|---|---|---|
+| Contextual Recall | **0.9512** | **98.33%** | ✅ Target met (≥ 0.70) |
+| Contextual Relevancy | 0.4395 | 41.67% | ⚠️ Known limitation |
+
+**Why relevancy is lower than recall:** `ContextualRelevancyMetric` penalises
+multi-topic chunks. The PDL Gabès corpus contains tabular chunks that cover
+multiple oases simultaneously (avg 841 chars per chunk). A chunk that correctly
+answers a query about Oasis Bahria also contains data on Ouesta and Chenini,
+which the judge scores as off-topic. Recall (0.95) is the operationally meaningful
+metric — it confirms the right information is retrieved for 98% of queries.
+Relevancy reflects chunking strategy, not retrieval failure.
+
+To reproduce the evaluation:
+
+```bash
+# Generate goldens and inspect quality
+python scripts/evaluate_retrieval.py --synthesize-only --use-openai-synthesis --n-contexts 120
+
+# Run evaluation on saved goldens
+python scripts/evaluate_retrieval.py --eval-only --top-k 5
+```
 
 ---
 
@@ -149,7 +187,7 @@ proprietary municipal documents. To reproduce the knowledge base:
 
 ### `scripts/preprocess_docx.py`
 Converts the PDL Gabès municipal report (`.docx`) into clean markdown,
-preserving all 41 tables as atomic chunks. Must run before ingestion.
+preserving all 41 tables as atomic chunks.
 
 ```bash
 python scripts/preprocess_docx.py
@@ -158,35 +196,57 @@ python scripts/preprocess_docx.py
 
 ### `scripts/ingest.py`
 Loads all documents, chunks with Chonkie semantic chunker,
-embeds with `text-embedding-3-large`, and upserts to Qdrant.
+embeds with `text-embedding-3-large`, upserts to Qdrant.
 
 ```bash
-python scripts/ingest.py             # Full ingestion
+python scripts/ingest.py             # Full ingestion (~$0.04, ~266K tokens)
 python scripts/ingest.py --dry-run   # Stats only, no API spend
 python scripts/ingest.py --resume    # Skip already-ingested documents
 python scripts/ingest.py --doc "filename.pdf"  # Single document
 ```
 
 ### `scripts/smoke_test.py`
-Runs 6 targeted retrieval queries to verify the knowledge base is working.
+Six targeted retrieval queries covering all source types.
 
 ```bash
 python scripts/smoke_test.py
+# Expected: 5/6 pass (1 acceptable false negative — see script comments)
+```
+
+### `scripts/evaluate_retrieval.py`
+Full DeepEval evaluation pipeline: stratified Qdrant sampling →
+domain-filtered synthesis → golden inspection → live retrieval → metric scoring.
+
+```bash
+# Full pipeline
+python scripts/evaluate_retrieval.py --use-openai-synthesis
+
+# Synthesis only (inspect goldens before spending judge budget)
+python scripts/evaluate_retrieval.py --synthesize-only --use-openai-synthesis --n-contexts 120
+
+# Evaluation only (reuse saved goldens)
+python scripts/evaluate_retrieval.py --eval-only --top-k 5
+
+# Custom parameters
+python scripts/evaluate_retrieval.py --n-contexts 60 --goldens-per-context 3 --top-k 7
 ```
 
 ---
 
 ## 🗺️ Roadmap
 
-- [x] RAG knowledge base — ingestion pipeline
-- [x] Retrieval verification — smoke tests
-- [ ] LangGraph agent — tool routing and orchestration
+- [x] Knowledge base — preprocessing pipeline (41 PDL tables preserved)
+- [x] Ingestion pipeline — 1,718 chunks, 21 docs, dense + sparse vectors
+- [x] Retrieval verification — 6-query smoke test suite
+- [x] Retrieval evaluation — DeepEval pipeline, Recall 0.95 / 98.33% pass rate
+- [ ] LangGraph agent — tool orchestration and routing
+- [ ] RAG search tool — Qdrant integration for the agent
+- [ ] Irrigation advisory tool — NASA POWER ET₀ + FAO-56 crop coefficients
 - [ ] Satellite data tools — Sentinel-2 NDVI, Sentinel-5P SO₂
-- [ ] Irrigation advisory tool — NASA POWER ET₀ + FAO-56
-- [ ] Pollution exposure logger — per-plot timestamped dossier
+- [ ] Pollution exposure logger — per-plot timestamped dossier (PDF export)
 - [ ] REST API backend — FastAPI
 - [ ] Farmer-facing chat interface — React frontend
-- [ ] DeepEval retrieval evaluation pipeline
+- [ ] End-to-end evaluation — Faithfulness + Answer Relevancy after agent is built
 
 ---
 
@@ -210,3 +270,5 @@ MIT License — see [LICENSE](LICENSE) for details.
 <div align="center">
 Built for the farmers of Gabès, Tunisia 🌴
 </div>
+
+---

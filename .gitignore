@@ -25,6 +25,10 @@ data/processed/
 # Logs
 logs/
 
+# Evaluation outputs
+eval_data/
+eval_results/
+
 # OS
 .DS_Store
 Thumbs.db
