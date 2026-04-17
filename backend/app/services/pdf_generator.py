@@ -38,12 +38,21 @@ _LIGHT  = colors.HexColor("#F5F5F5")   # table zebra
 _DARK   = colors.HexColor("#212121")   # body text
 _MUTED  = colors.HexColor("#757575")   # secondary text
 
+# Badge Colors
+_BADGE_RED    = colors.HexColor("#e53935")
+_BADGE_ORANGE = colors.HexColor("#fb8c00")
+_BADGE_GREEN  = colors.HexColor("#43a047")
+
 PAGE_W, PAGE_H = A4
 MARGIN = 20 * mm
 
 
 def _risk_color(level: str) -> colors.Color:
     return {"low": _GREEN, "moderate": _ORANGE, "high": _RED}.get(level.lower(), _DARK)
+
+
+def _risk_badge_color(level: str) -> colors.Color:
+    return {"low": _BADGE_GREEN, "moderate": _BADGE_ORANGE, "high": _BADGE_RED}.get(level.lower(), _DARK)
 
 
 def _styles() -> dict:
@@ -58,32 +67,32 @@ def _styles() -> dict:
             textColor=_MUTED, spaceAfter=2, leading=14, alignment=TA_CENTER,
         ),
         "section": ParagraphStyle(
-            "Section", fontName="Helvetica-Bold", fontSize=12,
-            textColor=_TEAL, spaceBefore=10, spaceAfter=4, leading=16,
+            "Section", fontName="Helvetica-Bold", fontSize=14,
+            textColor=_TEAL, spaceBefore=12, spaceAfter=6, leading=18,
         ),
         "body": ParagraphStyle(
             "Body", fontName="Helvetica", fontSize=9,
-            textColor=_DARK, spaceAfter=3, leading=13,
+            textColor=_DARK, spaceAfter=4, leading=14,
+        ),
+        "body_bold": ParagraphStyle(
+            "BodyBold", fontName="Helvetica-Bold", fontSize=9,
+            textColor=_DARK, spaceAfter=4, leading=14,
         ),
         "body_small": ParagraphStyle(
             "BodySmall", fontName="Helvetica", fontSize=8,
-            textColor=_MUTED, spaceAfter=2, leading=11,
-        ),
-        "risk_label": ParagraphStyle(
-            "RiskLabel", fontName="Helvetica-Bold", fontSize=28,
-            spaceAfter=4, leading=32, alignment=TA_CENTER,
+            textColor=_MUTED, spaceAfter=2, leading=12,
         ),
         "meta": ParagraphStyle(
             "Meta", fontName="Helvetica", fontSize=8,
             textColor=_MUTED, spaceAfter=2, leading=11, alignment=TA_RIGHT,
         ),
         "disclaimer": ParagraphStyle(
-            "Disclaimer", fontName="Helvetica-Oblique", fontSize=8,
-            textColor=_MUTED, spaceAfter=2, leading=11,
+            "Disclaimer", fontName="Helvetica-Oblique", fontSize=7.5,
+            textColor=_MUTED, spaceBefore=4, spaceAfter=2, leading=11,
         ),
         "bullet": ParagraphStyle(
             "Bullet", fontName="Helvetica", fontSize=9,
-            textColor=_DARK, spaceAfter=2, leading=13, leftIndent=12,
+            textColor=_DARK, spaceAfter=3, leading=14, leftIndent=12,
         ),
     }
 
@@ -91,24 +100,33 @@ def _styles() -> dict:
 def _hr(width_pct: float = 1.0) -> HRFlowable:
     return HRFlowable(
         width=f"{int(width_pct * 100)}%", thickness=0.5,
-        color=_TEAL, spaceAfter=4, spaceBefore=4,
+        color=_TEAL, spaceAfter=6, spaceBefore=6,
     )
 
 
-def _table_style_base() -> TableStyle:
-    return TableStyle([
+def _table_style_base(centered_cols: list[int] = None) -> TableStyle:
+    style = [
         ("BACKGROUND",  (0, 0), (-1, 0),  _TEAL),
         ("TEXTCOLOR",   (0, 0), (-1, 0),  colors.white),
         ("FONTNAME",    (0, 0), (-1, 0),  "Helvetica-Bold"),
         ("FONTSIZE",    (0, 0), (-1, 0),  9),
-        ("ALIGN",       (0, 0), (-1, -1), "CENTER"),
+        ("ALIGN",       (0, 0), (-1, 0),  "CENTER"),
+        ("ALIGN",       (0, 1), (-1, -1), "LEFT"),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, _LIGHT]),
         ("FONTNAME",    (0, 1), (-1, -1), "Helvetica"),
         ("FONTSIZE",    (0, 1), (-1, -1), 9),
         ("GRID",        (0, 0), (-1, -1), 0.4, colors.HexColor("#BDBDBD")),
-        ("TOPPADDING",  (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-    ])
+        ("TOPPADDING",  (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]
+    if centered_cols:
+        for col in centered_cols:
+            style.append(("ALIGN", (col, 1), (col, -1), "CENTER"))
+    else:
+        # Default all center if not specified for simple tables
+        style.append(("ALIGN", (0, 1), (-1, -1), "CENTER"))
+        
+    return TableStyle(style)
 
 
 def _fmt(val: Optional[float], decimals: int = 2) -> str:
@@ -136,7 +154,7 @@ class _CornerBand:
         # System tag in band
         canvas.setFillColor(colors.white)
         canvas.setFont("Helvetica", 7)
-        canvas.drawString(MARGIN, PAGE_H - 8 * mm, "Gabes Oasis Monitoring System  |  CONFIDENTIAL")
+        canvas.drawString(MARGIN, PAGE_H - 8 * mm, "Gabesi AI Guardian — Pollution Decision Support Report")
         canvas.drawRightString(PAGE_W - MARGIN, PAGE_H - 8 * mm, "gabesi-aiguardian.io")
         # Footer
         canvas.setFillColor(_MUTED)
@@ -186,7 +204,7 @@ def _build_story(report: dict, S: dict) -> list:
     # ── 1. Header ─────────────────────────────────────────────────────────────
     story.append(Spacer(1, 4 * mm))
     story.append(Paragraph("Pollution Exposure Report", S["title"]))
-    story.append(Paragraph("Gabes Oasis Monitoring System", S["subtitle"]))
+    story.append(Paragraph("Gabès Oasis Monitoring System", S["subtitle"]))
     story.append(Spacer(1, 2 * mm))
 
     gen_at = report.get("generated_at", "")
@@ -238,7 +256,7 @@ def _build_story(report: dict, S: dict) -> list:
         "This report is based on regional atmospheric modeling and not direct plot sensors.",
         S["body_small"]
     ))
-    story.append(Spacer(1, 3 * mm))
+    story.append(Spacer(1, 2 * mm))
 
     # ── 3. Risk Summary ───────────────────────────────────────────────────────
     story.append(_hr())
@@ -246,12 +264,24 @@ def _build_story(report: dict, S: dict) -> list:
 
     insights = report.get("insights", {}) or {}
     risk_level = _safe(insights.get("risk_level"), "unknown").upper()
-    rc = _risk_color(risk_level.lower())
+    bc = _risk_badge_color(risk_level.lower())
 
-    risk_style = ParagraphStyle(
-        "RiskDyn", parent=S["risk_label"], textColor=rc,
-    )
-    story.append(Paragraph(f"Risk Level: {risk_level}", risk_style))
+    # Risk Badge
+    badge_data = [[f"[ {risk_level} RISK ]"]]
+    badge_table = Table(badge_data, colWidths=[60 * mm])
+    badge_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), bc),
+        ("TEXTCOLOR", (0, 0), (-1, -1), colors.white),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 16),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("ROUNDEDCORNERS", [3, 3, 3, 3]),
+    ]))
+    story.append(badge_table)
+    story.append(Spacer(1, 4 * mm))
 
     dom_pol = _safe(insights.get("dominant_pollutant"), "None detected")
     trend   = _safe(insights.get("trend"), "unknown")
@@ -328,7 +358,34 @@ def _build_story(report: dict, S: dict) -> list:
     story.append(ev_table)
     story.append(Spacer(1, 3 * mm))
 
-    # ── 6. Insights ───────────────────────────────────────────────────────────
+    # ── 6. Event Breakdown ────────────────────────────────────────────────────
+    if events_list:
+        story.append(_hr())
+        story.append(Paragraph("Event Breakdown", S["section"]))
+        story.append(Paragraph("Detailed list of detected pollution events (up to 10).", S["body_small"]))
+        
+        # Sort and truncate
+        sorted_events = sorted(
+            events_list,
+            key=lambda e: (e.get("event_date") if isinstance(e, dict) else e.event_date)
+        )[:10]
+        
+        brk_data = [["Date", "Pollutant", "Severity", "Type"]]
+        for ev in sorted_events:
+            e = ev if isinstance(ev, dict) else (ev.dict() if hasattr(ev, "dict") else {})
+            brk_data.append([
+                e.get("event_date"),
+                e.get("pollutant"),
+                _safe(e.get("severity")).title(),
+                _safe(e.get("temporal_type")).title(),
+            ])
+            
+        brk_table = Table(brk_data, colWidths=[(PAGE_W - 2 * MARGIN) / 4] * 4)
+        brk_table.setStyle(_table_style_base())
+        story.append(brk_table)
+        story.append(Spacer(1, 3 * mm))
+
+    # ── 7. Insights ───────────────────────────────────────────────────────────
     story.append(_hr())
     story.append(Paragraph("Analysis Insights", S["section"]))
 
@@ -360,7 +417,7 @@ def _build_story(report: dict, S: dict) -> list:
     story.append(Paragraph(f"<b>Summary:</b> {narrative}", S["body"]))
     story.append(Spacer(1, 3 * mm))
 
-    # ── 7. Recommendations ────────────────────────────────────────────────────
+    # ── 8. Recommendations ────────────────────────────────────────────────────
     story.append(_hr())
     story.append(Paragraph("Recommendations", S["section"]))
 
@@ -376,7 +433,6 @@ def _build_story(report: dict, S: dict) -> list:
     )
 
     if sorted_recs:
-        # Build a simple hex string compatible with ReportLab's XML paragraph parser
         _p_hex = {
             "HIGH":   "#B71C1C",
             "MEDIUM": "#E65100",
@@ -385,6 +441,13 @@ def _build_story(report: dict, S: dict) -> list:
         for rec in sorted_recs:
             priority = rec.get("priority", "low").upper()
             text     = _safe(rec.get("text"), "No text.")
+            
+            # Smart Recommendation Enhancement
+            if key_win and key_win != "None identified":
+                if "delay" in text.lower() or "monitor" in text.lower():
+                    if "(" not in text: # Avoid double injection if already present
+                        text = f"{text.rstrip('.')} during the high-risk window ({key_win})."
+            
             hex_col  = _p_hex.get(priority, "#212121")
             label    = f'<font color="{hex_col}"><b>[{priority}]</b></font> {text}'
             story.append(Paragraph(f"  \u2022  {label}", S["bullet"]))
@@ -392,7 +455,7 @@ def _build_story(report: dict, S: dict) -> list:
         story.append(Paragraph("No recommendations generated.", S["body_small"]))
     story.append(Spacer(1, 3 * mm))
 
-    # ── 8. Confidence & Limitations ───────────────────────────────────────────
+    # ── 9. Confidence & Limitations ───────────────────────────────────────────
     story.append(_hr())
     story.append(Paragraph("Confidence & Limitations", S["section"]))
 
@@ -406,19 +469,13 @@ def _build_story(report: dict, S: dict) -> list:
     plot_spec    = _safe(confidence.get("plot_specificity") if isinstance(confidence, dict) else None, "low")
     conf_notes   = confidence.get("notes") if isinstance(confidence, dict) else []
 
-    conf_data = [
-        ["Dimension",              "Rating"],
-        ["Overall Confidence",     overall_conf.upper()],
-        ["Historical Data Quality", hist_qual.upper()],
-        ["Trend Confidence",       trend_conf.upper()],
-        ["Plot Specificity",       plot_spec.upper()],
-    ]
-    conf_table = Table(conf_data, colWidths=[(PAGE_W - 2 * MARGIN) * 0.65, (PAGE_W - 2 * MARGIN) * 0.35])
-    conf_table.setStyle(_table_style_base())
-    story.append(conf_table)
+    story.append(Paragraph(f"<b>Overall Confidence:</b> {overall_conf.upper()}", S["body"]))
+    story.append(Paragraph(f"<b>Historical Data Quality:</b> {hist_qual.upper()}", S["body"]))
+    story.append(Paragraph(f"<b>Trend Confidence:</b> {trend_conf.upper()}", S["body"]))
+    story.append(Paragraph(f"<b>Plot Specificity:</b> {plot_spec.upper()}", S["body"]))
     story.append(Spacer(1, 2 * mm))
 
-    story.append(Paragraph("<b>Key Limitations:</b>", S["body"]))
+    story.append(Paragraph("<b>Key Limitations:</b>", S["body_bold"]))
     fixed_notes = [
         "No direct plot-level sensors — all values are derived from regional atmospheric modeling.",
         "Plot exposure is estimated via classification band, not GPS coordinates.",
@@ -429,7 +486,7 @@ def _build_story(report: dict, S: dict) -> list:
         story.append(Paragraph(f"  \u2022  {note}", S["bullet"]))
     story.append(Spacer(1, 3 * mm))
 
-    # ── 9. Disclaimer ─────────────────────────────────────────────────────────
+    # ── 10. Disclaimer ────────────────────────────────────────────────────────
     story.append(_hr())
     story.append(Paragraph("Disclaimer", S["section"]))
     disclaimer = _safe(report.get("disclaimer"), "Regional reference only. Not a direct plot measurement.")
@@ -440,7 +497,7 @@ def _build_story(report: dict, S: dict) -> list:
         "a licensed environmental engineer.",
         S["disclaimer"]
     ))
-    story.append(Spacer(1, 2 * mm))
+    story.append(Spacer(1, 4 * mm))
     story.append(Paragraph(
         f"Data source: {_safe(report.get('data_source'), 'Open-Meteo CAMS + Qdrant RAG')}  |  "
         f"Processing time: {report.get('processing_time_ms', 0)} ms",
