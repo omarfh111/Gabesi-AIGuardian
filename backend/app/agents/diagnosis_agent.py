@@ -19,6 +19,7 @@ from app.rag.retriever import QdrantRetriever
 class AgentState(TypedDict):
     symptom: str
     language: str
+    queries: List[str]
     chunks: List[RetrievedChunk]
     diagnosis: Optional[DiagnosisResponse]
     error: Optional[str]
@@ -26,22 +27,77 @@ class AgentState(TypedDict):
 
 
 # ---------------------------------------------------------------------------
-# Node 1: Retrieve
+# Node 1: Query Expansion
 # ---------------------------------------------------------------------------
 
-def retrieve_node(state: AgentState) -> AgentState:
-    retriever = QdrantRetriever(settings)
+def query_expansion_node(state: AgentState) -> AgentState:
+    client = OpenAI(api_key=settings.openai_api_key)
+
+    system_prompt = (
+        "You are an expert on agricultural problems in Gabès, Tunisia.\n"
+        "A farmer has described a symptom. Generate 3 search queries "
+        "that will find relevant information in a knowledge base "
+        "containing: scientific papers on fluoride damage and heavy metal "
+        "contamination in Gabès Gulf, the PDL Gabès 2023 municipal report, "
+        "EU environmental project reports, and FAO-56 irrigation reference.\n\n"
+        "Always include at least one query that considers GCT industrial "
+        "pollution (SO₂, fluoride, phosphogypsum) as a potential cause.\n\n"
+        'Return JSON: {"queries": ["query1", "query2", "query3"]}'
+    )
+
+    user_prompt = f"Farmer symptom: {state['symptom']}"
+
     try:
-        chunks = retriever.retrieve(state["symptom"])
-        state["chunks"] = chunks
+        response = client.chat.completions.create(
+            model=settings.llm_model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(response.choices[0].message.content)
+        queries = data.get("queries", [state["symptom"]])[:3]
+        state["queries"] = queries
     except Exception as e:
-        state["error"] = str(e)
-        state["chunks"] = []
+        # Fallback: use the raw symptom as the single query
+        state["queries"] = [state["symptom"]]
+
     return state
 
 
 # ---------------------------------------------------------------------------
-# Node 2: Diagnose
+# Node 2: Retrieve  (multi-query, deduplicated, re-ranked, top-7)
+# ---------------------------------------------------------------------------
+
+def retrieve_node(state: AgentState) -> AgentState:
+    retriever = QdrantRetriever(settings)
+    seen_texts: set[str] = set()
+    all_chunks: List[RetrievedChunk] = []
+
+    queries = state.get("queries") or [state["symptom"]]
+
+    try:
+        for query in queries:
+            results = retriever.retrieve(query, top_k=3)
+            for chunk in results:
+                if chunk.text not in seen_texts:
+                    seen_texts.add(chunk.text)
+                    all_chunks.append(chunk)
+
+        # Re-rank by score descending, keep top 7 unique chunks
+        all_chunks.sort(key=lambda c: c.score, reverse=True)
+        state["chunks"] = all_chunks[:7]
+
+    except Exception as e:
+        state["error"] = str(e)
+        state["chunks"] = []
+
+    return state
+
+
+# ---------------------------------------------------------------------------
+# Node 3: Diagnose
 # ---------------------------------------------------------------------------
 
 def diagnose_node(state: AgentState) -> AgentState:
@@ -85,13 +141,12 @@ def diagnose_node(state: AgentState) -> AgentState:
             model=settings.llm_model,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
+                {"role": "user", "content": user_prompt},
             ],
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
         )
 
         data = json.loads(response.choices[0].message.content)
-
         sources = list(set([c.doc_name for c in state["chunks"]]))
 
         state["diagnosis"] = DiagnosisResponse(
@@ -105,7 +160,7 @@ def diagnose_node(state: AgentState) -> AgentState:
             sources=sources,
             reasoning=data.get("reasoning", ""),
             faithfulness_verified=False,  # set by verify_node
-            processing_time_ms=0          # set at the end of run_diagnosis
+            processing_time_ms=0,         # set at end of run_diagnosis
         )
 
     except Exception as e:
@@ -115,7 +170,7 @@ def diagnose_node(state: AgentState) -> AgentState:
 
 
 # ---------------------------------------------------------------------------
-# Node 3: Verify (faithfulness check)
+# Node 4: Verify (faithfulness check)
 # ---------------------------------------------------------------------------
 
 def verify_node(state: AgentState) -> AgentState:
@@ -134,7 +189,6 @@ def verify_node(state: AgentState) -> AgentState:
 
     supported = 0
     for claim in raw_claims:
-        # Only compare words longer than 3 chars to reduce noise
         meaningful_words = [w for w in claim.lower().split() if len(w) > 3]
         if not meaningful_words:
             supported += 1  # trivially short claim — count as supported
@@ -161,11 +215,13 @@ def verify_node(state: AgentState) -> AgentState:
 def get_diagnosis_agent():
     workflow = StateGraph(AgentState)
 
+    workflow.add_node("query_expansion", query_expansion_node)
     workflow.add_node("retrieve", retrieve_node)
     workflow.add_node("diagnose", diagnose_node)
     workflow.add_node("verify", verify_node)
 
-    workflow.set_entry_point("retrieve")
+    workflow.set_entry_point("query_expansion")
+    workflow.add_edge("query_expansion", "retrieve")
     workflow.add_edge("retrieve", "diagnose")
     workflow.add_edge("diagnose", "verify")
     workflow.add_edge("verify", END)
@@ -183,6 +239,7 @@ def run_diagnosis(request: DiagnosisRequest) -> DiagnosisResponse:
     initial_state: AgentState = {
         "symptom": request.symptom_description,
         "language": request.language,
+        "queries": [],
         "chunks": [],
         "diagnosis": None,
         "error": None,
