@@ -5,7 +5,9 @@ from datetime import datetime
 from uuid import uuid4
 
 from langgraph.graph import StateGraph, END
-from openai import OpenAI
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.tracers.langchain import wait_for_all_tracers
 
 from app.config import settings
 from app.models.diagnosis import DiagnosisRequest, DiagnosisResponse, RetrievedChunk
@@ -31,8 +33,6 @@ class AgentState(TypedDict):
 # ---------------------------------------------------------------------------
 
 def query_expansion_node(state: AgentState) -> AgentState:
-    client = OpenAI(api_key=settings.openai_api_key)
-
     system_prompt = (
         "You are an expert on agricultural problems in Gabès, Tunisia.\n"
         "A farmer has described a symptom. Generate 3 search queries "
@@ -48,15 +48,15 @@ def query_expansion_node(state: AgentState) -> AgentState:
     user_prompt = f"Farmer symptom: {state['symptom']}"
 
     try:
-        response = client.chat.completions.create(
+        llm = ChatOpenAI(
             model=settings.llm_model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            response_format={"type": "json_object"},
+            model_kwargs={"response_format": {"type": "json_object"}},
         )
-        data = json.loads(response.choices[0].message.content)
+        response = llm.invoke([
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt),
+        ])
+        data = json.loads(response.content)
         queries = data.get("queries", [state["symptom"]])[:3]
         state["queries"] = queries
     except Exception as e:
@@ -108,8 +108,6 @@ def diagnose_node(state: AgentState) -> AgentState:
         state["error"] = "No context retrieved — cannot diagnose."
         return state
 
-    client = OpenAI(api_key=settings.openai_api_key)
-
     context_text = "\n\n".join([
         f"Source: {c.doc_name} ({c.source_type})\nContent: {c.text}"
         for c in state["chunks"]
@@ -137,16 +135,16 @@ def diagnose_node(state: AgentState) -> AgentState:
     user_prompt = f"Symptom description: {state['symptom']}\n\nContext:\n{context_text}"
 
     try:
-        response = client.chat.completions.create(
+        llm = ChatOpenAI(
             model=settings.llm_model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            response_format={"type": "json_object"},
+            model_kwargs={"response_format": {"type": "json_object"}},
         )
+        response = llm.invoke([
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt),
+        ])
 
-        data = json.loads(response.choices[0].message.content)
+        data = json.loads(response.content)
         sources = list(set([c.doc_name for c in state["chunks"]]))
 
         state["diagnosis"] = DiagnosisResponse(
@@ -252,6 +250,7 @@ def run_diagnosis(request: DiagnosisRequest) -> DiagnosisResponse:
         final_state = agent.invoke(initial_state)
 
         if final_state.get("error") or not final_state.get("diagnosis"):
+            wait_for_all_tracers()
             return DiagnosisResponse(
                 symptom_input=request.symptom_description,
                 probable_cause="Unable to diagnose — please describe symptoms in more detail",
@@ -268,9 +267,11 @@ def run_diagnosis(request: DiagnosisRequest) -> DiagnosisResponse:
 
         diagnosis = final_state["diagnosis"]
         diagnosis.processing_time_ms = int((time.time() - start_time) * 1000)
+        wait_for_all_tracers()
         return diagnosis
 
     except Exception as e:
+        wait_for_all_tracers()
         return DiagnosisResponse(
             symptom_input=request.symptom_description,
             probable_cause="Unable to diagnose — please describe symptoms in more detail",

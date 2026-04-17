@@ -5,7 +5,7 @@ All tests use mocking — zero real API calls.
 """
 import json
 from datetime import datetime
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -49,24 +49,21 @@ _EXPANSION_QUERIES_JSON = json.dumps({
 
 def _make_openai_mock(expansion_json: str, diagnosis_json: str) -> MagicMock:
     """
-    Returns a mock OpenAI *class* whose instances will:
-      - Return expansion_json on the first chat.completions.create() call
-        (query_expansion_node)
-      - Return diagnosis_json on the second call (diagnose_node)
+    Returns a mock ChatOpenAI *class* whose instances will:
+      - Return expansion_json on the first invoke() call  (query_expansion_node)
+      - Return diagnosis_json on the second invoke() call (diagnose_node)
+    The mock uses AIMessage-style objects where .content holds the JSON string.
     """
     expansion_response = MagicMock()
-    expansion_response.choices[0].message.content = expansion_json
+    expansion_response.content = expansion_json
 
     diagnosis_response = MagicMock()
-    diagnosis_response.choices[0].message.content = diagnosis_json
+    diagnosis_response.content = diagnosis_json
 
-    mock_client = MagicMock()
-    mock_client.chat.completions.create.side_effect = [
-        expansion_response,
-        diagnosis_response,
-    ]
+    mock_instance = MagicMock()
+    mock_instance.invoke.side_effect = [expansion_response, diagnosis_response]
 
-    mock_cls = MagicMock(return_value=mock_client)
+    mock_cls = MagicMock(return_value=mock_instance)
     return mock_cls
 
 
@@ -106,7 +103,7 @@ def test_diagnosis_happy_path():
     )
 
     with patch("app.rag.retriever.QdrantRetriever.retrieve", return_value=fluoride_chunks), \
-         patch("app.agents.diagnosis_agent.OpenAI", mock_openai_cls):
+         patch("app.agents.diagnosis_agent.ChatOpenAI", mock_openai_cls):
 
         from app.agents.diagnosis_agent import run_diagnosis
         request = DiagnosisRequest(
@@ -129,13 +126,13 @@ def test_diagnosis_happy_path():
 def test_diagnosis_empty_retrieval():
     """Mock retriever returns empty list. Agent must return safe fallback (confidence=0.0)."""
 
-    mock_openai_cls = MagicMock()
+    mock_chat_cls = MagicMock()
     expansion_response = MagicMock()
-    expansion_response.choices[0].message.content = _EXPANSION_QUERIES_JSON
-    mock_openai_cls.return_value.chat.completions.create.return_value = expansion_response
+    expansion_response.content = _EXPANSION_QUERIES_JSON
+    mock_chat_cls.return_value.invoke.return_value = expansion_response
 
     with patch("app.rag.retriever.QdrantRetriever.retrieve", return_value=[]), \
-         patch("app.agents.diagnosis_agent.OpenAI", mock_openai_cls):
+         patch("app.agents.diagnosis_agent.ChatOpenAI", mock_chat_cls):
 
         from app.agents.diagnosis_agent import run_diagnosis
         request = DiagnosisRequest(symptom_description="My date palms have strange spots on the leaves.")
@@ -181,7 +178,7 @@ def test_faithfulness_check_fails():
     )
 
     with patch("app.rag.retriever.QdrantRetriever.retrieve", return_value=irrigation_chunks), \
-         patch("app.agents.diagnosis_agent.OpenAI", mock_openai_cls):
+         patch("app.agents.diagnosis_agent.ChatOpenAI", mock_openai_cls):
 
         from app.agents.diagnosis_agent import run_diagnosis
         request = DiagnosisRequest(

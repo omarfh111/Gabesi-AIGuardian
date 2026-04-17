@@ -1,7 +1,14 @@
+import os
 import logging
+from contextlib import asynccontextmanager
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from qdrant_client import QdrantClient
+
+# Load env vars early for LangSmith tracing
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"))
+
 from app.api.routes import router
 from app.config import settings
 
