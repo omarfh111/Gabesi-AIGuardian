@@ -49,26 +49,27 @@ No other system does this for Gabès.
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                  FastAPI Backend                         │
-│                POST /api/v1/diagnosis                    │
-└────────────────────┬────────────────────────────────────┘
-                     │
-         ┌───────────▼───────────┐
-         │   LangGraph Agent     │
-         │  query_expansion      │
-         │  → retrieve           │
-         │  → diagnose           │
-         │  → verify             │
-         └───────────┬───────────┘
-                     │
-        ┌────────────┴────────────┐
-        ▼                         ▼
-  Qdrant RAG Search         GPT-4o-mini
-  gabes_knowledge           (diagnosis +
-  1718 chunks               faithfulness
-  21 documents              verification)
+```mermaid
+graph TD
+    A[Farmer App] -->|HTTP POST| B[FastAPI Backend]
+    B --> C{LangGraph Router}
+    C -->|symptom| D[Diagnosis Agent]
+    C -->|irrigation| E[Irrigation Agent]
+    C -->|pollution| F[Pollution Logger]
+    D --> G[query_expansion]
+    G --> H[retrieve]
+    H --> I[diagnose]
+    I --> J[verify]
+    J -->|DiagnosisResponse| B
+    E --> K[fetch_weather]
+    K --> L[compute_et0]
+    L --> M[lookup_kc]
+    M --> N[format_advisory]
+    N -->|IrrigationResponse| B
+    H -->|vector search| O[(Qdrant\ngabes_knowledge\n1718 chunks)]
+    K -->|daily weather| P[NASA POWER API]
+    I -->|GPT-4o-mini| Q[OpenAI]
+    N -->|GPT-4o-mini| Q
 ```
 
 ---
@@ -275,6 +276,17 @@ Diagnose a crop symptom described in plain text.
 
 ```json
 {"status": "ok", "collection": "gabes_knowledge", "timestamp": "..."}
+```
+
+---
+
+### Evaluation Pipeline
+
+```mermaid
+graph LR
+    A[RAG Pipeline] -->|68 goldens\nGPT-4o-mini| B[Recall 0.95\n98.33% pass]
+    C[Diagnosis Agent] -->|16 inputs\nEN/FR/AR| D[Faithfulness 0.97\nRelevancy 0.91\nPollution 100%]
+    E[Irrigation Agent] -->|12 FAO-56\ntest cases| F[Kc 100%\nETc 100%\nGEval 0.88]
 ```
 
 ---
