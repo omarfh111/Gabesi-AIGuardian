@@ -1,3 +1,4 @@
+from datetime import datetime, UTC
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
@@ -26,3 +27,4 @@ class DiagnosisResponse(BaseModel):
     reasoning: Optional[str] = None
     faithfulness_verified: bool = False
     processing_time_ms: int = 0
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))

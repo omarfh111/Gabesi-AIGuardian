@@ -1,7 +1,7 @@
 import time
 import json
 from typing import TypedDict, List, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import uuid4
 
 from langgraph.graph import StateGraph, END
@@ -173,6 +173,7 @@ def diagnose_node(state: AgentState) -> AgentState:
             reasoning=data.get("reasoning", ""),
             faithfulness_verified=False,  # set by verify_node
             processing_time_ms=0,         # set at end of run_diagnosis
+            timestamp=datetime.now(UTC),
         )
 
     except Exception as e:
