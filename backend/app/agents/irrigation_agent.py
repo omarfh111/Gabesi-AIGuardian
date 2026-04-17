@@ -17,6 +17,7 @@ from typing import Optional, TypedDict
 
 import httpx
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.tracers.langchain import wait_for_all_tracers
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 
@@ -325,7 +326,10 @@ def format_advisory_node(state: IrrigationState) -> IrrigationState:
     )
 
     try:
-        llm = ChatOpenAI(model=settings.llm_model)
+        llm = ChatOpenAI(
+            model=settings.llm_model,
+            api_key=settings.openai_api_key,
+        )
         response = llm.invoke([
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_prompt),
@@ -414,4 +418,5 @@ def run_irrigation(request: IrrigationRequest) -> IrrigationResponse:
 
     advisory = final_state["advisory"]
     advisory.processing_time_ms = int((time.time() - start_time) * 1000)
+    wait_for_all_tracers()
     return advisory
