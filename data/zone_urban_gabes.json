@@ -1,0 +1,53 @@
+{
+  "facility_label": "Zone Urbaine — Centre-ville de Gabès",
+  "public_anchor": "Centre-ville de Gabès, zone résidentielle et commerciale",
+  "exceedances": [],
+  "notes": "Émissions urbaines liées au transport routier, chauffage/climatisation, commerces et services publics. Zone sensible pour la santé publique en raison de la proximité industrielle.",
+  "start_month_assumption": "2026-01",
+  "period_months": 6,
+  "unit": "tonnes_CO2/month",
+  "bounds": {
+    "min": 0,
+    "max": 1200
+  },
+  "internal_exceedance_threshold": 1850,
+  "months": [
+    {
+      "month": "2026-01",
+      "co2": 620,
+      "tags": ["hiver", "chauffage", "trafic routier normal"]
+    },
+    {
+      "month": "2026-02",
+      "co2": 650,
+      "tags": ["hiver tardif", "pré-Ramadan achats", "trafic accru"]
+    },
+    {
+      "month": "2026-03",
+      "co2": 540,
+      "tags": ["Ramadan", "circulation réduite nuit", "commerces horaires adaptés"]
+    },
+    {
+      "month": "2026-04",
+      "co2": 680,
+      "tags": ["Aïd", "trafic festif", "climatisation début"]
+    },
+    {
+      "month": "2026-05",
+      "co2": 750,
+      "tags": ["chaleur", "climatisation généralisée", "tourisme intérieur"]
+    },
+    {
+      "month": "2026-06",
+      "co2": 820,
+      "tags": ["canicule", "climatisation max", "trafic estival", "pollution résiduelle industrielle"]
+    }
+  ],
+  "statistics": {
+    "mean": 676.7,
+    "variance_sample": 9226.7,
+    "lag1_autocorrelation": 0.44,
+    "min": 540,
+    "max": 820
+  }
+}

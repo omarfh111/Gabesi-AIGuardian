@@ -1,0 +1,2268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gabesi AIGuardian — Environmental Intelligence</title>
+    <meta name="description" content="AI Decision Support Platform for Environmental Risk in Gabès, Tunisia. Real-time CO₂ monitoring, risk analysis, and AI-powered recommendations.">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-primary: #06080f;
+            --bg-secondary: #0c1020;
+            --bg-card: #111630;
+            --bg-card-hover: #181e42;
+            --bg-glass: rgba(12, 16, 32, 0.88);
+            --border: #1e2548;
+            --border-glow: rgba(59, 130, 246, 0.3);
+            --text-primary: #eef0f8;
+            --text-secondary: #8b95b8;
+            --text-muted: #4d567a;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-emerald: #34d399;
+            --accent-orange: #f59e0b;
+            --accent-amber: #fbbf24;
+            --accent-red: #ef4444;
+            --accent-rose: #f43f5e;
+            --accent-purple: #8b5cf6;
+            --cat-industrial: #ef4444;
+            --cat-agriculture: #10b981;
+            --cat-coastal: #06b6d4;
+            --cat-urban: #f59e0b;
+            --risk-danger: #ef4444;
+            --risk-warning: #f59e0b;
+            --risk-safe: #10b981;
+            --radius: 12px;
+            --radius-lg: 16px;
+            --shadow: 0 4px 32px rgba(0, 0, 0, 0.4);
+            --shadow-glow: 0 0 30px rgba(59, 130, 246, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ══════════════════════════════════════════
+           HEADER
+        ══════════════════════════════════════════ */
+        .header {
+            background: linear-gradient(135deg, rgba(12, 16, 32, 0.95), rgba(17, 22, 48, 0.95));
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #10b981, #06b6d4, #3b82f6);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+            animation: logoPulse 3s ease-in-out infinite;
+        }
+
+        @keyframes logoPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(6, 182, 212, 0.5); }
+        }
+
+        .header-title {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #10b981, #06b6d4, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.3px;
+        }
+
+        .header-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 400;
+            letter-spacing: 0.5px;
+        }
+
+        .header-center {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .global-risk-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: 1px solid;
+            transition: all 0.3s;
+        }
+
+        .risk-danger-badge {
+            background: rgba(239, 68, 68, 0.12);
+            color: var(--risk-danger);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .risk-warning-badge {
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--risk-warning);
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+
+        .risk-safe-badge {
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--risk-safe);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .risk-badge-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: riskPulse 2s infinite;
+        }
+
+        @keyframes riskPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.3); }
+        }
+
+        @keyframes waterRipple {
+            0% { stroke-width: 1.5; stroke-opacity: 0.8; }
+            50% { stroke-width: 15; stroke-opacity: 0.3; }
+            100% { stroke-width: 30; stroke-opacity: 0; }
+        }
+
+        .danger-circle {
+            animation: waterRipple 2s infinite ease-out;
+            pointer-events: none;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: statusPulse 2s infinite;
+        }
+
+        @keyframes statusPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .status-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* ══════════════════════════════════════════
+           LAYOUT
+        ══════════════════════════════════════════ */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            height: calc(100vh - 60px);
+        }
+
+        /* ══════════════════════════════════════════
+           SIDEBAR
+        ══════════════════════════════════════════ */
+        .sidebar {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Search ── */
+        .search-section {
+            padding: 16px 16px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .search-box {
+            display: flex;
+            gap: 8px;
+        }
+
+        .search-input {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 10px 14px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.25s;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.12);
+        }
+
+        .search-input::placeholder { color: var(--text-muted); }
+
+        .search-btn {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+            border: none;
+            border-radius: var(--radius);
+            padding: 10px 18px;
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .search-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3); }
+        .search-btn:active { transform: translateY(0); }
+        .search-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .search-feedback {
+            margin-top: 8px;
+            font-size: 12px;
+            min-height: 18px;
+        }
+
+        .feedback-success { color: var(--accent-green); }
+        .feedback-error { color: var(--accent-red); }
+        .feedback-loading { color: var(--accent-cyan); }
+
+        /* ── Overview Bar ── */
+        .overview-bar {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .overview-card {
+            text-align: center;
+            padding: 10px 6px;
+            background: var(--bg-card);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .overview-card:hover {
+            border-color: var(--border-glow);
+            transform: translateY(-1px);
+        }
+
+        .overview-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+        }
+
+        .overview-card.risk-card::before { background: linear-gradient(90deg, var(--risk-danger), var(--risk-warning)); }
+        .overview-card.emission-card::before { background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue)); }
+        .overview-card.facility-card::before { background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue)); }
+
+        .overview-value {
+            font-size: 22px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .overview-label {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            margin-top: 6px;
+            font-weight: 700;
+        }
+
+        .overview-sub {
+            font-size: 10px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        /* ── Tabs ── */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-secondary);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px 8px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.25s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tab:hover { color: var(--text-secondary); }
+        .tab.active {
+            color: var(--accent-cyan);
+            border-bottom-color: var(--accent-cyan);
+        }
+
+        /* ── Panel Content ── */
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .panel-content::-webkit-scrollbar { width: 4px; }
+        .panel-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        /* ── Location Cards ── */
+        .location-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .location-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-blue);
+            transform: translateX(3px);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .card-name {
+            font-size: 13px;
+            font-weight: 600;
+            flex: 1;
+            margin-right: 8px;
+        }
+
+        .card-badge {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 16px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .badge-industrial { background: rgba(239,68,68,0.12); color: var(--cat-industrial); }
+        .badge-agriculture { background: rgba(16,185,129,0.12); color: var(--cat-agriculture); }
+        .badge-coastal { background: rgba(6,182,212,0.12); color: var(--cat-coastal); }
+        .badge-urban { background: rgba(245,158,11,0.12); color: var(--cat-urban); }
+
+        .card-details {
+            display: flex;
+            gap: 12px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .card-zone {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .card-coords {
+            color: var(--text-muted);
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+        }
+
+        .card-delete {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 13px;
+            padding: 3px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: all 0.2s;
+        }
+
+        .location-card:hover .card-delete { opacity: 1; }
+        .card-delete:hover { color: var(--accent-red); background: rgba(239,68,68,0.1); }
+
+        /* ── Pollution Cards ── */
+        .pollution-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.25s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pollution-card:hover {
+            border-color: var(--accent-cyan);
+            transform: translateX(3px);
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.08);
+        }
+
+        .pollution-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+        }
+
+        .pollution-card.risk-danger::before { background: var(--risk-danger); }
+        .pollution-card.risk-warning::before { background: var(--risk-warning); }
+        .pollution-card.risk-safe::before { background: var(--risk-safe); }
+
+        .pollution-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .pollution-name {
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .pollution-risk-badge {
+            font-size: 9px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-risk-danger { background: rgba(239,68,68,0.15); color: var(--risk-danger); }
+        .badge-risk-warning { background: rgba(245,158,11,0.15); color: var(--risk-warning); }
+        .badge-risk-safe { background: rgba(16,185,129,0.15); color: var(--risk-safe); }
+
+        .pollution-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .pollution-stat {
+            text-align: center;
+            padding: 4px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+        }
+
+        .pollution-stat-value {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .pollution-stat-label {
+            font-size: 8px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.3px;
+        }
+
+        /* ── Sparkline ── */
+        .sparkline-container {
+            height: 32px;
+            position: relative;
+            margin-top: 4px;
+        }
+
+        .sparkline-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ── Risk Progress Bar ── */
+        .risk-bar-container {
+            height: 4px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .risk-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 1s ease-out;
+        }
+
+        /* ── AI Analysis Panel ── */
+        .analysis-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            margin-bottom: 10px;
+        }
+
+        .analysis-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .analysis-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .analysis-title {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .analysis-subtitle {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .analysis-btn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            border: none;
+            border-radius: var(--radius);
+            padding: 12px;
+            color: white;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .analysis-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(139, 92, 246, 0.3);
+        }
+
+        .analysis-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .analysis-btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .analysis-btn:hover::after { left: 100%; }
+
+        .analysis-result {
+            margin-top: 14px;
+        }
+
+        .analysis-section {
+            margin-bottom: 12px;
+        }
+
+        .analysis-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--accent-cyan);
+            margin-bottom: 6px;
+        }
+
+        .analysis-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .rec-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            transition: all 0.2s;
+        }
+
+        .rec-card:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: var(--accent-purple);
+        }
+
+        .rec-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .rec-priority {
+            font-size: 9px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .rec-critique { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+        .rec-important { background: rgba(245,158,11,0.15); color: var(--accent-orange); }
+        .rec-souhaitable { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+
+        .rec-title {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .rec-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .rec-meta {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .rec-meta-tag {
+            font-size: 9px;
+            padding: 1px 6px;
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--accent-purple);
+            border-radius: 4px;
+        }
+
+        /* ── Log Entries ── */
+        .log-entry {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 4px;
+            font-size: 11px;
+        }
+
+        .log-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        .log-success .log-icon { background: rgba(16,185,129,0.12); }
+        .log-error .log-icon { background: rgba(239,68,68,0.12); }
+        .log-rejected .log-icon { background: rgba(245,158,11,0.12); }
+
+        .log-body { flex: 1; min-width: 0; }
+
+        .log-query {
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .log-detail {
+            color: var(--text-muted);
+            font-size: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .log-time {
+            color: var(--text-muted);
+            font-size: 10px;
+            flex-shrink: 0;
+        }
+
+        .log-badge {
+            font-size: 9px;
+            padding: 1px 5px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .log-badge-cache { background: rgba(139,92,246,0.12); color: var(--accent-purple); }
+        .log-badge-time { background: rgba(59,130,246,0.12); color: var(--accent-blue); }
+
+        /* ── Map Container ── */
+        .map-container {
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ── Map Legend ── */
+        .map-legend {
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 18px;
+            z-index: 800;
+            box-shadow: var(--shadow);
+        }
+
+        .legend-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .legend-circle {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+
+        .legend-size {
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+        }
+
+        .legend-size-circle {
+            border: 1px solid var(--text-muted);
+            border-radius: 50%;
+            opacity: 0.5;
+        }
+
+        .legend-size-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            margin-left: 4px;
+        }
+
+        /* ── Map Stats Overlay ── */
+        .map-overlay {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            z-index: 800;
+            display: flex;
+            gap: 8px;
+        }
+
+        .map-stat-chip {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 6px 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            box-shadow: var(--shadow);
+        }
+
+        .chip-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        /* ── Empty State ── */
+        .empty-state {
+            text-align: center;
+            padding: 32px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .empty-state-text {
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        /* ── Spinner ── */
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ── Facility Selector Dropdown ── */
+        .facility-select {
+            width: 100%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 10px 14px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.25s;
+            margin-bottom: 10px;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3e%3cpath fill='%234d567a' d='M6 8L1 3h10z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+        }
+
+        .facility-select:focus {
+            border-color: var(--accent-cyan);
+        }
+
+        /* ── Carbon/Regulatory Alerts ── */
+        .alert-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-top: 8px;
+        }
+
+        .alert-card-title {
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .alert-card-text {
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* ── Leaflet popup override ── */
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-card) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: var(--radius) !important;
+            box-shadow: var(--shadow) !important;
+            color: var(--text-primary) !important;
+        }
+
+        .leaflet-popup-tip {
+            background: var(--bg-card) !important;
+            border: 1px solid var(--border) !important;
+        }
+
+        .leaflet-popup-close-button {
+            color: var(--text-muted) !important;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 900px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: 50% 50%;
+            }
+            .header-center { display: none; }
+        }
+
+        /* ── Fade-in animation ── */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        /* ── Emergency Assistant Widget ── */
+        .assistant-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 32px;
+            width: 56px;
+            height: 56px;
+            border-radius: 28px;
+            background: linear-gradient(135deg, #ef4444, #f43f5e);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+            z-index: 2000;
+            transition: all 0.3s;
+        }
+        .assistant-btn:hover {
+            transform: scale(1.1);
+        }
+        .assistant-widget {
+            position: fixed;
+            bottom: 100px;
+            right: 32px;
+            width: 360px;
+            height: 520px;
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .assistant-header {
+            background: rgba(239, 68, 68, 0.15);
+            padding: 16px;
+            border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .assistant-title {
+            font-weight: 800;
+            color: #f87171;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+        }
+        .assistant-close {
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+        .chat-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .chat-messages::-webkit-scrollbar { width: 4px; }
+        .chat-messages::-webkit-scrollbar-thumb { background: rgba(239,68,68,0.3); border-radius: 4px; }
+        .chat-bubble {
+            max-width: 85%;
+            padding: 12px 14px;
+            border-radius: 14px;
+            font-size: 12px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+        .chat-ai {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        .chat-user {
+            background: linear-gradient(135deg, #ef4444, #f43f5e);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        .quick-replies {
+            padding: 10px 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            border-top: 1px solid var(--border);
+        }
+        .qr-btn {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .qr-btn:hover {
+            background: var(--accent-red);
+            color: white;
+            border-color: var(--accent-red);
+        }
+        .qr-btn-loc {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border-color: rgba(59, 130, 246, 0.4);
+        }
+        .chat-input-area {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+            background: rgba(0,0,0,0.2);
+        }
+        .chat-input {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 8px;
+            color: var(--text-primary);
+            outline: none;
+            font-size: 12px;
+        }
+        .chat-send {
+            background: #ef4444;
+            border: none;
+            padding: 0 14px;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .chat-typing {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: -6px;
+            margin-bottom: 6px;
+            margin-left: 16px;
+            display: none;
+        }
+
+        @keyframes alarmFlash {
+            0% { border-color: #ef4444; box-shadow: 0 0 30px rgba(239, 68, 68, 0.6); background: rgba(40, 0, 0, 0.9); }
+            50% { border-color: #ff0000; box-shadow: 0 0 60px rgba(255, 0, 0, 1); background: rgba(80, 0, 0, 0.9); }
+            100% { border-color: #ef4444; box-shadow: 0 0 30px rgba(239, 68, 68, 0.6); background: rgba(40, 0, 0, 0.9); }
+        }
+        .critical-alarm {
+            animation: alarmFlash 1s infinite !important;
+        }
+        .critical-alarm-ring {
+            animation: alarmFlash 1s infinite !important;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="header" id="mainHeader">
+        <div class="header-left">
+            <div class="logo">&#127758;</div>
+            <div class="header-title">
+                <h1>Gabesi AIGuardian</h1>
+                <span class="header-subtitle">Environmental Intelligence Platform</span>
+            </div>
+        </div>
+        <div class="header-center" style="flex-direction: column; gap: 4px;">
+            <div class="global-risk-badge risk-warning-badge" id="globalRiskBadge">
+                <div class="risk-badge-dot" style="background: var(--risk-warning);"></div>
+                <span id="globalRiskText">Loading...</span>
+            </div>
+            <div style="font-size: 8px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+                Based on: CO₂ emission, Exceedance rate, Industrial density
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="status-dot"></div>
+            <span class="status-text">System Active</span>
+        </div>
+    </header>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+
+            <!-- Search -->
+            <div class="search-section">
+                <div class="search-box">
+                    <input type="text" id="searchInput" class="search-input"
+                           placeholder="Search location in Gabès..."
+                           autocomplete="off">
+                    <button id="searchBtn" class="search-btn" onclick="searchLocation()">Search</button>
+                </div>
+                <div id="searchFeedback" class="search-feedback"></div>
+            </div>
+
+            <!-- Overview Stats -->
+            <div class="overview-bar" id="overviewBar">
+                <div class="overview-card emission-card">
+                    <div class="overview-value" id="ovAvgDailyCO2" style="color: var(--accent-cyan);">--</div>
+                    <div class="overview-label">Avg CO₂ t/day</div>
+                    <div class="overview-sub" id="ovAvgSub">Real-time daily</div>
+                </div>
+                <div class="overview-card facility-card">
+                    <div class="overview-value" id="ovTotalCO2" style="color: var(--accent-purple);">--</div>
+                    <div class="overview-label">Total (6 months)</div>
+                    <div class="overview-sub" id="ovTotalSub">Cumulative t</div>
+                </div>
+                <div class="overview-card risk-card">
+                    <div class="overview-value" id="ovExceedance" style="color: var(--risk-danger);">--</div>
+                    <div class="overview-label">Exceedance</div>
+                    <div class="overview-sub" id="ovExceedSub">Global rate</div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs">
+                <div class="tab active" data-tab="pollution" onclick="switchTab('pollution')">&#128308; Pollution</div>
+                <div class="tab" data-tab="locations" onclick="switchTab('locations')">&#128205; Locations</div>
+                <div class="tab" data-tab="analysis" onclick="switchTab('analysis')">&#129504; AI Analysis</div>
+                <div class="tab" data-tab="logs" onclick="switchTab('logs')">&#128196; Logs</div>
+            </div>
+
+            <!-- Panel Content -->
+            <div class="panel-content" id="panelContent">
+                <div class="empty-state">
+                    <div class="empty-state-icon">&#9203;</div>
+                    <div class="empty-state-text">Loading data...</div>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- Map -->
+        <div class="map-container">
+            <div id="map"></div>
+
+            <!-- Map Overlay Stats -->
+            <div class="map-overlay" id="mapOverlay">
+                <div class="map-stat-chip">
+                    <div class="chip-dot" style="background: var(--cat-industrial);"></div>
+                    <span id="chipIndustrial">0</span> Industrial
+                </div>
+                <div class="map-stat-chip">
+                    <div class="chip-dot" style="background: var(--cat-agriculture);"></div>
+                    <span id="chipAgriculture">0</span> Agriculture
+                </div>
+                <div class="map-stat-chip">
+                    <div class="chip-dot" style="background: var(--cat-coastal);"></div>
+                    <span id="chipCoastal">0</span> Coastal
+                </div>
+                <div class="map-stat-chip">
+                    <div class="chip-dot" style="background: var(--cat-urban);"></div>
+                    <span id="chipUrban">0</span> Urban
+                </div>
+            </div>
+
+            <!-- Map Legend -->
+            <div class="map-legend">
+                <div class="legend-title">CO₂ Impact Level</div>
+                <div class="legend-item">
+                    <div class="legend-circle" style="background: var(--risk-danger);"></div>
+                    <span>Danger (&gt;1800 t/day)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-circle" style="background: var(--risk-warning);"></div>
+                    <span>Warning (1500–1800)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-circle" style="background: var(--risk-safe);"></div>
+                    <span>Safe (&lt;1500 t/day)</span>
+                </div>
+                <div class="legend-size">
+                    <div class="legend-size-circle" style="width:8px;height:8px;"></div>
+                    <div class="legend-size-circle" style="width:14px;height:14px;"></div>
+                    <div class="legend-size-circle" style="width:20px;height:20px;"></div>
+                    <span class="legend-size-label">Circle ∝ emission</span>
+                </div>
+            </div>
+
+            <!-- Timeline Slider -->
+            <style>
+                .timeline-container {
+                    position: absolute;
+                    bottom: 24px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: var(--bg-glass);
+                    backdrop-filter: blur(16px);
+                    -webkit-backdrop-filter: blur(16px);
+                    border: 1px solid var(--border);
+                    border-radius: 30px;
+                    padding: 8px 20px;
+                    z-index: 800;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    box-shadow: var(--shadow);
+                    min-width: 320px;
+                }
+                .timeline-slider {
+                    flex: 1;
+                    accent-color: var(--accent-cyan);
+                    height: 4px;
+                    cursor: pointer;
+                }
+                .timeline-label {
+                    font-size: 11px;
+                    font-weight: 700;
+                    min-width: 80px;
+                    text-align: center;
+                    color: var(--text-primary);
+                }
+            </style>
+            <div class="timeline-container">
+                <div class="timeline-label" id="timelineLabel">Jan 2026</div>
+                <input type="range" id="timelineSlider" class="timeline-slider" 
+                       min="0" max="5" value="5" step="1" oninput="updateTimeline()">
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // ══════════════════════════════════════════
+        // STATE
+        // ══════════════════════════════════════════
+        let currentTab = 'pollution';
+        let allLocations = [];
+        let allLogs = [];
+        let allCircles = [];
+        let allFacilitiesData = [];
+        let overviewData = null;
+        let markers = [];
+        let pollutionCircles = [];
+        let selectedFacility = null;
+        let currentAnalysis = null;
+
+        // ── Category colors ──
+        const CAT_COLORS = {
+            industrial: '#ef4444',
+            agriculture: '#10b981',
+            coastal: '#06b6d4',
+            urban: '#f59e0b'
+        };
+
+        const RISK_COLORS = {
+            danger: '#ef4444',
+            warning: '#f59e0b',
+            safe: '#10b981'
+        };
+
+        // ══════════════════════════════════════════
+        // MAP INIT
+        // ══════════════════════════════════════════
+        const map = L.map('map', { zoomControl: true }).setView([33.88, 10.08], 11);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            maxZoom: 19
+        }).addTo(map);
+
+        // ══════════════════════════════════════════
+        // CUSTOM MARKER
+        // ══════════════════════════════════════════
+        function createMarkerIcon(category) {
+            const color = CAT_COLORS[category] || '#8b95b8';
+            return L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="
+                    width: 16px; height: 16px;
+                    background: ${color};
+                    border: 2px solid white;
+                    border-radius: 50%;
+                    box-shadow: 0 0 15px ${color}, 0 2px 5px rgba(0,0,0,0.4);
+                    position: relative;
+                    z-index: 2;
+                "></div>
+                <div style="
+                    width: 2px; height: 10px;
+                    background: linear-gradient(to bottom, white, ${color});
+                    margin: -2px auto 0;
+                    opacity: 0.8;
+                    position: relative;
+                    z-index: 1;
+                "></div>`,
+                iconSize: [16, 24],
+                iconAnchor: [8, 24],
+                popupAnchor: [0, -26]
+            });
+        }
+
+        // ══════════════════════════════════════════
+        // SPARKLINE GENERATOR
+        // ══════════════════════════════════════════
+        function generateSparkline(data, color, width = 280, height = 28) {
+            if (!data || data.length === 0) return '';
+
+            const values = data.map(d => d.co2 || d);
+            const max = Math.max(...values);
+            const min = Math.min(...values);
+            const range = max - min || 1;
+
+            const padding = 2;
+            const step = (width - padding * 2) / (values.length - 1);
+
+            const points = values.map((v, i) => {
+                const x = padding + i * step;
+                const y = height - padding - ((v - min) / range) * (height - padding * 2);
+                return `${x},${y}`;
+            }).join(' ');
+
+            // Area fill
+            const firstX = padding;
+            const lastX = padding + (values.length - 1) * step;
+            const areaPoints = `${firstX},${height} ${points} ${lastX},${height}`;
+
+            return `<svg class="sparkline-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+                <defs>
+                    <linearGradient id="grad-${color.replace('#','')}" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
+                        <stop offset="100%" stop-color="${color}" stop-opacity="0.02"/>
+                    </linearGradient>
+                </defs>
+                <polygon points="${areaPoints}" fill="url(#grad-${color.replace('#','')})" />
+                <polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>`;
+        }
+
+        // ══════════════════════════════════════════
+        // SEARCH
+        // ══════════════════════════════════════════
+        async function searchLocation() {
+            const input = document.getElementById('searchInput');
+            const btn = document.getElementById('searchBtn');
+            const feedback = document.getElementById('searchFeedback');
+            const query = input.value.trim();
+
+            if (!query) return;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Searching...';
+            feedback.className = 'search-feedback feedback-loading';
+            feedback.textContent = 'Searching via SerpAPI + classifying with AI...';
+
+            try {
+                const res = await fetch('/search-location', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+
+                const data = await res.json();
+
+                if (data.valid) {
+                    feedback.className = 'search-feedback feedback-success';
+                    feedback.textContent = `✓ ${data.name} → ${data.category} / ${data.zone} (${data.elapsed}s)`;
+                    input.value = '';
+                    map.flyTo([data.lat, data.lng], 14, { duration: 1.5 });
+                    loadLocations();
+                    loadLogs();
+                } else {
+                    feedback.className = 'search-feedback feedback-error';
+                    feedback.textContent = data.error || 'Failed to add location.';
+                    loadLogs();
+                }
+            } catch (err) {
+                feedback.className = 'search-feedback feedback-error';
+                feedback.textContent = 'Network error: ' + err.message;
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Search';
+        }
+
+        document.getElementById('searchInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') searchLocation();
+        });
+
+        // ══════════════════════════════════════════
+        // DATA LOADING
+        // ══════════════════════════════════════════
+        async function loadLocations() {
+            try {
+                const res = await fetch('/locations');
+                const data = await res.json();
+                allLocations = data.locations || [];
+                updateMapChips();
+                updateMarkers();
+                if (currentTab === 'locations') renderLocations();
+            } catch (err) {
+                console.error('Failed to load locations:', err);
+            }
+        }
+
+        async function loadLogs() {
+            try {
+                const res = await fetch('/logs');
+                const data = await res.json();
+                allLogs = (data.logs || []).reverse();
+                if (currentTab === 'logs') renderLogs();
+            } catch (err) {
+                console.error('Failed to load logs:', err);
+            }
+        }
+
+        async function loadRiskMap() {
+            try {
+                const res = await fetch('/risk-map');
+                const data = await res.json();
+                allCircles = data.circles || [];
+                updatePollutionCircles();
+                if (currentTab === 'pollution') renderPollution();
+            } catch (err) {
+                console.error('Failed to load risk map:', err);
+            }
+        }
+
+        async function loadEmissions() {
+            try {
+                const res = await fetch('/emissions');
+                const data = await res.json();
+                allFacilitiesData = data.facilities || [];
+            } catch (err) {
+                console.error('Failed to load emissions:', err);
+            }
+        }
+
+        async function loadOverview() {
+            try {
+                const res = await fetch('/overview');
+                overviewData = await res.json();
+                updateOverviewBar();
+                updateGlobalRiskBadge();
+            } catch (err) {
+                console.error('Failed to load overview:', err);
+            }
+        }
+
+        // ══════════════════════════════════════════
+        // UI UPDATES
+        // ══════════════════════════════════════════
+        function get_circle_radius(co2) {
+            // Logarithmic scale for better visualization
+            // Base: 50m, Max: ~2000m
+            const base = 50;
+            const factor = 15;
+            return base + Math.log2(Math.max(1, co2 / 100)) * factor * 50;
+        }
+
+        function updateGlobalRiskBadge() {
+            if (!overviewData) return;
+            const badge = document.getElementById('globalRiskBadge');
+            const text = document.getElementById('globalRiskText');
+            const risk = overviewData.globalRisk || 0;
+            const level = overviewData.globalRiskLevel || {};
+
+            text.textContent = `Global Risk: ${risk}/100`;
+
+            badge.className = 'global-risk-badge';
+            const dot = badge.querySelector('.risk-badge-dot');
+
+            if (level.level === 'danger') {
+                badge.classList.add('risk-danger-badge');
+                dot.style.background = 'var(--risk-danger)';
+            } else if (level.level === 'warning') {
+                badge.classList.add('risk-warning-badge');
+                dot.style.background = 'var(--risk-warning)';
+            } else {
+                badge.classList.add('risk-safe-badge');
+                dot.style.background = 'var(--risk-safe)';
+            }
+        }
+
+        function updateOverviewBar() {
+            if (!overviewData) return;
+
+            const avgDaily = overviewData.avgDailyCO2 || 0;
+            const total = overviewData.gctSynthesis?.totalCO2_6months || 0;
+            const exceedance = overviewData.gctSynthesis?.exceedanceRate || '0%';
+
+            // Cleaner display for large numbers
+            const totalFormatted = total > 1000 ? Math.round(total / 1000) + 'k' : total;
+
+            document.getElementById('ovAvgDailyCO2').innerHTML = `<span style="font-size: 26px;">${avgDaily}</span><span style="font-size: 14px; margin-left:4px;">t/d</span>`;
+            document.getElementById('ovTotalCO2').innerHTML = `<span style="font-size: 26px;">${totalFormatted}</span><span style="font-size: 14px; margin-left:4px;">t</span>`;
+            document.getElementById('ovExceedance').innerHTML = `<span style="font-size: 26px;">${exceedance}</span>`;
+            
+            document.getElementById('ovExceedance').style.color = parseInt(exceedance) > 25 ? 'var(--risk-danger)' : 'var(--risk-warning)';
+        }
+
+        function updateMapChips() {
+            const counts = { industrial: 0, agriculture: 0, coastal: 0, urban: 0 };
+            allLocations.forEach(loc => {
+                if (counts[loc.category] !== undefined) counts[loc.category]++;
+            });
+            document.getElementById('chipIndustrial').textContent = counts.industrial;
+            document.getElementById('chipAgriculture').textContent = counts.agriculture;
+            document.getElementById('chipCoastal').textContent = counts.coastal;
+            document.getElementById('chipUrban').textContent = counts.urban;
+        }
+
+        // ══════════════════════════════════════════
+        // MAP MARKERS
+        // ══════════════════════════════════════════
+        function updateMarkers() {
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            allLocations.forEach(loc => {
+                const marker = L.marker([loc.lat, loc.lng], {
+                    icon: createMarkerIcon(loc.category)
+                }).addTo(map);
+
+                const color = CAT_COLORS[loc.category] || '#8b95b8';
+                marker.bindPopup(`
+                    <div style="font-family: Inter, sans-serif; min-width: 200px; padding: 4px;">
+                        <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px;">${loc.name}</div>
+                        <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                            <span style="background: ${color}18; color: ${color};
+                                padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;
+                                text-transform: uppercase;">${loc.category}</span>
+                            <span style="background: #8b5cf618; color: #8b5cf6;
+                                padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">${loc.zone || '?'}</span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">
+                            <div>Lat: ${loc.lat.toFixed(6)}</div>
+                            <div>Lng: ${loc.lng.toFixed(6)}</div>
+                        </div>
+                    </div>
+                `);
+
+                markers.push(marker);
+            });
+        }
+
+        // ══════════════════════════════════════════
+        // POLLUTION CIRCLES
+        // ══════════════════════════════════════════
+        function updatePollutionCircles(monthIndex = 5) {
+            pollutionCircles.forEach(c => map.removeLayer(c));
+            pollutionCircles = [];
+
+            const monthsRaw = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
+            document.getElementById('timelineLabel').textContent = monthsRaw[monthIndex] + " 2026";
+
+            allCircles.forEach(circle => {
+                // Determine values for selected month if available, else use mean
+                let currentCO2 = circle.meanCO2;
+                let currentDaily = circle.meanDailyCO2;
+                if (circle.monthlyData && circle.monthlyData[monthIndex]) {
+                    currentCO2 = circle.monthlyData[monthIndex].co2;
+                    currentDaily = Math.round(currentCO2 / 30);
+                }
+
+                // Recalculate risk level based on the monthly CO2 value (Monthly Scale: 1500/1800)
+                let riskColor = RISK_COLORS.safe;
+                let riskLabel = 'SAFE';
+                let isDanger = false;
+                let opacity = 0.15;
+
+                if (currentCO2 > 1800) {
+                    riskColor = RISK_COLORS.danger;
+                    riskLabel = 'DANGER';
+                    isDanger = true;
+                    opacity = 0.65;
+                } else if (currentCO2 > 1500) {
+                    riskColor = RISK_COLORS.warning;
+                    riskLabel = 'WARNING';
+                    opacity = 0.4;
+                }
+
+                // Add slight jitter to prevent perfect stacking
+                const jitterLat = (Math.random() - 0.5) * 0.0008;
+                const jitterLng = (Math.random() - 0.5) * 0.0008;
+
+                const c = L.circle([circle.lat + jitterLat, circle.lng + jitterLng], {
+                    radius: get_circle_radius(currentCO2),
+                    fillColor: riskColor,
+                    fillOpacity: opacity,
+                    color: riskColor,
+                    weight: isDanger ? 3 : 1.5,
+                    opacity: isDanger ? 0.8 : 0.5,
+                    className: isDanger ? 'danger-circle' : ''
+                }).addTo(map);
+
+                const sparkHtml = generateSparkline(circle.monthlyData, riskColor, 200, 30);
+
+                c.bindPopup(`
+                    <div style="font-family: Inter, sans-serif; min-width: 240px; padding: 4px;">
+                        <div style="font-weight: 800; font-size: 14px; margin-bottom: 2px; color:${riskColor};">
+                            ${isDanger ? 'CRITICAL POLLUTION ZONE' : circle.label}
+                        </div>
+                        <div style="font-weight: 700; font-size: 15px; margin-bottom: 4px;">
+                            ${circle.label} — ${currentDaily} t/day
+                        </div>
+                        <div style="font-size: 10px; color: #8b95b8; margin-bottom: 8px;">${circle.anchor}</div>
+                        <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+                            <span style="background: ${riskColor}1a; color: ${riskColor};
+                                padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 700;
+                                text-transform: uppercase; letter-spacing: 0.5px;">Risk: ${riskLabel}</span>
+                        </div>
+                        
+                        <div style="font-size: 11px; margin-bottom: 10px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 3px solid ${riskColor};">
+                            <strong>Impact:</strong> This zone affects nearby agriculture and urban population density.
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px;">
+                            <div style="text-align:center; padding: 4px; background: rgba(255,255,255,0.04); border-radius: 6px;">
+                                <div style="font-size: 14px; font-weight: 700; color: var(--accent-cyan);">${currentDaily}</div>
+                                <div style="font-size: 8px; text-transform: uppercase; color: #4d567a;">t/day</div>
+                            </div>
+                            <div style="text-align:center; padding: 4px; background: rgba(255,255,255,0.04); border-radius: 6px;">
+                                <div style="font-size: 14px; font-weight: 700; color: ${riskColor};">${circle.maxCO2}</div>
+                                <div style="font-size: 8px; text-transform: uppercase; color: #4d567a;">Max (m)</div>
+                            </div>
+                            <div style="text-align:center; padding: 4px; background: rgba(255,255,255,0.04); border-radius: 6px;">
+                                <div style="font-size: 14px; font-weight: 700;">${circle.threshold}</div>
+                                <div style="font-size: 8px; text-transform: uppercase; color: #4d567a;">Threshold</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 6px;">
+                            <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #4d567a; margin-bottom: 2px;">Trend (6 Months)</div>
+                            ${sparkHtml}
+                        </div>
+                    </div>
+                `);
+
+                pollutionCircles.push(c);
+            });
+        }
+
+        function updateTimeline() {
+            const val = document.getElementById('timelineSlider').value;
+            updatePollutionCircles(parseInt(val));
+        }
+
+        // ══════════════════════════════════════════
+        // RENDER PANELS
+        // ══════════════════════════════════════════
+        function renderPollution() {
+            const panel = document.getElementById('panelContent');
+
+            if (allCircles.length === 0) {
+                panel.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#128200;</div>
+                        <div class="empty-state-text">Loading pollution data...</div>
+                    </div>`;
+                return;
+            }
+
+            // Sort by risk score descending
+            const sorted = [...allCircles].sort((a, b) => b.riskScore - a.riskScore);
+
+            panel.innerHTML = sorted.map((c, i) => {
+                const riskClass = `risk-${c.riskLevel}`;
+                const badgeClass = `badge-risk-${c.riskLevel}`;
+                const sparkHtml = generateSparkline(c.monthlyData, c.color);
+                const barWidth = Math.min(100, c.riskScore);
+
+                return `
+                    <div class="pollution-card ${riskClass} fade-in" style="animation-delay: ${i * 0.05}s"
+                         onclick="flyToCircle(${c.lat}, ${c.lng}, '${c.key}')">
+                        <div class="pollution-header">
+                            <span class="pollution-name">${c.label}</span>
+                            <span class="pollution-risk-badge ${badgeClass}">${c.riskLabel} ${c.riskScore}</span>
+                        </div>
+                        <div class="pollution-stats">
+                            <div class="pollution-stat">
+                                <div class="pollution-stat-value" style="color: var(--accent-cyan);">${c.meanDailyCO2}</div>
+                                <div class="pollution-stat-label">t/day</div>
+                            </div>
+                            <div class="pollution-stat">
+                                <div class="pollution-stat-value" style="color: ${c.color};">${c.maxCO2}</div>
+                                <div class="pollution-stat-label">Max (m)</div>
+                            </div>
+                            <div class="pollution-stat">
+                                <div class="pollution-stat-value">${c.exceedanceCount}</div>
+                                <div class="pollution-stat-label">Exceed</div>
+                            </div>
+                        </div>
+                        <div class="sparkline-container">
+                            ${sparkHtml}
+                        </div>
+                        <div class="risk-bar-container">
+                            <div class="risk-bar-fill" style="width: ${barWidth}%; background: ${c.color};"></div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        function renderLocations() {
+            const panel = document.getElementById('panelContent');
+
+            if (allLocations.length === 0) {
+                panel.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#128205;</div>
+                        <div class="empty-state-text">No locations yet.<br>Search for a place to get started.</div>
+                    </div>`;
+                return;
+            }
+
+            panel.innerHTML = allLocations.map((loc, i) => `
+                <div class="location-card fade-in" style="animation-delay: ${i * 0.03}s"
+                     onclick="flyTo(${loc.lat}, ${loc.lng})">
+                    <button class="card-delete" onclick="event.stopPropagation(); deleteLocation(${loc.id})" title="Delete">&#10005;</button>
+                    <div class="card-header">
+                        <span class="card-name">${loc.name}</span>
+                        <span class="card-badge badge-${loc.category}">${loc.category}</span>
+                    </div>
+                    <div class="card-details">
+                        <span class="card-zone">&#128204; ${loc.zone || 'unknown'}</span>
+                        <span class="card-coords">${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderAnalysis() {
+            const panel = document.getElementById('panelContent');
+
+            const facilityOptions = allCircles.map(c =>
+                `<option value="${c.key}" ${selectedFacility === c.key ? 'selected' : ''}>${c.label} (Risk: ${c.riskScore})</option>`
+            ).join('');
+
+            let resultHtml = '';
+
+            if (currentAnalysis) {
+                const a = currentAnalysis;
+                const analysis = a.analysis || {};
+                const diag = analysis.diagnostic || {};
+                const metrics = analysis.metrics || {};
+                const recs = a.recommendations || {};
+                const recommendations = recs.recommendations || [];
+                const carbon = recs.carbonMarket || {};
+                const regulatory = recs.regulatoryAlert || {};
+
+                resultHtml = `
+                    <div class="analysis-result fade-in">
+                        <div class="analysis-section">
+                            <div class="analysis-section-title">&#128202; Diagnostic</div>
+                            <div class="analysis-text">${diag.summary || 'N/A'}</div>
+                        </div>
+
+                        <div class="analysis-section">
+                            <div class="analysis-section-title">&#128200; Tendance</div>
+                            <div class="analysis-text">
+                                <strong>${diag.trend || '?'}</strong> — ${diag.trendDetail || ''}
+                            </div>
+                        </div>
+
+                        <div class="analysis-section">
+                            <div class="analysis-section-title">&#127774; Pattern saisonnier</div>
+                            <div class="analysis-text">${diag.seasonalPattern || 'N/A'}</div>
+                        </div>
+
+                        <div class="analysis-section">
+                            <div class="analysis-section-title">&#9888;&#65039; Conformité</div>
+                            <div class="analysis-text">
+                                <strong style="color: ${diag.complianceStatus === 'critique' ? 'var(--risk-danger)' : diag.complianceStatus === 'attention' ? 'var(--risk-warning)' : 'var(--risk-safe)'}">
+                                    ${diag.complianceStatus || '?'}
+                                </strong>
+                                — ${diag.complianceDetail || ''}
+                            </div>
+                        </div>
+
+                        ${metrics.peakMonth ? `
+                        <div class="analysis-section">
+                            <div class="analysis-section-title">&#128200; Métriques clés</div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                                <div style="padding: 6px 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+                                    <div style="font-size: 10px; color: var(--text-muted);">Pic</div>
+                                    <div style="font-size: 13px; font-weight: 700; color: var(--risk-danger);">${metrics.peakValue} t</div>
+                                    <div style="font-size: 9px; color: var(--text-muted);">${metrics.peakMonth}</div>
+                                </div>
+                                <div style="padding: 6px 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+                                    <div style="font-size: 10px; color: var(--text-muted);">Min</div>
+                                    <div style="font-size: 13px; font-weight: 700; color: var(--risk-safe);">${metrics.lowestValue} t</div>
+                                    <div style="font-size: 9px; color: var(--text-muted);">${metrics.lowestMonth}</div>
+                                </div>
+                            </div>
+                        </div>` : ''}
+
+                        ${recommendations.length > 0 ? `
+                        <div class="analysis-section">
+                            <div class="analysis-section-title">&#128161; Recommandations</div>
+                            ${recommendations.map(r => `
+                                <div class="rec-card">
+                                    <div class="rec-header">
+                                        <span class="rec-priority rec-${r.priority}">${r.priority}</span>
+                                        <span class="rec-title">${r.title}</span>
+                                    </div>
+                                    <div class="rec-desc">${r.description}</div>
+                                    <div class="rec-meta">
+                                        <span class="rec-meta-tag">${r.timeline || ''}</span>
+                                        <span class="rec-meta-tag">${r.category || ''}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>` : ''}
+
+                        ${carbon.eligible !== undefined ? `
+                        <div class="alert-card">
+                            <div class="alert-card-title">
+                                &#127981; Marché Carbone
+                                <span style="color: ${carbon.eligible ? 'var(--risk-safe)' : 'var(--risk-danger)'}; font-size: 10px;">
+                                    ${carbon.eligible ? '✓ Éligible' : '✗ Non éligible'}
+                                </span>
+                            </div>
+                            <div class="alert-card-text">${carbon.detail || ''}</div>
+                        </div>` : ''}
+
+                        ${regulatory.hasAlert ? `
+                        <div class="alert-card" style="border-color: rgba(239,68,68,0.3);">
+                            <div class="alert-card-title" style="color: var(--risk-danger);">
+                                &#9888;&#65039; Alerte Réglementaire
+                            </div>
+                            <div class="alert-card-text">${regulatory.detail || ''}</div>
+                        </div>` : ''}
+
+                        <div style="margin-top: 8px; font-size: 10px; color: var(--text-muted); text-align: center;">
+                            Analysis completed in ${a.elapsed || '?'}s via GPT-4o-mini
+                        </div>
+                    </div>`;
+            }
+
+            panel.innerHTML = `
+                <div class="analysis-panel">
+                    <div class="analysis-header">
+                        <div class="analysis-icon">&#129504;</div>
+                        <div>
+                            <div class="analysis-title">AI Environmental Analysis</div>
+                            <div class="analysis-subtitle">Powered by GPT-4o-mini — Analyzes real data only</div>
+                        </div>
+                    </div>
+
+                    <select class="facility-select" id="facilitySelect" onchange="selectedFacility = this.value">
+                        <option value="">Select a facility to analyze...</option>
+                        ${facilityOptions}
+                    </select>
+
+                    <button class="analysis-btn" id="analyzeBtn" onclick="runAnalysis()">
+                        &#129504; Analyze with AI Agent
+                    </button>
+
+                    ${resultHtml}
+                </div>`;
+        }
+
+        function renderLogs() {
+            const panel = document.getElementById('panelContent');
+
+            if (allLogs.length === 0) {
+                panel.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#128196;</div>
+                        <div class="empty-state-text">No logs yet.</div>
+                    </div>`;
+                return;
+            }
+
+            panel.innerHTML = allLogs.map(log => {
+                const statusClass = log.status === 'success' ? 'log-success' :
+                                   log.status === 'rejected' ? 'log-rejected' : 'log-error';
+                const icon = log.status === 'success' ? '&#10003;' :
+                            log.status === 'rejected' ? '&#8635;' : '&#10007;';
+                const time = new Date(log.timestamp).toLocaleTimeString();
+
+                let badges = '';
+                if (log.cacheHit) badges += '<span class="log-badge log-badge-cache">CACHE</span> ';
+                if (log.elapsed) badges += `<span class="log-badge log-badge-time">${log.elapsed}s</span>`;
+
+                return `
+                    <div class="log-entry ${statusClass}">
+                        <div class="log-icon">${icon}</div>
+                        <div class="log-body">
+                            <div class="log-query">${log.query}</div>
+                            <div class="log-detail">${log.detail || ''}</div>
+                        </div>
+                        ${badges}
+                        <span class="log-time">${time}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ══════════════════════════════════════════
+        // AI ANALYSIS
+        // ══════════════════════════════════════════
+        async function runAnalysis() {
+            const facility = selectedFacility || document.getElementById('facilitySelect')?.value;
+            if (!facility) {
+                alert('Please select a facility to analyze.');
+                return;
+            }
+
+            selectedFacility = facility;
+            const btn = document.getElementById('analyzeBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Analyzing with AI...';
+
+            try {
+                const res = await fetch('/analyze-zone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        facility: facility,
+                        zoneType: 'industrial'
+                    })
+                });
+
+                currentAnalysis = await res.json();
+                renderAnalysis();
+                loadLogs();
+            } catch (err) {
+                console.error('Analysis failed:', err);
+                btn.disabled = false;
+                btn.textContent = '🧠 Analyze with AI Agent';
+            }
+        }
+
+        // ══════════════════════════════════════════
+        // TAB SWITCHING
+        // ══════════════════════════════════════════
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.tab === tab);
+            });
+
+            if (tab === 'pollution') renderPollution();
+            else if (tab === 'locations') renderLocations();
+            else if (tab === 'analysis') renderAnalysis();
+            else if (tab === 'logs') renderLogs();
+        }
+
+        // ══════════════════════════════════════════
+        // NAVIGATION
+        // ══════════════════════════════════════════
+        function flyTo(lat, lng) {
+            map.flyTo([lat, lng], 15, { duration: 1 });
+        }
+
+        function flyToCircle(lat, lng, key) {
+            map.flyTo([lat, lng], 13, { duration: 1.2 });
+            // Open the circle popup
+            pollutionCircles.forEach(c => {
+                const pos = c.getLatLng();
+                if (Math.abs(pos.lat - lat) < 0.001 && Math.abs(pos.lng - lng) < 0.001) {
+                    c.openPopup();
+                }
+            });
+        }
+
+        // ══════════════════════════════════════════
+        // DELETE
+        // ══════════════════════════════════════════
+        async function deleteLocation(id) {
+            try {
+                await fetch(`/locations/${id}`, { method: 'DELETE' });
+                loadLocations();
+                loadLogs();
+            } catch (err) {
+                console.error('Delete failed:', err);
+            }
+        }
+
+        // ══════════════════════════════════════════
+        // INITIAL LOAD
+        // ══════════════════════════════════════════
+        async function initApp() {
+            // Load all data in parallel
+            await Promise.all([
+                loadLocations(),
+                loadLogs(),
+                loadRiskMap(),
+                loadEmissions(),
+                loadOverview()
+            ]);
+
+            // Default tab
+            renderPollution();
+        }
+
+        initApp();
+
+        // ══════════════════════════════════════════
+        // EMERGENCY ASSISTANT LOGIC
+        // ══════════════════════════════════════════
+        const sessionId = 'emg_' + Math.random().toString(36).substr(2, 9);
+        let assistantLat = null;
+        let assistantLng = null;
+        let emergencyTimer = null;
+
+        function resetEmergencyTimer() {
+            clearTimeout(emergencyTimer);
+            emergencyTimer = setTimeout(triggerAutoAlarm, 60000); // 1 minute
+        }
+
+        function triggerAutoAlarm() {
+            addMessage("🚨 ALERT: High risk detected. Assessing agricultural viability...", "ai");
+        }
+
+        function toggleAssistant() {
+            const w = document.getElementById('assistantWidget');
+            w.style.display = w.style.display === 'flex' ? 'none' : 'flex';
+            if (w.style.display === 'flex') {
+                if (document.getElementById('chatMessages').children.length === 0) {
+                    sendToAssistant(""); // Trigger GREETING
+                }
+                resetEmergencyTimer();
+            } else {
+                clearTimeout(emergencyTimer);
+                w.classList.remove('critical-alarm');
+                document.getElementById('assistantRing').classList.remove('critical-alarm-ring');
+            }
+        }
+
+        function triggerAutoLocate() {
+            addMessage("Getting location...", "user");
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    assistantLat = pos.coords.latitude;
+                    assistantLng = pos.coords.longitude;
+                    sendToAssistant("Location selected", assistantLat, assistantLng);
+                }, (err) => {
+                    alert("Location access denied. Please click '📍 Select on Map'.");
+                });
+            }
+        }
+
+        function triggerMapSelect() {
+            addMessage("I will click on the map.", "user");
+            addMessage("Please click anywhere on the map...", "ai");
+            map.once('click', function(e) {
+                assistantLat = e.latlng.lat;
+                assistantLng = e.latlng.lng;
+                L.marker([assistantLat, assistantLng]).addTo(map).bindPopup("<b>Agricultural Analysis</b><br>Assistant is analyzing...").openPopup();
+                sendToAssistant("Location selected", assistantLat, assistantLng);
+            });
+        }
+
+        function processQuickReply(text) {
+            sendToAssistant(text);
+        }
+
+        function sendChatInput() {
+            const inp = document.getElementById('chatInput');
+            if (inp.value.trim() !== '') {
+                sendToAssistant(inp.value.trim());
+                inp.value = '';
+            }
+        }
+
+        async function sendToAssistant(message, lat=null, lng=null) {
+            resetEmergencyTimer();
+            if (message && message !== "Location selected") {
+                addMessage(message, "user");
+            }
+            
+            document.getElementById('chatInput').value = '';
+            document.getElementById('chatTyping').style.display = 'block';
+            document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+            
+            try {
+                const res = await fetch('/api/agriculture/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        message: message,
+                        lat: lat,
+                        lng: lng
+                    })
+                });
+                const data = await res.json();
+                
+                document.getElementById('chatTyping').style.display = 'none';
+                
+                if (data.error) {
+                    addMessage("Error connecting to assistant core.", "ai");
+                    return;
+                }
+                
+                addMessage(data.response, "ai");
+                
+                // Update Pulse
+                const score = data.emergency_score;
+                const ring = document.getElementById('assistantRing');
+                if (score >= 80) ring.style.boxShadow = "0 0 35px #ef4444";
+                else if (score >= 40) ring.style.boxShadow = "0 0 15px #f59e0b";
+                else ring.style.boxShadow = "0 0 15px rgba(239, 68, 68, 0.5)";
+                
+            } catch(err) {
+                 console.error(err);
+                 document.getElementById('chatTyping').style.display = 'none';
+                 addMessage("Failed to reach emergency server.", "ai");
+            }
+        }
+
+        function addMessage(text, sender) {
+            const list = document.getElementById('chatMessages');
+            const d = document.createElement('div');
+            d.className = "chat-bubble " + (sender === "user" ? "chat-user" : "chat-ai");
+            // Bold the steps for better UX
+            d.innerHTML = text.replace(/(Step [0-9]+:)/g, '<strong>$1</strong>');
+            list.appendChild(d);
+            list.scrollTop = list.scrollHeight;
+        }
+    </script>
+
+    <!-- AI Agriculture Assistant HTML -->
+    <div class="assistant-btn" id="assistantRing" onclick="toggleAssistant()">🌿</div>
+    <div class="assistant-widget" id="assistantWidget">
+        <div class="assistant-header">
+            <div class="assistant-title">🌿 GABES AI AGRICULTURE SYSTEM</div>
+            <div class="assistant-close" onclick="toggleAssistant()">&#10005;</div>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-typing" id="chatTyping">Assistant is analyzing...</div>
+        <div class="quick-replies" id="quickReplies">
+            <button class="qr-btn qr-btn-loc" onclick="triggerAutoLocate()">📡 Use my location</button>
+            <button class="qr-btn qr-btn-loc" onclick="triggerMapSelect()">📍 Select on Map</button>
+            <button class="qr-btn" onclick="processQuickReply('Apples')">Apples</button>
+            <button class="qr-btn" onclick="processQuickReply('Pomegranates')">Pomegranates</button>
+            <button class="qr-btn" onclick="processQuickReply('Dates')">Dates</button>
+            <button class="qr-btn" onclick="processQuickReply('Olives')">Olives</button>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" class="chat-input" placeholder="Type crop name..." onkeypress="if(event.key==='Enter') sendChatInput()">
+            <button class="chat-send" onclick="sendChatInput()">Send</button>
+        </div>
+    </div>
+</body>
+</html>
