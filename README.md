@@ -1,43 +1,51 @@
-# 🗺️ Gabesi AIGuardian — Map Intelligence Backend
+# 🌍 Gabesi AIGuardian — Smart Environmental & Emergency Intelligence Platform
 
-An AI-powered geographic intelligence system for **Gabès, Tunisia** that collects, verifies, classifies, and visualizes strategic locations using SerpAPI and OpenAI agents.
-
----
-
-## 🎯 Project Overview
-
-This backend system:
-1. **Searches** locations via SerpAPI (Google Maps engine) to get GPS coordinates
-2. **Verifies** each location is actually in the Gabès region (AI Verification Agent)
-3. **Classifies** each location into a category using OpenAI (AI Classification Agent)
-4. **Detects duplicates** using coordinate proximity (±0.001° tolerance ~111m)
-5. **Clusters** locations into geographic zones
-6. **Stores** validated results in a local JSON database
-7. **Displays** everything on an interactive Leaflet map dashboard
+An AI-powered geographic and emergency intelligence system for **Gabès, Tunisia**. It actively collects, verifies, and maps strategic industrial and geographical zones, whilst empowering citizens with a highly-reactive **AI Emergency Assistant** equipped with real-time pollution metrics and strict medical RAG logic.
 
 ---
 
-## 🧠 AI Agents
+## 🎯 Project Overview & Pipeline
 
-### Agent 1: Classification Agent
-- **Model**: GPT-4o-mini
-- **Role**: Classifies each location into exactly ONE category
-- **Categories**:
-  - `industrial` — factories, chemical plants, industrial zones, GCT, refineries
-  - `agriculture` — oases, farms, olive groves, palm plantations
-  - `coastal` — ports, beaches, fishing areas, seaside towns
-  - `urban` — city centers, hospitals, schools, markets, residential areas
-- **Output**: `{"category": "...", "zone": "...", "correctedName": "..."}`
+This platform performs two critical pipelines:
 
-### Agent 2: Verification Agent
-- **Model**: GPT-4o-mini
-- **Role**: Validates that a location actually exists in the Gabès governorate
-- **Logic**: If SerpAPI returns a result outside Gabès (e.g. "Gabe's Downtown" in Georgia, USA), the agent rejects it
-- **Output**: `{"verified": true/false}`
+### 1. Geographic Discovery & Mapping Pipeline
+1. **Searches** locations via SerpAPI (Google Maps engine) to get GPS coordinates.
+2. **Verifies** each location is genuinely in Gabès (AI Verification Agent).
+3. **Classifies** each location into a specific category (OpenAI GPT-4o-mini).
+4. **Detects duplicates** via coordinate proximity.
+5. **Displays** all filtered zones dynamically on a custom Leaflet map dashboard.
 
-### Agent 3: Duplicate Detection (Rule-Based)
-- **Logic**: Two locations are duplicates if `abs(lat1 - lat2) < 0.001 AND abs(lng1 - lng2) < 0.001`
-- **Result**: Duplicate locations are rejected and logged
+### 2. Emergency Decision Pipeline (The Assistant)
+1. **User Interaction**: Citizen accesses a glassmorphism floating chat widget.
+2. **Location Contexting**: Widget auto-detects or allows map-clicking to cross-reference location with the nearest pollution facilities on the Geographic Map.
+3. **Intent Detection**: The Chatbot uses a lightweight LLM router to strictly classify the emergency intent (e.g., `trauma`, `respiratory`, `cardiac`, `toxic`).
+4. **RAG Extraction**: The Agent queries a high-speed vector database (**Qdrant**) containing embedded medical protocols to strictly extract exact step-by-step first aid procedures without hallucination.
+5. **Smart Scoring & Memory**: Calculates an `Emergency Score` based on symptoms and local pollution risks. If the score exceeds 80 or the user stops responding for 60 seconds, an automated UI Alert kicks in.
+
+---
+
+## 🗺️ Roadmap
+
+- [x] **Phase 1:** Core Flask Backend & SerpAPI Integration for Map building.
+- [x] **Phase 2:** Langchain Verification and Classification (Isolate out-of-scope GPS hits).
+- [x] **Phase 3:** Qdrant Vector DB Medical injection (`medical_assistant_docs`).
+- [x] **Phase 4:** LangGraph State Machine for strict AI medical guidance (Zero-hallucination RAG).
+- [x] **Phase 5:** Conversational Memory LLM integration + UI Auto-Alarm Timer (60s).
+- [ ] **Phase 6:** Push Notifications and 190 Center API integrations for actual SMS dispatches.
+- [ ] **Phase 7:** Multimodal inputs (User can upload a picture of a chemical spill or wound).
+
+---
+
+## 🧠 AI Architecture
+
+### Smart Mapping Agents
+- **Agent 1 (Classification)**: Asserts categories (`industrial`, `agriculture`, `coastal`, `urban`).
+- **Agent 2 (Verification)**: Validates bounds against the Gabès governorate.
+
+### Emergency Decision Agents (LangGraph)
+- **Node: Detection**: Translates natural phrases ("I broke my leg") into standard triggers using LLM intent classification.
+- **Node: RAG Query**: Native `QdrantClient.query_points()` interface to extract 3-step protocols based on intent.
+- **Node: LLM Formatter**: Wraps static steps into multi-lingual, empathetic messages checking the live `history` memory loop.
 
 ---
 
@@ -45,34 +53,27 @@ This backend system:
 
 | Component | Technology |
 |-----------|-----------|
-| Backend | Python 3.12 + Flask |
-| Coordinates | SerpAPI (Google Maps engine) |
-| AI Classification | OpenAI GPT-4o-mini |
-| Storage | Local JSON files |
-| Frontend | HTML + Leaflet.js (dark theme) |
-| Map Tiles | CARTO Dark |
+| Backend | Python 3.12, Flask, LangGraph |
+| Map APIs | SerpAPI, Leaflet.js |
+| AI / LLM | OpenAI GPT-4o-mini, LangChain |
+| Vector DB | Qdrant (Cloud) |
+| Frontend | HTML5, Vanilla JS, CSS3 (Glassmorphism) |
 
 ---
 
-## 📁 Project Structure
+## 🏗️ Execution Flow & Use Cases
 
-```
-├── app.py                     # Main Flask server (all API endpoints)
-├── requirements.txt           # Python dependencies
-├── .env.example               # Environment variables template
-├── .gitignore
-├── services/
-│   ├── __init__.py
-│   ├── serpapi_service.py     # SerpAPI Google Maps integration
-│   ├── openai_service.py     # AI Classification + Verification agents
-│   └── storage.py            # JSON storage, cache, logs, duplicate detection
-├── frontend/
-│   └── index.html            # Interactive map dashboard (Leaflet.js)
-└── data/                      # Generated at runtime
-    ├── locations.json         # Validated locations database
-    ├── cache.json             # SerpAPI query cache
-    └── logs.json              # Execution logs
-```
+### Example Use Case 1: Citizen caught in Gas Leak
+1. User opens the application and clicks **"Use my location"** in the Assistant.
+2. The agent notes the user is within 5km of the Gabès Chemical Group (GCT).
+3. User types: *"I smell toxic gas and it's hard to breathe"*.
+4. **Agent Action:** RAG queries Qdrant for toxic exposure, checks pollution score, and issues a ⚠️ CAUTION alert advising the user to close windows, providing exact medical RAG steps in the user's spoken language.
+
+### Example Use Case 2: Unresponsive Patient
+1. User accesses the widget and types *"person passed out"*.
+2. **Agent Action:** Extracts the CPR protocol from Qdrant.
+3. The user stops interacting to perform CPR.
+4. **Trigger:** The 60-second frontend inactivity timer pops. The UI borders pulse blood-red and automatically generates a visual alarm message simulating a call to emergency services (190).
 
 ---
 
@@ -80,10 +81,11 @@ This backend system:
 
 ### Prerequisites
 - Python 3.10+
-- SerpAPI key ([serpapi.com](https://serpapi.com/))
-- OpenAI API key ([platform.openai.com](https://platform.openai.com/))
+- SerpAPI key (serpapi.com)
+- OpenAI API key (platform.openai.com)
+- Qdrant Cluster URL and Key (qdrant.tech)
 
-### Installation
+### Instructions
 
 ```bash
 # Clone the repository
@@ -91,209 +93,36 @@ git clone https://github.com/omarfh111/Gabesi-AIGuardian.git
 cd Gabesi-AIGuardian
 git checkout backend-map-service
 
-# Create virtual environment
+# Create and activate virtual environment
 python -m venv venv
-
-# Activate venv
-# Windows:
-.\venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
+.\venv\Scripts\activate   # Windows
+# source venv/bin/activate  # Linux/Mac
 
 # Install dependencies
 pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env
-# Edit .env and add your API keys
-```
-
-### Configuration
-
-Edit the `.env` file:
-
-```env
-OPENAI_API_KEY=sk-your-openai-key-here
-SERPAPI_KEY=your-serpapi-key-here
-PORT=3000
+# Edit .env and add your OPENAI, SERPAPI, and QDRANT keys.
 ```
 
 ---
 
 ## 🚀 Execution
 
-### Start the server
-
+### 1. Vector DB Ingestion (One-time)
+If this is a fresh setup, you must ingest the medical PDFs into Qdrant first.
 ```bash
-# Activate venv first
-.\venv\Scripts\activate   # Windows
-source venv/bin/activate   # Linux/Mac
+python scriptinjection/inject_data.py
+```
 
-# Run the server
+### 2. Start the Server
+```bash
 python app.py
 ```
-
-The server starts on `http://localhost:3000`
-
-### Open the Dashboard
-
-Open your browser and navigate to: **http://localhost:3000/**
-
-You will see the interactive map with all locations displayed.
-
----
-
-## 🔹 API Endpoints
-
-### `POST /search-location`
-Search, verify, classify and store a new location.
-
-**Request:**
-```json
-{
-  "query": "chenini oasis gabes tunisia"
-}
-```
-
-**Success Response (201):**
-```json
-{
-  "valid": true,
-  "category": "agriculture",
-  "zone": "chenini",
-  "name": "Oasis Chenini",
-  "lat": 33.878,
-  "lng": 10.067,
-  "elapsed": 2.5
-}
-```
-
-**Duplicate Response (409):**
-```json
-{
-  "valid": false,
-  "error": "Duplicate location - coordinates already stored."
-}
-```
-
-**Verification Rejected (422):**
-```json
-{
-  "valid": false,
-  "error": "Location could not be verified as being in Gabes region."
-}
-```
-
----
-
-### `GET /locations`
-Returns all stored locations. Supports filters.
-
-```
-GET /locations
-GET /locations?category=industrial
-GET /locations?zone=ghannouch
-```
-
----
-
-### `GET /stats`
-Returns category and zone statistics.
-
-```json
-{
-  "total": 22,
-  "categories": {
-    "industrial": 6,
-    "agriculture": 5,
-    "coastal": 4,
-    "urban": 7
-  },
-  "zones": {
-    "ghannouch": 3,
-    "gabes_center": 5,
-    "chenini": 2
-  }
-}
-```
-
----
-
-### `GET /logs`
-Returns execution logs with timing, cache hits, and status.
-
----
-
-### `DELETE /locations/<id>`
-Remove a specific location.
-
----
-
-### `GET /health`
-Health check with API key status.
-
----
-
-## 📊 Current Dataset (22 Strategic Points)
-
-| Category | Count | Examples |
-|----------|-------|---------|
-| 🏭 Industrial | 6 | GCT Phosphate, Ghannouch Industrial Zone, Cement Company, SAET Power, Gas Plant |
-| 🏙️ Urban | 7 | City Center, Hospital, University, School, Residential, Thermal Springs |
-| 🌾 Agriculture | 5 | Oasis Chenini, Metouia, Mareth, Matmata |
-| 🌊 Coastal | 4 | Fishing Port, Ghannouch Coast, Zarat, Port Zarat |
-
-### Geographic Zones (10 clusters)
-`chenini` · `ghannouch` · `gabes_center` · `gabes_industrial` · `gabes_port` · `metouia` · `zarat` · `mareth` · `el_hamma` · `matmata`
-
----
-
-## 🔄 Execution Flow
-
-```
-User Query → SerpAPI (Google Maps) → GPS Coordinates
-                                          ↓
-                                   Duplicate Check (±0.001°)
-                                          ↓
-                                   OpenAI Verification Agent
-                                   (Is it in Gabès?)
-                                          ↓
-                                   OpenAI Classification Agent
-                                   (industrial/agriculture/coastal/urban)
-                                          ↓
-                                   Zone Detection + Name Cleanup
-                                          ↓
-                                   Store in locations.json
-                                          ↓
-                                   Log in logs.json
-                                          ↓
-                                   Display on Map Dashboard
-```
-
----
-
-## 🧪 Testing with PowerShell
-
-```powershell
-# Health check
-Invoke-RestMethod -Uri "http://localhost:3000/health" -Method GET
-
-# Search a location
-$body = '{"query": "chenini oasis gabes tunisia"}'
-Invoke-RestMethod -Uri "http://localhost:3000/search-location" -Method POST -Body $body -ContentType "application/json"
-
-# Get all locations
-Invoke-RestMethod -Uri "http://localhost:3000/locations" -Method GET
-
-# Get stats
-Invoke-RestMethod -Uri "http://localhost:3000/stats" -Method GET
-
-# Get execution logs
-Invoke-RestMethod -Uri "http://localhost:3000/logs" -Method GET
-```
+The server starts on `http://localhost:3000`. Navigate there in your browser to access the Gabès Dashboard and the Emergency Medical Widget!
 
 ---
 
 ## 📝 License
-
-This project was built as a hackathon prototype for geographic intelligence analysis of the Gabès region in Tunisia.
+Proprietary project developed for advanced geographic and emergency analysis of the Gabès region in Tunisia.

@@ -36,6 +36,7 @@ from services.emissions_service import (
     compute_risk_score, get_risk_level, get_risk_map_data, get_overview_data
 )
 from services.analysis_agent import analyze_zone
+from services.emergency_agent import process_assistant_message
 
 load_dotenv()
 
@@ -416,6 +417,26 @@ def get_overview():
         print(f'[ERROR] /overview: {e}')
         return jsonify({'error': str(e)}), 500
 
+# ─────────────────────────────────────────────
+# POST /api/assistant/chat — Emergency Assistant
+# ─────────────────────────────────────────────
+@app.route('/api/assistant/chat', methods=['POST'])
+def assistant_chat():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Missing payload'}), 400
+            
+        session_id = data.get('session_id', 'default_session')
+        message = data.get('message', '')
+        lat = data.get('lat')
+        lng = data.get('lng')
+        
+        result = process_assistant_message(session_id, message, lat, lng)
+        return jsonify(result)
+    except Exception as e:
+        print(f'[ERROR] /api/assistant/chat: {e}')
+        return jsonify({'error': str(e)}), 500
 
 # ─────────────────────────────────────────────
 # Start server
