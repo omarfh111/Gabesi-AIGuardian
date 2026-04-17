@@ -59,3 +59,11 @@ dist/
 build/
 .deepeval/
 brain/
+
+# Test outputs
+backend/tests/test_results.json
+backend/tests/test_results.md
+
+# Optional (if you generate more later)
+backend/tests/*.log
+backend/tests/*.tmp

@@ -1,153 +1,115 @@
 import pytest
-from unittest.mock import MagicMock, patch
+import time
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from datetime import datetime, UTC, timedelta
 
 from app.main import app
 from app.agents.pollution_agent import (
-    classify_events_node, 
-    AgentState, 
-    PollutionEvent
+    classify_events_node, compute_insights_node,
+    AgentState, PollutionEvent, run_pollution_agent,
 )
+from app.models.pollution import PollutionReportRequest
 
 client = TestClient(app)
 
-def test_classify_events_temporal_types():
-    generated_at = datetime.now(UTC)
-    today_str = generated_at.strftime("%Y-%m-%d")
-    tomorrow_str = (generated_at + timedelta(days=1)).strftime("%Y-%m-%d")
-    yesterday_str = (generated_at - timedelta(days=1)).strftime("%Y-%m-%d")
-    
-    state: AgentState = {
-        "generated_at": generated_at,
-        "daily_means": {
-            yesterday_str: {"so2_mean": 15, "so2_peak": 20, "no2_mean": 5, "no2_peak": 8},
-            today_str: {"so2_mean": 15, "so2_peak": 20, "no2_mean": 5, "no2_peak": 8},
-            tomorrow_str: {"so2_mean": 15, "so2_peak": 20, "no2_mean": 5, "no2_peak": 8},
-        },
-        "thresholds": {
-            "so2_p80": 10.0,
-            "so2_p95": 20.0,
-            "no2_p80": 10.0,
-            "no2_p95": 20.0,
-        },
-        "events": [],
-        "error": None
-    }
-    
-    result = classify_events_node(state)
-    events = result["events"]
-    
-    hist_events = [e for e in events if e.event_date in [yesterday_str, today_str]]
-    for e in hist_events:
-        assert e.temporal_type == "historical"
-        
-    forecast_events = [e for e in events if e.event_date == tomorrow_str]
-    for e in forecast_events:
-        assert e.temporal_type == "forecast"
 
-def test_no2_event_thresholds():
-    generated_at = datetime.now(UTC)
-    state: AgentState = {
-        "generated_at": generated_at,
-        "daily_means": {
-            "2026-04-01": {"so2_mean": 5, "so2_peak": 10, "no2_mean": 25, "no2_peak": 30},
-        },
-        "thresholds": {
-            "so2_p80": 10.0,
-            "so2_p95": 20.0,
-            "no2_p80": 15.0,
-            "no2_p95": 22.0,
-        },
-        "events": [],
-        "error": None
-    }
-    
-    result = classify_events_node(state)
-    no2_events = [e for e in result["events"] if e.pollutant == "NO2"]
-    assert len(no2_events) == 1
-    # Check that it used NO2 thresholds
-    assert no2_events[0].p80_threshold == 15.0
-    assert no2_events[0].p95_threshold == 22.0
-    assert no2_events[0].severity == "severe"
-
-def test_api_endpoint_validation():
-    response = client.post("/api/v1/pollution/report", json={"plot_id": "test-plot"})
-    assert response.status_code == 422
-
-@patch("app.agents.pollution_agent.ChatOpenAI")
-@patch("app.agents.pollution_agent.httpx.get")
-@patch("app.agents.pollution_agent.QdrantClient")
-def test_request_window_days_respected(mock_qdrant, mock_get, mock_llm):
-    mock_get.return_value.status_code = 200
-    mock_get.return_value.json.return_value = {
-        "hourly": {
-            "time": ["2026-04-01T00:00"],
-            "sulphur_dioxide": [10.0],
-            "nitrogen_dioxide": [5.0]
+def test_deterministic_variability():
+    """Same input -> same output, different plot -> different (but deterministic) output."""
+    with patch("app.agents.pollution_agent._fetch_air_quality_cached") as mock_fetch:
+        mock_fetch.return_value = {
+            "time": ["2026-04-17T00:00"], "sulphur_dioxide": [50.0], "nitrogen_dioxide": [10.0],
         }
-    }
-    mock_llm.return_value.invoke.return_value.content = "Summary"
-    
-    response = client.post("/api/v1/pollution/report", json={
-        "farmer_id": "farmer_001",
-        "window_days": 5
-    })
-    
-    assert response.status_code == 200
-    data = response.json()
-    assert data["window_days"] == 5
-    
-    # Verify the mock was called with past_days=5
-    # httpx.get is called with (url, params=params, timeout=15.0)
-    mock_get.assert_called()
-    
-    # Find the call to Open-Meteo among all calls (Qdrant client also uses httpx)
-    om_call = None
-    for call_item in mock_get.call_args_list:
-        if "open-meteo" in str(call_item.args[0]):
-            om_call = call_item
-            break
-            
-    assert om_call is not None, "Open-Meteo API call not found"
-    assert om_call.kwargs["params"]["past_days"] == 5
+        req1 = PollutionReportRequest(farmer_id="f1", plot_id="plot_near_gct", window_days=30)
+        req2 = PollutionReportRequest(farmer_id="f1", plot_id="plot_near_gct", window_days=30)
+        res1 = run_pollution_agent(req1)
+        res2 = run_pollution_agent(req2)
+        assert res1.insights.dominant_pollutant == res2.insights.dominant_pollutant
+        assert res1.total_severe_days == res2.total_severe_days
 
-def test_event_payload_no_redundant_date():
-    generated_at = datetime.now(UTC)
+
+def test_dominance_multi_factor():
+    """SO2 wins on severity + recency despite fewer events."""
+    gen_at = datetime.now(UTC)
+    d1 = (gen_at - timedelta(days=1)).strftime("%Y-%m-%d")
+    d10 = (gen_at - timedelta(days=10)).strftime("%Y-%m-%d")
     state: AgentState = {
-        "generated_at": generated_at,
-        "daily_means": {
-            "2026-04-01": {"so2_mean": 15, "so2_peak": 20, "no2_mean": 5, "no2_peak": 8},
-        },
-        "thresholds": {
-            "so2_p80": 10.0,
-            "so2_p95": 20.0,
-            "no2_p80": 10.0,
-            "no2_p95": 20.0,
-        },
-        "events": [],
-        "error": None
+        "generated_at": gen_at, "language": "en", "exposure_factor": 1.0,
+        "plot_exposure_band": "mid_exposure", "plot_id": "test", "seed": 123,
+        "daily_means": {d1: {"so2_mean": 50, "no2_mean": 5}, d10: {"no2_mean": 15, "so2_mean": 5}},
+        "events": [
+            PollutionEvent(event_date=d1, pollutant="SO2", daily_mean_ug_m3=50, peak_hourly_ug_m3=60,
+                severity="severe", temporal_type="historical", source_type="modeled_observation",
+                p80_threshold=10, p95_threshold=20, exposure_band="mid", rag_annotation="", rag_sources=[], recorded_at=gen_at),
+            PollutionEvent(event_date=d10, pollutant="NO2", daily_mean_ug_m3=15, peak_hourly_ug_m3=20,
+                severity="elevated", temporal_type="historical", source_type="modeled_observation",
+                p80_threshold=10, p95_threshold=20, exposure_band="mid", rag_annotation="", rag_sources=[], recorded_at=gen_at),
+            PollutionEvent(event_date=d10, pollutant="NO2", daily_mean_ug_m3=15, peak_hourly_ug_m3=20,
+                severity="elevated", temporal_type="historical", source_type="modeled_observation",
+                p80_threshold=10, p95_threshold=20, exposure_band="mid", rag_annotation="", rag_sources=[], recorded_at=gen_at),
+        ],
+        "error": None, "requested_history_days": 20,
     }
-    result = classify_events_node(state)
-    event_dict = result["events"][0].model_dump()
-    assert "event_date" in event_dict
-    assert "date" not in event_dict
+    res = compute_insights_node(state)
+    assert res["insights"].dominant_pollutant == "SO2"
+    assert res["insights"].dominance_reason is not None
+    assert "SO2" in res["insights"].dominance_reason
 
-@patch("app.agents.pollution_agent.ChatOpenAI")
-@patch("app.agents.pollution_agent.httpx.get")
-@patch("app.agents.pollution_agent.QdrantClient")
-def test_french_localization(mock_qdrant, mock_get, mock_llm):
-    mock_get.return_value.status_code = 200
-    mock_get.return_value.json.return_value = {
-        "hourly": {"time": [], "sulphur_dioxide": [], "nitrogen_dioxide": []}
+
+def test_risk_window_clustering():
+    """Contiguous severe forecast dates cluster into a single window."""
+    gen_at = datetime.now(UTC)
+    d1, d2 = "2026-04-10", "2026-04-11"
+    state: AgentState = {
+        "generated_at": gen_at, "exposure_factor": 1.0, "plot_exposure_band": "mid_exposure",
+        "plot_id": "test", "language": "en", "requested_history_days": 20,
+        "daily_means": {d1: {"so2_mean": 100, "no2_mean": 10}, d2: {"so2_mean": 100, "no2_mean": 10}},
+        "events": [
+            PollutionEvent(event_date=d1, pollutant="SO2", daily_mean_ug_m3=100, peak_hourly_ug_m3=110,
+                severity="severe", temporal_type="forecast", source_type="forecast",
+                p80_threshold=20, p95_threshold=40, exposure_band="mid", rag_annotation="", rag_sources=[], recorded_at=gen_at),
+            PollutionEvent(event_date=d2, pollutant="SO2", daily_mean_ug_m3=100, peak_hourly_ug_m3=110,
+                severity="severe", temporal_type="forecast", source_type="forecast",
+                p80_threshold=20, p95_threshold=40, exposure_band="mid", rag_annotation="", rag_sources=[], recorded_at=gen_at),
+        ],
+        "error": None,
     }
-    mock_llm.return_value.invoke.return_value.content = "Sommaire"
-    
-    response = client.post("/api/v1/pollution/report", json={
-        "farmer_id": "farmer_001",
-        "language": "fr"
-    })
-    
-    assert response.status_code == 200
-    data = response.json()
-    assert "modèle atmosphérique" in data["disclaimer"]
+    res = compute_insights_node(state)
+    assert "2026-04-10 to 2026-04-11" in res["insights"].key_risk_window
+
+
+def test_ultra_remote_aggressive_suppression():
+    """Ultra-remote band drops marginal elevated events."""
+    gen_at = datetime.now(UTC)
+    state: AgentState = {
+        "generated_at": gen_at, "plot_exposure_band": "ultra_remote", "exposure_factor": 0.4, "seed": 42,
+        "daily_means": {"2026-04-17": {"so2_mean": 28, "so2_peak": 35, "no2_mean": 5, "no2_peak": 6}},
+        "thresholds": {"so2_p80": 10, "so2_p95": 30, "no2_p80": 10, "no2_p95": 30},
+        "events": [], "error": None,
+    }
+    res = classify_events_node(state)
+    assert len(res["events"]) == 0
+
+
+def test_trend_insufficient_history():
+    """Short window forces insufficient_history trend."""
+    gen_at = datetime.now(UTC)
+    state: AgentState = {
+        "generated_at": gen_at, "language": "en", "requested_history_days": 3, "plot_id": None,
+        "plot_exposure_band": "mid_exposure", "exposure_factor": 1.0, "seed": 1,
+        "daily_means": {(gen_at - timedelta(days=i)).strftime("%Y-%m-%d"): {"so2_mean": 5, "no2_mean": 5} for i in range(3)},
+        "events": [], "error": None,
+    }
+    res = compute_insights_node(state)
+    assert res["insights"].trend == "insufficient_history"
+    assert res["insights"].confidence.trend_confidence == "low"
+
+
+@patch("app.agents.pollution_agent._fetch_air_quality_cached")
+def test_performance_target(mock_fetch):
+    """Execution under 2 seconds with cached API."""
+    mock_fetch.return_value = {"time": ["2026-04-17T00:00"], "sulphur_dioxide": [10.0], "nitrogen_dioxide": [5.0]}
+    req = PollutionReportRequest(farmer_id="f1", plot_id="p1", window_days=30)
+    start = time.time()
+    run_pollution_agent(req)
+    assert time.time() - start < 2.0

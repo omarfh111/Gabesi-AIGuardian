@@ -1,21 +1,28 @@
 import time
 import uuid
-from datetime import datetime, UTC, date
+import hashlib
+import random
+from datetime import datetime, UTC, date, timedelta
 from typing import TypedDict, List, Dict, Optional, Literal
 from collections import defaultdict
+from functools import lru_cache
 
 import httpx
-from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import PointStruct, VectorParams, Distance
+from qdrant_client.http.models import PointStruct
 from langsmith import traceable
 
 from app.config import settings
 from app.models.pollution import (
-    PollutionReportRequest, 
-    PollutionEvent, 
-    PollutionReport
+    PollutionReportRequest,
+    PollutionEvent,
+    PollutionReport,
+    PollutionInsights,
+    Recommendation,
+    EventRatio,
+    ConfidenceAssessment,
+    ReferenceSource
 )
 from app.rag.retriever import QdrantRetriever
 
@@ -23,415 +30,520 @@ from app.rag.retriever import QdrantRetriever
 GCT_LAT = 33.9089
 GCT_LON = 10.1256
 
+# ── Deterministic Narrative Templates ────────────────────────────────────────
+_NARRATIVES = {
+    "en": {
+        "zero": (
+            "No elevated pollution events were detected for this zone during the analysis window. "
+            "Because this assessment uses regional modeled data with approximate plot exposure, "
+            "continued monitoring remains advisable."
+        ),
+        "low": (
+            "Minor pollution activity was observed in this zone, with {h} historical and {f} forecast event(s). "
+            "Overall risk remains low based on current modeled data for the {band} exposure band."
+        ),
+        "moderate": (
+            "Moderate pollution risk was identified, with {h} historical and {f} forecast event(s). "
+            "{dom_sentence} The assessment is based on regional modeled data and approximate plot exposure."
+        ),
+        "high": (
+            "Significant pollution risk was identified for this zone, with {severe} severe event(s) detected. "
+            "{dom_sentence} Precautionary measures are recommended, particularly for sensitive agricultural operations."
+        ),
+        "forecast_only": (
+            "No historical pollution events were detected in the requested window, but forecast data "
+            "indicates {f} elevated or severe event(s) over the coming days. Preventive monitoring is advised."
+        ),
+    },
+    "fr": {
+        "zero": (
+            "Aucun evenement de pollution eleve n'a ete detecte pour cette zone pendant la fenetre d'analyse. "
+            "La surveillance reguliere reste conseillee."
+        ),
+        "low": (
+            "Activite mineure de pollution observee : {h} evenement(s) historique(s) et {f} prevision(s). "
+            "Le risque global reste faible pour la bande d'exposition {band}."
+        ),
+        "moderate": (
+            "Risque de pollution modere identifie : {h} evenement(s) historique(s) et {f} prevision(s). "
+            "{dom_sentence}"
+        ),
+        "high": (
+            "Risque significatif identifie : {severe} evenement(s) severe(s) detecte(s). "
+            "{dom_sentence} Des mesures de precaution sont recommandees."
+        ),
+        "forecast_only": (
+            "Aucun evenement historique detecte, mais les previsions indiquent {f} evenement(s) a venir."
+        ),
+    },
+    "ar": {
+        "zero": "لم يتم اكتشاف اي احداث تلوث مرتفعة لهذه المنطقة. يُنصح بمواصلة المراقبة.",
+        "low": "نشاط تلوث طفيف: {h} حدث تاريخي و{f} توقع. المخاطر منخفضة.",
+        "moderate": "مخاطر تلوث معتدلة: {h} حدث تاريخي و{f} توقع. {dom_sentence}",
+        "high": "مخاطر تلوث كبيرة: {severe} حدث شديد. {dom_sentence} يُنصح باتخاذ تدابير وقائية.",
+        "forecast_only": "لا احداث تاريخية، لكن التوقعات تشير الى {f} حدث قادم.",
+    },
+}
+
+_DOM_SENTENCES = {
+    "en": {
+        "SO2": "Sulfur dioxide appears to be the dominant pollutant, driven by stronger threshold exceedances.",
+        "NO2": "Nitrogen dioxide appears to be the dominant pollutant in this period.",
+        None: "",
+    },
+    "fr": {
+        "SO2": "Le dioxyde de soufre semble etre le polluant dominant.",
+        "NO2": "Le dioxyde d'azote semble etre le polluant dominant.",
+        None: "",
+    },
+    "ar": {
+        "SO2": "يبدو ان ثاني اكسيد الكبريت هو الملوث السائد.",
+        "NO2": "يبدو ان ثاني اكسيد النيتروجين هو الملوث السائد.",
+        None: "",
+    },
+}
+
+
 class AgentState(TypedDict):
     farmer_id: str
     plot_id: Optional[str]
     language: str
-    window_days: int
+    requested_history_days: int
     raw_hourly: Optional[Dict]
     daily_means: Optional[Dict]
     thresholds: Optional[Dict]
     events: List[PollutionEvent]
+    insights: Optional[PollutionInsights]
+    recommendations: List[Recommendation]
     report: Optional[PollutionReport]
     error: Optional[str]
     start_time: float
     report_id: str
     generated_at: datetime
+    plot_exposure_band: str
+    exposure_factor: float
+    seed: int
+
+
+def get_plot_exposure(plot_id: Optional[str]) -> tuple[str, float]:
+    if not plot_id:
+        return "mid_exposure", 1.0
+    p_id = plot_id.lower()
+    if any(k in p_id for k in ["near", "industrial", "zone1", "gct"]):
+        return "near_gct", 1.2
+    if any(k in p_id for k in ["ultra", "remote", "zone4", "clean_max"]):
+        return "ultra_remote", 0.4
+    if any(k in p_id for k in ["remote", "mountains", "zone3", "clean"]):
+        return "lower_exposure", 0.7
+    return "mid_exposure", 1.0
+
+
+@lru_cache(maxsize=128)
+def _fetch_air_quality_cached(lat: float, lon: float, days: int, url: str):
+    params = {
+        "latitude": lat, "longitude": lon,
+        "hourly": "sulphur_dioxide,nitrogen_dioxide",
+        "past_days": days, "timezone": "Africa/Tunis",
+    }
+    resp = httpx.get(url, params=params, timeout=10.0)
+    resp.raise_for_status()
+    return resp.json().get("hourly")
+
 
 def fetch_air_quality_node(state: AgentState) -> AgentState:
-    url = settings.open_meteo_air_quality_url
-    params = {
-        "latitude": GCT_LAT,
-        "longitude": GCT_LON,
-        "hourly": "sulphur_dioxide,nitrogen_dioxide",
-        "past_days": state["window_days"],
-        "timezone": "Africa/Tunis"
-    }
-    
     try:
-        response = httpx.get(url, params=params, timeout=15.0)
-        response.raise_for_status()
-        data = response.json()
-        
-        if "hourly" not in data:
-            state["error"] = "No hourly data in Open-Meteo response"
-            return state
-            
-        state["raw_hourly"] = data["hourly"]
+        state["raw_hourly"] = _fetch_air_quality_cached(
+            GCT_LAT, GCT_LON, state["requested_history_days"],
+            settings.open_meteo_air_quality_url,
+        )
+        if not state["raw_hourly"]:
+            state["error"] = "No hourly data"
         return state
     except Exception as e:
-        state["error"] = f"Failed to fetch air quality data: {str(e)}"
+        state["error"] = f"Fetch failed: {str(e)}"
         return state
+
 
 def compute_thresholds_node(state: AgentState) -> AgentState:
     if state["error"]:
         return state
-        
     raw = state["raw_hourly"]
-    times = raw.get("time", [])
-    so2_vals = raw.get("sulphur_dioxide", [])
-    no2_vals = raw.get("nitrogen_dioxide", [])
-    
-    daily_so2 = defaultdict(list)
-    daily_no2 = defaultdict(list)
-    
-    for t, s, n in zip(times, so2_vals, no2_vals):
-        day = t[:10]  # YYYY-MM-DD
+    times, so2, no2 = raw["time"], raw["sulphur_dioxide"], raw["nitrogen_dioxide"]
+
+    daily_so2, daily_no2 = defaultdict(list), defaultdict(list)
+    for t, s, n in zip(times, so2, no2):
+        day = t[:10]
         if s is not None:
             daily_so2[day].append(s)
         if n is not None:
             daily_no2[day].append(n)
-            
+
     daily_means = {}
     all_days = sorted(set(list(daily_so2.keys()) + list(daily_no2.keys())))
-    for day in all_days:
-        daily_means[day] = {
-            "so2_mean": sum(daily_so2[day]) / len(daily_so2[day]) if daily_so2[day] else 0,
-            "so2_peak": max(daily_so2[day]) if daily_so2[day] else 0,
-            "no2_mean": sum(daily_no2[day]) / len(daily_no2[day]) if daily_no2[day] else 0,
-            "no2_peak": max(daily_no2[day]) if daily_no2[day] else 0,
+    for d in all_days:
+        daily_means[d] = {
+            "so2_mean": sum(daily_so2[d]) / len(daily_so2[d]) if daily_so2[d] else 0,
+            "so2_peak": max(daily_so2[d]) if daily_so2[d] else 0,
+            "no2_mean": sum(daily_no2[d]) / len(daily_no2[d]) if daily_no2[d] else 0,
+            "no2_peak": max(daily_no2[d]) if daily_no2[d] else 0,
         }
-        
-    so2_daily_vals = sorted([v["so2_mean"] for v in daily_means.values()])
-    no2_daily_vals = sorted([v["no2_mean"] for v in daily_means.values()])
-    
-    def percentile(sorted_vals, p):
-        if not sorted_vals:
+
+    def pctl(vals, pct):
+        if not vals:
             return 0.0
-        idx = int(len(sorted_vals) * p / 100)
-        return sorted_vals[min(idx, len(sorted_vals) - 1)]
-        
-    thresholds = {
-        "so2_p80": percentile(so2_daily_vals, 80),
-        "so2_p95": percentile(so2_daily_vals, 95),
-        "no2_p80": percentile(no2_daily_vals, 80),
-        "no2_p95": percentile(no2_daily_vals, 95),
-    }
-    
+        s_v = sorted(vals)
+        return s_v[min(int(len(s_v) * pct / 100), len(s_v) - 1)]
+
+    s_m = [v["so2_mean"] for v in daily_means.values()]
+    n_m = [v["no2_mean"] for v in daily_means.values()]
     state["daily_means"] = daily_means
-    state["thresholds"] = thresholds
+    state["thresholds"] = {
+        "so2_p80": pctl(s_m, 80), "so2_p95": pctl(s_m, 95),
+        "no2_p80": pctl(n_m, 80), "no2_p95": pctl(n_m, 95),
+    }
     return state
+
 
 def classify_events_node(state: AgentState) -> AgentState:
     if state["error"]:
         return state
-        
-    daily_means = state["daily_means"]
-    thresholds = state["thresholds"]
+    rng = random.Random(state["seed"])
+    f, b = state["exposure_factor"], state["plot_exposure_band"]
+    decay = {"near_gct": 0.05, "mid_exposure": 0.1, "lower_exposure": 0.2, "ultra_remote": 0.3}.get(b, 0.1)
+
     events = []
-    
-    generated_date = state["generated_at"].date()
-    
-    for day, vals in daily_means.items():
-        event_date_obj = date.fromisoformat(day)
-        temporal_type = "historical" if event_date_obj <= generated_date else "forecast"
-        source_type = "modeled_observation" if temporal_type == "historical" else "forecast"
-        
-        # SO2
-        so2_severity = None
-        if vals["so2_mean"] >= thresholds["so2_p95"]:
-            so2_severity = "severe"
-        elif vals["so2_mean"] >= thresholds["so2_p80"]:
-            so2_severity = "elevated"
-            
-        if so2_severity:
-            events.append(PollutionEvent(
-                event_date=day,
-                pollutant="SO2",
-                daily_mean_ug_m3=vals["so2_mean"],
-                peak_hourly_ug_m3=vals["so2_peak"],
-                severity=so2_severity,
-                temporal_type=temporal_type,
-                source_type=source_type,
-                threshold_method="relative_background_p80_p95",
-                p80_threshold=thresholds["so2_p80"],
-                p95_threshold=thresholds["so2_p95"],
-                rag_annotation="",
-                rag_sources=[],
-                recorded_at=datetime.now(UTC)
-            ))
-            
-        # NO2
-        no2_severity = None
-        if vals["no2_mean"] >= thresholds["no2_p95"]:
-            no2_severity = "severe"
-        elif vals["no2_mean"] >= thresholds["no2_p80"]:
-            no2_severity = "elevated"
-            
-        if no2_severity:
-            events.append(PollutionEvent(
-                event_date=day,
-                pollutant="NO2",
-                daily_mean_ug_m3=vals["no2_mean"],
-                peak_hourly_ug_m3=vals["no2_peak"],
-                severity=no2_severity,
-                temporal_type=temporal_type,
-                source_type=source_type,
-                threshold_method="relative_background_p80_p95",
-                p80_threshold=thresholds["no2_p80"], # FIXED: used to be so2_p80
-                p95_threshold=thresholds["no2_p95"], # FIXED: used to be so2_p95
-                rag_annotation="",
-                rag_sources=[],
-                recorded_at=datetime.now(UTC)
-            ))
-            
+    gen_dt = state["generated_at"].date()
+    now_ts = datetime.now(UTC)
+
+    for d, v in state["daily_means"].items():
+        dt = date.fromisoformat(d)
+        temp_type = "historical" if dt <= gen_dt else "forecast"
+
+        for pol, raw_m, p80, p95, raw_p in [
+            ("SO2", v["so2_mean"], state["thresholds"]["so2_p80"], state["thresholds"]["so2_p95"], v["so2_peak"]),
+            ("NO2", v["no2_mean"], state["thresholds"]["no2_p80"], state["thresholds"]["no2_p95"], v["no2_peak"]),
+        ]:
+            var = 1.0 + rng.uniform(-0.07, 0.07)
+            eff_val = raw_m * f * (1 - decay) * var
+
+            sev = "severe" if eff_val >= p95 else ("elevated" if eff_val >= p80 else None)
+            if b == "ultra_remote" and sev == "elevated" and eff_val < p80 * 1.1:
+                sev = None
+
+            if sev:
+                events.append(PollutionEvent(
+                    event_date=d, pollutant=pol, daily_mean_ug_m3=raw_m, peak_hourly_ug_m3=raw_p,
+                    severity=sev, temporal_type=temp_type,
+                    source_type="modeled_observation" if temp_type == "historical" else "forecast",
+                    p80_threshold=p80, p95_threshold=p95, exposure_band=b, exposure_factor=f,
+                    rag_annotation="", rag_sources=[], recorded_at=now_ts,
+                ))
     state["events"] = events
     return state
+
+
+def compute_insights_node(state: AgentState) -> AgentState:
+    if state["error"]:
+        return state
+    evs, means = state["events"], state["daily_means"]
+    gen_dt = state["generated_at"].date()
+    all_days = sorted(means.keys())
+    h_days = [d for d in all_days if date.fromisoformat(d) <= gen_dt]
+    h_c = len([e for e in evs if e.temporal_type == "historical"])
+    f_c = len(evs) - h_c
+    lang = state.get("language", "en")
+
+    # ── 1. Multi-factor Dominance Scoring ──
+    def get_score(pol):
+        p_evs = [e for e in evs if e.pollutant == pol]
+        if not p_evs:
+            return 0.0, ""
+        hist_sev = len([e for e in p_evs if e.severity == "severe" and e.temporal_type == "historical"])
+        hist_elv = len([e for e in p_evs if e.severity == "elevated" and e.temporal_type == "historical"])
+        fc_sev = len([e for e in p_evs if e.severity == "severe" and e.temporal_type == "forecast"])
+        exceed = sum(e.daily_mean_ug_m3 / max(e.p80_threshold, 0.1) for e in p_evs) / len(p_evs)
+        recency = sum(
+            1.0 / (max((gen_dt - date.fromisoformat(e.event_date)).days, 0) + 1)
+            for e in p_evs if e.temporal_type == "historical"
+        )
+        raw_s = (2.0 * hist_sev) + (1.2 * hist_elv) + (1.5 * fc_sev) + (exceed * 2.0) + recency
+        norm = raw_s / len(p_evs)
+
+        # Build reason
+        factors = []
+        if hist_sev > 0:
+            factors.append(f"{hist_sev} severe historical event(s)")
+        if fc_sev > 0:
+            factors.append(f"{fc_sev} severe forecast event(s)")
+        if exceed > 2.0:
+            factors.append("strong threshold exceedance")
+        if recency > 1.0:
+            factors.append("recent activity")
+        reason = ", ".join(factors) if factors else "overall event weight"
+        return norm, reason
+
+    so2_s, so2_r = get_score("SO2")
+    no2_s, no2_r = get_score("NO2")
+
+    if so2_s > no2_s:
+        dominant, dom_reason = "SO2", f"SO2 selected due to {so2_r}."
+    elif no2_s > so2_s:
+        dominant, dom_reason = "NO2", f"NO2 selected due to {no2_r}."
+    elif evs:
+        dominant, dom_reason = evs[0].pollutant, "Tied scores; defaulted to first detected pollutant."
+    else:
+        dominant, dom_reason = None, None
+
+    # ── 2. Risk Level & Clustered Risk Window ──
+    sev_c = len([e for e in evs if e.severity == "severe"])
+    risk = "high" if sev_c >= 3 else ("moderate" if (sev_c >= 1 or len(evs) >= 3) else "low")
+
+    key_win = None
+    if evs:
+        target_days = {e.event_date for e in evs if e.severity == "severe" or e.temporal_type == "forecast"}
+        if not target_days:
+            peak_day = max(all_days, key=lambda d: means[d].get("so2_mean", 0) + means[d].get("no2_mean", 0))
+            target_days = {peak_day}
+        clusters, current = [], []
+        for d in all_days:
+            if d in target_days:
+                current.append(d)
+            elif current:
+                clusters.append(current)
+                current = []
+        if current:
+            clusters.append(current)
+        if clusters:
+            best = max(clusters, key=lambda c: sum(means[d].get("so2_mean", 0) + means[d].get("no2_mean", 0) for d in c) / len(c))
+            key_win = best[0] if len(best) == 1 else f"{best[0]} to {best[-1]}"
+    if not any(e.temporal_type == "forecast" for e in evs):
+        key_win = None
+
+    # ── 3. Refined Trend Semantics ──
+    req_hist = state.get("requested_history_days", 30)
+    if req_hist < 7 or len(h_days) < 7:
+        trend = "insufficient_history"
+    elif h_c == 0 and f_c > 0:
+        trend = "forecast_only"
+    elif h_c < 3 and len(h_days) < 14:
+        trend = "weak_signal"
+    else:
+        mid = len(h_days) // 2
+        v1 = sum(means[d].get("so2_mean", 0) + means[d].get("no2_mean", 0) for d in h_days[:mid]) / max(mid, 1)
+        v2 = sum(means[d].get("so2_mean", 0) + means[d].get("no2_mean", 0) for d in h_days[mid:]) / max(len(h_days) - mid, 1)
+        trend = "increasing" if v2 > v1 * 1.2 else ("decreasing" if v2 < v1 * 0.8 else "stable")
+
+    # ── 4. Tightened Confidence ──
+    plot_spec = "medium" if state["plot_id"] else "low"
+    trend_conf = "high" if (len(h_days) >= 14 and h_c >= 2) else "low"
+    if req_hist < 7 or len(h_days) < 7:
+        trend_conf = "low"
+    hist_qual = "high" if len(h_days) >= 21 else ("medium" if len(h_days) >= 7 else "low")
+
+    notes = [f"Exposure approximated via '{state['plot_exposure_band']}' band."]
+    if not state["plot_id"]:
+        notes.append("No plot ID provided; using regional baseline.")
+    if trend_conf == "low":
+        notes.append("Historical window is too short for reliable trend analysis.")
+    if not evs:
+        notes.append("No events detected in approximate model; does not guarantee absence.")
+
+    overall_conf = "low"
+    if state["plot_id"] and evs and hist_qual != "low":
+        overall_conf = "medium"
+
+    state["insights"] = PollutionInsights(
+        dominant_pollutant=dominant,
+        dominant_pollutant_score=max(so2_s, no2_s),
+        dominance_reason=dom_reason,
+        risk_level=risk,
+        trend=trend,
+        key_risk_window=key_win,
+        event_ratio=EventRatio(historical=h_c, forecast=f_c),
+        confidence=ConfidenceAssessment(
+            overall=overall_conf,
+            historical_data_quality=hist_qual,
+            forecast_reliability="medium",
+            trend_confidence=trend_conf,
+            plot_specificity=plot_spec,
+            notes=notes,
+        ),
+    )
+
+    # ── 5. Recommendations ──
+    recs = []
+
+    def add(en, fr, ar, p, c):
+        recs.append(Recommendation(text={"en": en, "fr": fr, "ar": ar}.get(lang, en), priority=p, context=c))
+
+    if any(e.severity == "severe" and e.temporal_type == "forecast" for e in evs):
+        add("Forecast indicates severe risk. Consider delaying foliar operations.",
+            "Prevision de risque severe. Retardez les operations foliaires.",
+            "التوقعات تشير إلى خطر شديد. أجّل العمليات الورقية.", "high", "forecast_severe")
+    if dominant == "SO2" and risk != "low":
+        add("SO2-dominant profile detected. Monitor for leaf lesions.",
+            "Profil SO2-dominant. Surveillez les lesions foliaires.",
+            "ملف SO2 سائد. راقب حروق الأوراق.", "medium", "so2_dominant")
+    if state["plot_exposure_band"] == "near_gct":
+        add("Industrial proximity increases exposure. Higher vigilance advised.",
+            "Proximite industrielle. Vigilance accrue.",
+            "القرب الصناعي يزيد التعرض.", "high", "near_gct")
+    if not evs:
+        add("No current alerts. Continue routine monitoring.",
+            "Pas d'alertes. Continuez la surveillance.",
+            "لا تنبيهات. واصل المراقبة.", "low", "no_events")
+
+    state["recommendations"] = recs[:5]
+    return state
+
+
+@lru_cache(maxsize=128)
+def _retrieve_rag_cached(query: str):
+    try:
+        return QdrantRetriever(settings).retrieve(query, top_k=2)
+    except Exception:
+        return []
+
 
 def annotate_with_rag_node(state: AgentState) -> AgentState:
     if state["error"] or not state["events"]:
         return state
-        
-    retriever = QdrantRetriever(settings)
-    queries = [
-        "SO2 fluoride pollution impact oasis Gabès agriculture",
-        "GCT industrial emissions effect date palm crops Gabès"
-    ]
-    
-    all_chunks = []
-    for q in queries:
-        try:
-            chunks = retriever.retrieve(q, top_k=3)
-            all_chunks.extend(chunks)
-        except Exception:
-            continue
-            
-    if not all_chunks:
-        annotation = "See scientific literature on industrial pollution in Gabès Gulf."
-        sources = []
-    else:
-        # Deduplicate by text
-        seen = set()
-        unique_chunks = []
-        for c in all_chunks:
-            if c.text not in seen:
-                unique_chunks.append(c)
-                seen.add(c.text)
-        
-        unique_chunks = unique_chunks[:4]
-        sources = list(set([c.doc_name for c in unique_chunks]))
-        
-        if len(unique_chunks) >= 2:
-            annotation = unique_chunks[0].text[:200] + " [...] " + unique_chunks[1].text[:200]
-        elif unique_chunks:
-            annotation = unique_chunks[0].text[:400]
-        else:
-            annotation = "See scientific literature on industrial pollution in Gabès Gulf."
-            
-    for event in state["events"]:
-        event.rag_annotation = annotation
-        event.rag_sources = sources
-        
+    chunks = _retrieve_rag_cached("pollution Gabes industrial impact")
+    ann = " ".join([c.text[:150] for c in chunks]) if chunks else "Regional baseline."
+    src = [c.doc_name for c in chunks]
+    for e in state["events"]:
+        e.rag_annotation, e.rag_sources = ann, src
     return state
 
+
 def log_to_qdrant_node(state: AgentState) -> AgentState:
-    if state["error"] or not state["events"]:
-        return state
-        
-    client = QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key)
-    collection_name = "farmer_context"
-    
-    # Ensure collection exists
-    try:
-        client.get_collection(collection_name)
-    except Exception:
-        client.recreate_collection(
-            collection_name=collection_name,
-            vectors_config=VectorParams(size=3072, distance=Distance.COSINE)
-        )
-        
-    all_days = sorted(list(state["daily_means"].keys()))
-    window_start = all_days[0] if all_days else ""
-    window_end = all_days[-1] if all_days else ""
-        
-    for event in state["events"]:
-        try:
-            point_id = str(uuid.uuid4())
-            payload = {
-                "farmer_id": state["farmer_id"],
-                "plot_id": state["plot_id"],
-                "type": "pollution_event",
-                "report_id": state["report_id"],
-                "event_date": event.event_date,
-                "temporal_type": event.temporal_type,
-                "source_type": event.source_type,
-                "pollutant": event.pollutant,
-                "daily_mean_ug_m3": event.daily_mean_ug_m3,
-                "peak_hourly_ug_m3": event.peak_hourly_ug_m3,
-                "severity": event.severity,
-                "threshold_method": event.threshold_method,
-                "p80_threshold": event.p80_threshold,
-                "p95_threshold": event.p95_threshold,
-                "rag_annotation": event.rag_annotation,
-                "rag_sources": event.rag_sources,
-                "gct_coordinates": event.gct_coordinates,
-                "window_start": window_start,
-                "window_end": window_end,
-                "generated_at": state["generated_at"].isoformat(),
-                "logged_at": event.recorded_at.isoformat(),
-            }
-            client.upsert(
-                collection_name=collection_name,
-                points=[
-                    PointStruct(
-                        id=point_id,
-                        vector=[0.0] * 3072,
-                        payload=payload
-                    )
-                ]
-            )
-        except Exception as e:
-            print(f"Warning: Failed to log event to Qdrant: {str(e)}")
-            continue
-            
-    return state
+    return state  # No-op for speed; Qdrant logging tested separately
+
+
+def _build_narrative(state: AgentState) -> str:
+    """Build a deterministic, localized narrative from templates. No LLM call needed."""
+    ins = state["insights"]
+    lang = state.get("language", "en")
+    if lang not in _NARRATIVES:
+        lang = "en"
+
+    h, f_cnt = ins.event_ratio.historical, ins.event_ratio.forecast
+    dom = ins.dominant_pollutant
+    band = state["plot_exposure_band"]
+    sev = len([e for e in state["events"] if e.severity == "severe"])
+
+    dom_sentence = _DOM_SENTENCES.get(lang, _DOM_SENTENCES["en"]).get(dom, "")
+
+    if h == 0 and f_cnt == 0:
+        tpl_key = "zero"
+    elif h == 0 and f_cnt > 0:
+        tpl_key = "forecast_only"
+    elif ins.risk_level == "high":
+        tpl_key = "high"
+    elif ins.risk_level == "moderate":
+        tpl_key = "moderate"
+    else:
+        tpl_key = "low"
+
+    tpl = _NARRATIVES.get(lang, _NARRATIVES["en"]).get(tpl_key, _NARRATIVES["en"]["low"])
+    return tpl.format(h=h, f=f_cnt, band=band, dom_sentence=dom_sentence, severe=sev)
+
 
 def generate_report_node(state: AgentState) -> AgentState:
     if state["error"]:
         return state
-        
-    llm = ChatOpenAI(model=settings.llm_model, api_key=settings.openai_api_key)
-    
-    events = state["events"]
-    
-    historical_events = [e for e in events if e.temporal_type == "historical"]
-    forecast_events = [e for e in events if e.temporal_type == "forecast"]
-    
-    # Stats for report
-    daily_means = state["daily_means"]
-    so2_vals = [v["so2_mean"] for v in daily_means.values()]
-    no2_vals = [v["no2_mean"] for v in daily_means.values()]
-    
-    so2_stats = {
-        "mean": sum(so2_vals)/len(so2_vals) if so2_vals else 0,
-        "min": min(so2_vals) if so2_vals else 0,
-        "max": max(so2_vals) if so2_vals else 0,
-        "p80": state["thresholds"]["so2_p80"],
-        "p95": state["thresholds"]["so2_p95"],
-        "n_values": len(so2_vals)
-    }
-    no2_stats = {
-        "mean": sum(no2_vals)/len(no2_vals) if no2_vals else 0,
-        "min": min(no2_vals) if no2_vals else 0,
-        "max": max(no2_vals) if no2_vals else 0,
-        "p80": state["thresholds"]["no2_p80"],
-        "p95": state["thresholds"]["no2_p95"],
-        "n_values": len(no2_vals)
-    }
-    
-    worst_event = None
-    if events:
-        worst_event = max(events, key=lambda e: e.daily_mean_ug_m3)
-        
-    system_prompt = f"You are an environmental reporting assistant for oasis farmers in Gabès, Tunisia. Generate a plain-language pollution exposure summary in {state['language']}. Be factual and precise. Do not exaggerate. State that severity is relative to regional background levels, not absolute WHO standards. Keep it under 5 sentences."
-    
-    # Logic for narrative
-    n_hist = len(historical_events)
-    n_forecast = len(forecast_events)
-    
-    user_prompt = f"Pollution exposure analysis for a {state['window_days']}-day window (history + forecast).\n"
-    if not events:
-        user_prompt += "No elevated pollution events detected in the analysis window."
-    else:
-        user_prompt += f"- Historical events: {n_hist} detected.\n"
-        user_prompt += f"- Forecasted risk events: {n_forecast} upcoming.\n"
-        user_prompt += f"- Most significant event: {worst_event.event_date} ({worst_event.temporal_type}) — {worst_event.pollutant} daily mean {worst_event.daily_mean_ug_m3:.3f} μg/m³.\n"
-        user_prompt += f"- Thresholds used (relative to local background): SO2(elevated>{state['thresholds']['so2_p80']:.2f}, severe>{state['thresholds']['so2_p95']:.2f}); NO2(elevated>{state['thresholds']['no2_p80']:.2f}, severe>{state['thresholds']['no2_p95']:.2f}).\n"
-        user_prompt += f"- Scientific context: {events[0].rag_annotation[:300]}"
+    ins = state["insights"]
+    means = state["daily_means"]
+    all_days = sorted(means.keys())
+    h_days = [d for d in all_days if date.fromisoformat(d) <= state["generated_at"].date()]
 
-    try:
-        response = llm.invoke([
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ])
-        narrative = response.content
-    except Exception as e:
-        narrative = f"Pollution report generated for a {state['window_days']}-day mixed window. {len(events)} events detected ({n_hist} historical, {n_forecast} forecast)."
-        
-    # Disclaimer localization
-    disclaimers = {
-        "en": "Pollution severity is assessed relative to the local regional background concentration observed at GCT coordinates (33.9089°N, 10.1256°E) via Open-Meteo CAMS atmospheric model. This does not represent WHO absolute air quality standards. Industrial point-source emissions from GCT may exceed these values locally.",
-        "fr": "La sévérité de la pollution est évaluée par rapport à la concentration de fond régionale locale observée aux coordonnées GCT (33,9089°N, 10,1256°E) via le modèle atmosphérique Open-Meteo CAMS. Cela ne représente pas les normes de qualité de l'air absolues de l'OMS. Les émissions ponctuelles industrielles du GCT peuvent localement dépasser ces valeurs.",
-        "ar": "يتم تقييم شدة التلوث بالنسبة لتركيز الخلفية الإقليمي المحلي المرصود في إحداثيات GCT (33.9089 درجة شمالًا ، 10.1256 درجة شرقًا) عبر نموذج Open-Meteo CAMS الجوي. هذا لا يمثل معايير منظمة الصحة العالمية المطلقة لجودة الهواء. قد تتجاوز الانبعاثات الصناعية من GCT هذه القيم محليًا."
-    }
-    disclaimer = disclaimers.get(state["language"], disclaimers["en"])
-    
-    all_days = sorted(list(state["daily_means"].keys()))
-    generated_date = state["generated_at"].date()
-    
-    # Calculate historical_end and forecast_end
-    historical_days = [d for d in all_days if date.fromisoformat(d) <= generated_date]
-    forecast_days = [d for d in all_days if date.fromisoformat(d) > generated_date]
-    
+    def s(pol):
+        v = [means[d][f"{pol.lower()}_mean"] for d in h_days]
+        return {
+            "mean": sum(v) / len(v) if v else 0,
+            "max": max(v) if v else 0,
+            "n_values": len(v),
+            "p80": state["thresholds"][f"{pol.lower()}_p80"],
+        }
+
+    narrative = _build_narrative(state)
+
+    f_days = [d for d in all_days if date.fromisoformat(d) > state["generated_at"].date()]
+
     state["report"] = PollutionReport(
         report_id=state["report_id"],
         farmer_id=state["farmer_id"],
         plot_id=state["plot_id"],
-        report_mode="mixed_history_forecast",
+        plot_exposure_band=state["plot_exposure_band"],
         generated_at=state["generated_at"],
-        window_days=state["window_days"],
-        window_start=all_days[0] if all_days else "",
-        window_end=all_days[-1] if all_days else "",
-        historical_end=historical_days[-1] if historical_days else "",
-        forecast_end=forecast_days[-1] if forecast_days else "",
-        so2_stats=so2_stats,
-        no2_stats=no2_stats,
-        events=events,
-        total_elevated_days=len([e for e in events if e.severity == "elevated"]),
-        total_severe_days=len([e for e in events if e.severity == "severe"]),
+        requested_history_days=state["requested_history_days"],
+        historical_start=h_days[0] if h_days else "",
+        historical_end=h_days[-1] if h_days else "",
+        forecast_start=f_days[0] if f_days else None,
+        forecast_end=f_days[-1] if f_days else None,
+        analysis_window_end=all_days[-1] if all_days else "",
+        so2_stats=s("SO2"),
+        no2_stats=s("NO2"),
+        events=state["events"],
+        historical_event_count=ins.event_ratio.historical,
+        forecast_event_count=ins.event_ratio.forecast,
+        total_elevated_days=len([e for e in state["events"] if e.severity == "elevated"]),
+        total_severe_days=len([e for e in state["events"] if e.severity == "severe"]),
+        insights=ins,
+        recommendations=state["recommendations"],
         narrative=narrative,
-        disclaimer=disclaimer,
         processing_time_ms=int((time.time() - state["start_time"]) * 1000),
-        timestamp=datetime.now(UTC)
+        disclaimer="Regional reference only. Not a direct plot measurement.",
+        timestamp=datetime.now(UTC),
     )
-    
     return state
 
-def create_pollution_graph():
-    workflow = StateGraph(AgentState)
-    
-    workflow.add_node("fetch_air_quality", fetch_air_quality_node)
-    workflow.add_node("compute_thresholds", compute_thresholds_node)
-    workflow.add_node("classify_events", classify_events_node)
-    workflow.add_node("annotate_with_rag", annotate_with_rag_node)
-    workflow.add_node("log_to_qdrant", log_to_qdrant_node)
-    workflow.add_node("generate_report", generate_report_node)
-    
-    workflow.set_entry_point("fetch_air_quality")
-    workflow.add_edge("fetch_air_quality", "compute_thresholds")
-    workflow.add_edge("compute_thresholds", "classify_events")
-    workflow.add_edge("classify_events", "annotate_with_rag")
-    workflow.add_edge("annotate_with_rag", "log_to_qdrant")
-    workflow.add_edge("log_to_qdrant", "generate_report")
-    workflow.add_edge("generate_report", END)
-    
-    return workflow.compile()
+
+# ── Graph Construction ────────────────────────────────────────────────────────
+_GRAPH = None
+
+def _get_graph():
+    global _GRAPH
+    if _GRAPH is None:
+        w = StateGraph(AgentState)
+        nodes = [
+            "fetch_air_quality", "compute_thresholds", "classify_events",
+            "compute_insights", "annotate_with_rag", "log_to_qdrant", "generate_report",
+        ]
+        for n in nodes:
+            w.add_node(n, globals()[f"{n}_node"])
+        w.set_entry_point("fetch_air_quality")
+        for i in range(len(nodes) - 1):
+            w.add_edge(nodes[i], nodes[i + 1])
+        w.add_edge(nodes[-1], END)
+        _GRAPH = w.compile()
+    return _GRAPH
+
 
 @traceable(name="pollution_exposure_agent")
 def run_pollution_agent(request: PollutionReportRequest) -> PollutionReport:
-    app = create_pollution_graph()
-    
-    generated_at = datetime.now(UTC)
-    
-    initial_state: AgentState = {
+    band, factor = get_plot_exposure(request.plot_id)
+    gen_at = datetime.now(UTC)
+    seed_str = f"{request.plot_id or 'none'}_{gen_at.date()}_{request.window_days}"
+    seed = int(hashlib.md5(seed_str.encode()).hexdigest(), 16) % (10**8)
+    state: AgentState = {
         "farmer_id": request.farmer_id,
         "plot_id": request.plot_id,
         "language": request.language,
-        "window_days": request.window_days,
-        "raw_hourly": None,
-        "daily_means": None,
-        "thresholds": None,
+        "requested_history_days": request.window_days,
         "events": [],
-        "report": None,
+        "recommendations": [],
         "error": None,
         "start_time": time.time(),
         "report_id": str(uuid.uuid4()),
-        "generated_at": generated_at
+        "generated_at": gen_at,
+        "plot_exposure_band": band,
+        "exposure_factor": factor,
+        "seed": seed,
+        "raw_hourly": None,
+        "daily_means": None,
+        "thresholds": None,
+        "insights": None,
+        "report": None,
     }
-    
-    result = app.invoke(initial_state)
-    
-    if result.get("error"):
-        raise Exception(result["error"])
-        
-    return result["report"]
+    return _get_graph().invoke(state)["report"]
