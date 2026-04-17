@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     top_k: int = 5
     # Feature 3: Irrigation Advisory
     nasa_power_url: str = "https://power.larc.nasa.gov/api/temporal/daily/point"
+    open_meteo_air_quality_url: str = "https://air-quality-api.open-meteo.com/v1/air-quality"
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"),
