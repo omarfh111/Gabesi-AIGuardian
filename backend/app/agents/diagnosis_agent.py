@@ -224,7 +224,7 @@ def get_diagnosis_agent():
     workflow.add_edge("diagnose", "verify")
     workflow.add_edge("verify", END)
 
-    return workflow.compile()
+    return workflow.compile(name="Diagnosis Agent")
 
 
 # ---------------------------------------------------------------------------
