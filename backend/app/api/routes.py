@@ -4,9 +4,11 @@ from fastapi.responses import Response
 from app.models.diagnosis import DiagnosisRequest, DiagnosisResponse
 from app.models.irrigation import IrrigationRequest, IrrigationResponse
 from app.models.pollution import PollutionReportRequest, PollutionReport
+from app.models.pollution_qa import PollutionQARequest, PollutionQAResponse
 from app.agents.diagnosis_agent import run_diagnosis
 from app.agents.irrigation_agent import run_irrigation
 from app.agents.pollution_agent import run_pollution_agent
+from app.agents.pollution_qa_agent import run_pollution_qa
 from app.services.pdf_generator import generate_pollution_pdf
 from app.config import settings
 
@@ -77,6 +79,30 @@ def post_pollution_pdf(request: PollutionReportRequest):
         raise HTTPException(
             status_code=500,
             detail={"detail": str(e), "report_id": None}
+        )
+
+
+
+@router.post("/pollution/qa", response_model=PollutionQAResponse)
+def post_pollution_qa(request: PollutionQARequest):
+    """
+    Answer a general explanatory pollution question using the Gabès knowledge base.
+
+    This endpoint is for questions like:
+      - "What is NO2 impact on palm trees?"
+      - "Is SO2 harmful to crops?"
+      - "What does phosphogypsum do to soil?"
+
+    For per-plot pollution reports or PDF export, use POST /api/v1/pollution/report
+    or POST /api/v1/pollution/pdf instead.
+    """
+    try:
+        response = run_pollution_qa(request)
+        return response
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={"detail": str(e)}
         )
 
 
