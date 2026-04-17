@@ -91,7 +91,6 @@ Gabesi-AIGuardian/
 │   ├── smoke_test.py              # 6-query retrieval verification
 │   └── evaluate_retrieval.py      # DeepEval retrieval evaluation pipeline
 ├── .env.example                   # Environment variable template
-├── requirements.txt               # Pinned Python dependencies
 └── README.md
 ```
 
@@ -115,7 +114,7 @@ python -m venv .venv
 .venv\Scripts\activate      # Windows
 # source .venv/bin/activate  # Mac/Linux
 
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
 
 ### Environment
