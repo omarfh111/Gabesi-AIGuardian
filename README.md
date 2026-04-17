@@ -3,11 +3,13 @@
 # 🌿 Gabesi AIGuardian
 
 **An agentic AI system that gives Gabès oasis farmers real-time environmental
-intelligence — soil health, pollution exposure, irrigation guidance, and crop
-diagnostics — powered by satellite data and a grounded RAG knowledge base.**
+intelligence — crop diagnostics, irrigation guidance, and pollution exposure
+tracking — powered by RAG, LangGraph agents, and a grounded scientific
+knowledge base.**
 
 [![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)](https://python.org)
 [![LangGraph](https://img.shields.io/badge/LangGraph-agentic-purple)](https://github.com/langchain-ai/langgraph)
+[![FastAPI](https://img.shields.io/badge/FastAPI-backend-green?logo=fastapi)](https://fastapi.tiangolo.com)
 [![Qdrant](https://img.shields.io/badge/Qdrant-vector_db-red)](https://qdrant.tech)
 [![DeepEval](https://img.shields.io/badge/DeepEval-evaluation-orange)](https://deepeval.com)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
@@ -33,12 +35,13 @@ The farmers who bear this cost have **zero access to the data that documents it*
 A farmer opens the app and asks: *"Why are my palm trees yellowing?"*
 
 The system:
-1. Retrieves pollution exposure history for their plot from satellite data
-2. Checks current soil salinity index from Sentinel-2 imagery
-3. Cross-references symptoms against a grounded knowledge base of scientific
-   research on fluoride damage, heavy metal contamination, and oasis ecology
-4. Returns a plain-language diagnosis with a concrete action and a timestamped
-   pollution log the farmer can use as evidence
+1. Expands the symptom into domain-specific search queries
+2. Retrieves evidence from scientific papers, municipal audits, and EU project
+   reports grounded in the Gabès oasis context
+3. Diagnoses the probable cause — pollution, pest, disease, or irrigation —
+   with a faithfulness-verified response
+4. Returns a plain-language diagnosis in the farmer's language (Arabic, French,
+   or English) with a concrete action and cited sources
 
 No other system does this for Gabès.
 
@@ -48,26 +51,24 @@ No other system does this for Gabès.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    FARMER CHATBOT                        │
-│                   (LangGraph Agent)                      │
+│                  FastAPI Backend                         │
+│                POST /api/v1/diagnosis                    │
 └────────────────────┬────────────────────────────────────┘
                      │
-        ┌────────────┼────────────┬──────────────┐
-        ▼            ▼            ▼              ▼
-   RAG Search   NASA POWER   Open-Meteo    Sentinel APIs
-   (Qdrant)     (ET₀/climate) (weather)   (NDVI/SO₂/salinity)
-        │
-        ▼
-┌──────────────────────────────────────┐
-│         gabes_knowledge              │
-│  1718 chunks · 21 documents          │
-│  • PDL Gabès 2023 (municipal audit)  │
-│  • 6 scientific papers               │
-│  • 9 EU environmental project reports│
-│  • FAO-56 crop reference             │
-│  • Arabic strategic study 2015-2035  │
-│  • Structured oasis/GCT/crop JSON    │
-└──────────────────────────────────────┘
+         ┌───────────▼───────────┐
+         │   LangGraph Agent     │
+         │  query_expansion      │
+         │  → retrieve           │
+         │  → diagnose           │
+         │  → verify             │
+         └───────────┬───────────┘
+                     │
+        ┌────────────┴────────────┐
+        ▼                         ▼
+  Qdrant RAG Search         GPT-4o-mini
+  gabes_knowledge           (diagnosis +
+  1718 chunks               faithfulness
+  21 documents              verification)
 ```
 
 ---
@@ -76,21 +77,36 @@ No other system does this for Gabès.
 
 ```
 Gabesi-AIGuardian/
-├── data/                          # Knowledge corpus (gitignored — large files)
-│   ├── papers/                    # Scientific PDFs (open access)
+├── backend/
+│   ├── app/
+│   │   ├── main.py                # FastAPI app (lifespan, CORS, router)
+│   │   ├── config.py              # Pydantic settings (loaded from .env)
+│   │   ├── agents/
+│   │   │   └── diagnosis_agent.py # LangGraph: query_expansion→retrieve→diagnose→verify
+│   │   ├── api/
+│   │   │   └── routes.py          # POST /diagnosis, GET /health
+│   │   ├── models/
+│   │   │   └── diagnosis.py       # DiagnosisRequest, DiagnosisResponse, RetrievedChunk
+│   │   └── rag/
+│   │       └── retriever.py       # QdrantRetriever (text-embedding-3-large)
+│   ├── tests/
+│   │   └── test_diagnosis_agent.py # 4 pytest tests (zero real API calls)
+│   └── requirements.txt           # All dependencies (merged root + backend)
+├── data/                          # Knowledge corpus (gitignored)
+│   ├── papers/                    # Scientific PDFs
 │   ├── pdl_reports/               # Municipal + EU project reports
-│   ├── processed/                 # Preprocessed markdown (41 PDL tables preserved)
+│   ├── processed/                 # Preprocessed markdown (41 PDL tables)
 │   ├── references/                # FAO-56 irrigation reference
 │   └── structured/                # JSON: oasis zones, GCT coords, crop Kc values
-├── eval_data/                     # Synthetic golden dataset (gitignored)
-│   └── goldens.json               # 68 synthetic Q&A pairs (80% domain relevance)
-├── eval_results/                  # Evaluation run outputs (gitignored)
+├── eval_data/                     # Gitignored — generated by eval scripts
+├── eval_results/                  # Gitignored — generated by eval scripts
 ├── scripts/
-│   ├── preprocess_docx.py         # Convert PDL docx → markdown, preserve tables
+│   ├── preprocess_docx.py         # PDL docx → markdown, 41 tables preserved
 │   ├── ingest.py                  # Chunk, embed, upsert to Qdrant
 │   ├── smoke_test.py              # 6-query retrieval verification
-│   └── evaluate_retrieval.py      # DeepEval retrieval evaluation pipeline
-├── .env.example                   # Environment variable template
+│   ├── evaluate_retrieval.py      # DeepEval retrieval pipeline
+│   └── evaluate_diagnosis.py      # DeepEval diagnosis agent pipeline
+├── .env.example
 └── README.md
 ```
 
@@ -102,7 +118,7 @@ Gabesi-AIGuardian/
 
 - Python 3.12
 - [Qdrant Cloud](https://cloud.qdrant.io) account (free tier works)
-- OpenAI API key (embeddings + evaluation judge — ~$0.04 per full ingestion)
+- OpenAI API key
 
 ### Installation
 
@@ -124,15 +140,20 @@ cp .env.example .env
 # Fill in: QDRANT_URL, QDRANT_API_KEY, OPENAI_API_KEY
 ```
 
-### Reproduce the Knowledge Base
+### Run the Backend
 
-The `data/` folder is gitignored (large PDFs, proprietary municipal documents).
-To reproduce:
+```bash
+cd backend
+uvicorn app.main:app --reload --port 8000
+# API docs: http://localhost:8000/docs
+```
+
+### Reproduce the Knowledge Base
 
 ```bash
 python scripts/preprocess_docx.py   # PDL docx → markdown
 python scripts/ingest.py            # chunk + embed + upsert to Qdrant
-python scripts/smoke_test.py        # verify retrieval works
+python scripts/smoke_test.py        # verify retrieval
 ```
 
 ---
@@ -141,111 +162,119 @@ python scripts/smoke_test.py        # verify retrieval works
 
 | Collection | Documents | Chunks | Purpose |
 |---|---|---|---|
-| `gabes_knowledge` | 21 | 1,718 | Static domain knowledge RAG |
-| `satellite_timeseries` | — | 0* | Weekly oasis plot snapshots |
+| `gabes_knowledge` | 21 | 1,718 | Static domain RAG |
+| `satellite_timeseries` | — | 0* | Weekly oasis snapshots |
 | `farmer_context` | — | 0* | Per-farmer memory |
 
-*Populated at runtime by the agent pipeline.
+*Populated at runtime.
 
-**Ingestion specs:** `text-embedding-3-large` · Chonkie SemanticChunker ·
-dense + sparse (BM25/IDF) vectors · payload indexes on `source_type`, `language`, `doc_name`
+**Specs:** `text-embedding-3-large` · Chonkie SemanticChunker · dense + sparse
+(BM25/IDF) vectors · payload indexes on `source_type`, `language`, `doc_name`
 
 ---
 
-## 📈 Retrieval Evaluation
+## 📈 Evaluation
 
-Evaluated with DeepEval on 68 synthetic goldens generated from real Qdrant chunks
-(80% domain relevance rate, GPT-4o-mini as synthesis + judge model).
+### Retrieval Pipeline
 
-| Metric | Score | Pass Rate | Verdict |
+Evaluated with DeepEval · 68 synthetic goldens · GPT-4o-mini judge
+
+| Metric | Score | Pass Rate | Status |
 |---|---|---|---|
-| Contextual Recall | **0.9512** | **98.33%** | ✅ Target met (≥ 0.70) |
-| Contextual Relevancy | 0.4395 | 41.67% | ⚠️ Known limitation |
+| Contextual Recall | **0.9512** | **98.33%** | ✅ Target met |
+| Contextual Relevancy | 0.4395 | 41.67% | ⚠️ Known limitation* |
 
-**Why relevancy is lower than recall:** `ContextualRelevancyMetric` penalises
-multi-topic chunks. The PDL Gabès corpus contains tabular chunks that cover
-multiple oases simultaneously (avg 841 chars per chunk). A chunk that correctly
-answers a query about Oasis Bahria also contains data on Ouesta and Chenini,
-which the judge scores as off-topic. Recall (0.95) is the operationally meaningful
-metric — it confirms the right information is retrieved for 98% of queries.
-Relevancy reflects chunking strategy, not retrieval failure.
-
-To reproduce the evaluation:
+*Relevancy penalises multi-topic chunks (avg 841 chars). Recall is the
+operationally meaningful metric for retrieval quality.
 
 ```bash
-# Generate goldens and inspect quality
 python scripts/evaluate_retrieval.py --synthesize-only --use-openai-synthesis --n-contexts 120
-
-# Run evaluation on saved goldens
 python scripts/evaluate_retrieval.py --eval-only --top-k 5
+```
+
+### Diagnosis Agent (Feature 2)
+
+Evaluated with DeepEval · 16 synthetic farmer inputs · GPT-4o-mini judge
+Inputs cover: pollution-linked, irrigation, pest/disease, mixed, vague symptoms
+in English, French, and Arabic.
+
+| Metric | Score | Pass Rate | Status |
+|---|---|---|---|
+| Faithfulness | **0.9667** | **100%** | ✅ Target met |
+| Answer Relevancy | **0.9115** | **100%** | ✅ Target met |
+| Pollution Link Accuracy | **100%** | **16/16** | ✅ Target met |
+
+**Key design decisions evaluated:**
+- Query expansion with conditional pollution queries — pollution queries only
+  generated when symptom contains proximity signals (factory smell, white
+  crust, multiple plots affected). Eliminates false pollution attribution for
+  pure pest/irrigation cases.
+- Faithfulness verification node — rejects diagnoses where < 50% of claims
+  are grounded in retrieved chunks.
+
+```bash
+# Agent must be running
+cd backend && uvicorn app.main:app --reload --port 8000
+
+python scripts/evaluate_diagnosis.py --synthesize-only
+python scripts/evaluate_diagnosis.py --eval-only
 ```
 
 ---
 
-## 🛠️ Scripts Reference
+## 🛠️ API Reference
 
-### `scripts/preprocess_docx.py`
-Converts the PDL Gabès municipal report (`.docx`) into clean markdown,
-preserving all 41 tables as atomic chunks.
+### POST `/api/v1/diagnosis`
 
-```bash
-python scripts/preprocess_docx.py
-# Output: data/processed/PDL_GABES_clean.md
+Diagnose a crop symptom described in plain text.
+
+**Request:**
+```json
+{
+  "symptom_description": "My date palm leaves are turning yellow at the tips and there is a white crust forming on the soil surface near the roots.",
+  "language": "en",
+  "farmer_id": null,
+  "plot_id": null
+}
 ```
 
-### `scripts/ingest.py`
-Loads all documents, chunks with Chonkie semantic chunker,
-embeds with `text-embedding-3-large`, upserts to Qdrant.
-
-```bash
-python scripts/ingest.py             # Full ingestion (~$0.04, ~266K tokens)
-python scripts/ingest.py --dry-run   # Stats only, no API spend
-python scripts/ingest.py --resume    # Skip already-ingested documents
-python scripts/ingest.py --doc "filename.pdf"  # Single document
+**Response:**
+```json
+{
+  "diagnosis_id": "uuid",
+  "symptom_input": "...",
+  "probable_cause": "Phosphate pollution affecting plant health",
+  "confidence": 0.8,
+  "severity": "medium",
+  "recommended_action": "...",
+  "pollution_link": true,
+  "sources": ["Heavy metals Gabès Gulf.pdf", "Screening_biological_traits_and_fluoride.pdf"],
+  "faithfulness_verified": true,
+  "processing_time_ms": 9858,
+  "timestamp": "2026-04-17T10:28:06Z"
+}
 ```
 
-### `scripts/smoke_test.py`
-Six targeted retrieval queries covering all source types.
+### GET `/api/v1/health`
 
-```bash
-python scripts/smoke_test.py
-# Expected: 5/6 pass (1 acceptable false negative — see script comments)
-```
-
-### `scripts/evaluate_retrieval.py`
-Full DeepEval evaluation pipeline: stratified Qdrant sampling →
-domain-filtered synthesis → golden inspection → live retrieval → metric scoring.
-
-```bash
-# Full pipeline
-python scripts/evaluate_retrieval.py --use-openai-synthesis
-
-# Synthesis only (inspect goldens before spending judge budget)
-python scripts/evaluate_retrieval.py --synthesize-only --use-openai-synthesis --n-contexts 120
-
-# Evaluation only (reuse saved goldens)
-python scripts/evaluate_retrieval.py --eval-only --top-k 5
-
-# Custom parameters
-python scripts/evaluate_retrieval.py --n-contexts 60 --goldens-per-context 3 --top-k 7
+```json
+{"status": "ok", "collection": "gabes_knowledge", "timestamp": "..."}
 ```
 
 ---
 
 ## 🗺️ Roadmap
 
-- [x] Knowledge base — preprocessing pipeline (41 PDL tables preserved)
-- [x] Ingestion pipeline — 1,718 chunks, 21 docs, dense + sparse vectors
-- [x] Retrieval verification — 6-query smoke test suite
-- [x] Retrieval evaluation — DeepEval pipeline, Recall 0.95 / 98.33% pass rate
-- [ ] LangGraph agent — tool orchestration and routing
-- [ ] RAG search tool — Qdrant integration for the agent
-- [ ] Irrigation advisory tool — NASA POWER ET₀ + FAO-56 crop coefficients
-- [ ] Satellite data tools — Sentinel-2 NDVI, Sentinel-5P SO₂
-- [ ] Pollution exposure logger — per-plot timestamped dossier (PDF export)
-- [ ] REST API backend — FastAPI
-- [ ] Farmer-facing chat interface — React frontend
-- [ ] End-to-end evaluation — Faithfulness + Answer Relevancy after agent is built
+- [x] Knowledge base — 1,718 chunks, 21 docs, dense + sparse vectors
+- [x] Retrieval evaluation — Recall 0.95, 98.33% pass rate
+- [x] Feature 2: Symptom Diagnosis — LangGraph agent, RAG, faithfulness check
+- [x] Diagnosis evaluation — Faithfulness 0.97, Relevancy 0.91, PollutionLink 100%
+- [x] LangSmith tracing — full pipeline observability, $0.0004–$0.0006/call
+- [ ] Feature 3: Irrigation Advisory — NASA POWER ET₀ + FAO-56 Kc
+- [ ] Feature 5: Pollution Exposure Logger — per-plot dossier, PDF export
+- [ ] REST API — remaining endpoints
+- [ ] React frontend
+- [ ] End-to-end evaluation — Faithfulness + Answer Relevancy at scale
 
 ---
 
@@ -269,5 +298,3 @@ MIT License — see [LICENSE](LICENSE) for details.
 <div align="center">
 Built for the farmers of Gabès, Tunisia 🌴
 </div>
-
----
