@@ -1,11 +1,13 @@
 from datetime import datetime
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
 from app.models.diagnosis import DiagnosisRequest, DiagnosisResponse
 from app.models.irrigation import IrrigationRequest, IrrigationResponse
 from app.models.pollution import PollutionReportRequest, PollutionReport
 from app.agents.diagnosis_agent import run_diagnosis
 from app.agents.irrigation_agent import run_irrigation
 from app.agents.pollution_agent import run_pollution_agent
+from app.services.pdf_generator import generate_pollution_pdf
 from app.config import settings
 
 router = APIRouter()
@@ -38,11 +40,39 @@ def post_pollution_report(request: PollutionReportRequest):
     """
     This endpoint logs events to Qdrant farmer_context collection.
     Each call with the same farmer_id accumulates evidence over time.
-    Future: PDF export of accumulated dossier.
     """
     try:
         response = run_pollution_agent(request)
         return response
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={"detail": str(e), "report_id": None}
+        )
+
+
+@router.post("/pollution/pdf")
+def post_pollution_pdf(request: PollutionReportRequest):
+    """
+    Generate a PDF dossier from the pollution exposure agent.
+    Returns application/pdf ready for download or display.
+
+    Filename: pollution_report_<plot_id>_<date>.pdf
+    """
+    try:
+        report = run_pollution_agent(request)
+        report_dict = report.model_dump()
+        pdf_bytes = generate_pollution_pdf(report_dict)
+
+        plot_label = (request.plot_id or "unknown").replace(" ", "_")
+        date_label = datetime.utcnow().strftime("%Y-%m-%d")
+        filename   = f"pollution_report_{plot_label}_{date_label}.pdf"
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
     except Exception as e:
         raise HTTPException(
             status_code=500,
