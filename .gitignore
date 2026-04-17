@@ -50,7 +50,7 @@ desktop.ini
 *.bin
 *.pt
 *.ckpt
-models/
+
 
 # Future: frontend build artifacts
 node_modules/
