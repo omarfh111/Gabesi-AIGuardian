@@ -284,6 +284,7 @@ def get_risk_map_data():
             'riskLevel': risk_info['level'],
             'riskLabel': risk_info['label'],
             'meanCO2': mean_co2,
+            'meanDailyCO2': round(mean_co2 / 30, 1),
             'maxCO2': stats.get('max', 0),
             'minCO2': stats.get('min', 0),
             'latestCO2': latest.get('co2', 0),
@@ -347,7 +348,7 @@ def get_overview_data():
             'worstMonth': s.get('mois_le_plus_pollant', ''),
             'bestMonth': s.get('mois_le_moins_pollant', ''),
             'totalExceedanceDays': s.get('total_jours_depassement', 0),
-            'exceedanceRate': s.get('taux_depassement_global', ''),
+            'exceedanceRate': s.get('taux_depassement_global', '0%'),
             'trend': s.get('tendance', ''),
             'keyFactors': s.get('facteurs_cles', [])
         }
@@ -357,6 +358,7 @@ def get_overview_data():
         'globalRiskLevel': get_risk_level(global_risk),
         'facilityCount': len(facilities),
         'totalMeanCO2': round(total_mean_co2),
+        'avgDailyCO2': round(total_mean_co2 / 30),
         'topRisks': facility_risks[:3],
         'allFacilities': facility_risks,
         'gctSynthesis': gct_synthesis

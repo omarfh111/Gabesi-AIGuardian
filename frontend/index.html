@@ -170,6 +170,17 @@
             50% { opacity: 0.5; transform: scale(1.3); }
         }
 
+        @keyframes waterRipple {
+            0% { stroke-width: 1.5; stroke-opacity: 0.8; }
+            50% { stroke-width: 15; stroke-opacity: 0.3; }
+            100% { stroke-width: 30; stroke-opacity: 0; }
+        }
+
+        .danger-circle {
+            animation: waterRipple 2s infinite ease-out;
+            pointer-events: none;
+        }
+
         .header-right {
             display: flex;
             align-items: center;
@@ -317,17 +328,19 @@
         }
 
         .overview-label {
-            font-size: 9px;
+            font-size: 8px;
             text-transform: uppercase;
-            letter-spacing: 0.6px;
+            letter-spacing: 0.8px;
             color: var(--text-muted);
-            margin-top: 4px;
+            margin-top: 6px;
+            font-weight: 700;
         }
 
         .overview-sub {
             font-size: 10px;
             color: var(--text-secondary);
-            margin-top: 2px;
+            margin-top: 4px;
+            font-weight: 500;
         }
 
         /* ── Tabs ── */
@@ -1013,10 +1026,13 @@
                 <span class="header-subtitle">Environmental Intelligence Platform</span>
             </div>
         </div>
-        <div class="header-center">
+        <div class="header-center" style="flex-direction: column; gap: 4px;">
             <div class="global-risk-badge risk-warning-badge" id="globalRiskBadge">
                 <div class="risk-badge-dot" style="background: var(--risk-warning);"></div>
                 <span id="globalRiskText">Loading...</span>
+            </div>
+            <div style="font-size: 8px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+                Based on: CO₂ emission, Exceedance rate, Industrial density
             </div>
         </div>
         <div class="header-right">
@@ -1044,20 +1060,20 @@
 
             <!-- Overview Stats -->
             <div class="overview-bar" id="overviewBar">
-                <div class="overview-card risk-card">
-                    <div class="overview-value" id="ovRiskScore" style="color: var(--risk-warning);">--</div>
-                    <div class="overview-label">Risk Score</div>
-                    <div class="overview-sub" id="ovRiskLabel"></div>
-                </div>
                 <div class="overview-card emission-card">
-                    <div class="overview-value" id="ovTotalCO2" style="color: var(--accent-cyan);">--</div>
-                    <div class="overview-label">Avg CO₂ t/m</div>
-                    <div class="overview-sub" id="ovCO2Sub"></div>
+                    <div class="overview-value" id="ovAvgDailyCO2" style="color: var(--accent-cyan);">--</div>
+                    <div class="overview-label">Avg CO₂ t/day</div>
+                    <div class="overview-sub" id="ovAvgSub">Real-time daily</div>
                 </div>
                 <div class="overview-card facility-card">
-                    <div class="overview-value" id="ovFacilities" style="color: var(--accent-purple);">--</div>
-                    <div class="overview-label">Facilities</div>
-                    <div class="overview-sub" id="ovFacilitySub"></div>
+                    <div class="overview-value" id="ovTotalCO2" style="color: var(--accent-purple);">--</div>
+                    <div class="overview-label">Total (6 months)</div>
+                    <div class="overview-sub" id="ovTotalSub">Cumulative t</div>
+                </div>
+                <div class="overview-card risk-card">
+                    <div class="overview-value" id="ovExceedance" style="color: var(--risk-danger);">--</div>
+                    <div class="overview-label">Exceedance</div>
+                    <div class="overview-sub" id="ovExceedSub">Global rate</div>
                 </div>
             </div>
 
@@ -1105,18 +1121,18 @@
 
             <!-- Map Legend -->
             <div class="map-legend">
-                <div class="legend-title">CO₂ Risk Level</div>
+                <div class="legend-title">CO₂ Impact Level</div>
                 <div class="legend-item">
                     <div class="legend-circle" style="background: var(--risk-danger);"></div>
-                    <span>Danger (score &gt; 70)</span>
+                    <span>Danger (&gt;1800 t/day)</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-circle" style="background: var(--risk-warning);"></div>
-                    <span>Warning (40 – 70)</span>
+                    <span>Warning (1500–1800)</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-circle" style="background: var(--risk-safe);"></div>
-                    <span>Safe (score &lt; 40)</span>
+                    <span>Safe (&lt;1500 t/day)</span>
                 </div>
                 <div class="legend-size">
                     <div class="legend-size-circle" style="width:8px;height:8px;"></div>
@@ -1124,6 +1140,46 @@
                     <div class="legend-size-circle" style="width:20px;height:20px;"></div>
                     <span class="legend-size-label">Circle ∝ emission</span>
                 </div>
+            </div>
+
+            <!-- Timeline Slider -->
+            <style>
+                .timeline-container {
+                    position: absolute;
+                    bottom: 24px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: var(--bg-glass);
+                    backdrop-filter: blur(16px);
+                    -webkit-backdrop-filter: blur(16px);
+                    border: 1px solid var(--border);
+                    border-radius: 30px;
+                    padding: 8px 20px;
+                    z-index: 800;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    box-shadow: var(--shadow);
+                    min-width: 320px;
+                }
+                .timeline-slider {
+                    flex: 1;
+                    accent-color: var(--accent-cyan);
+                    height: 4px;
+                    cursor: pointer;
+                }
+                .timeline-label {
+                    font-size: 11px;
+                    font-weight: 700;
+                    min-width: 80px;
+                    text-align: center;
+                    color: var(--text-primary);
+                }
+            </style>
+            <div class="timeline-container">
+                <div class="timeline-label" id="timelineLabel">Jan 2026</div>
+                <input type="range" id="timelineSlider" class="timeline-slider" 
+                       min="0" max="5" value="5" step="1" oninput="updateTimeline()">
             </div>
         </div>
 
@@ -1179,21 +1235,25 @@
             return L.divIcon({
                 className: 'custom-marker',
                 html: `<div style="
-                    width: 18px; height: 18px;
+                    width: 16px; height: 16px;
                     background: ${color};
-                    border: 2px solid rgba(255,255,255,0.7);
+                    border: 2px solid white;
                     border-radius: 50%;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 12px ${color}44;
+                    box-shadow: 0 0 15px ${color}, 0 2px 5px rgba(0,0,0,0.4);
+                    position: relative;
+                    z-index: 2;
                 "></div>
                 <div style="
-                    width: 2px; height: 6px;
-                    background: ${color};
-                    margin: 0 auto;
-                    opacity: 0.7;
+                    width: 2px; height: 10px;
+                    background: linear-gradient(to bottom, white, ${color});
+                    margin: -2px auto 0;
+                    opacity: 0.8;
+                    position: relative;
+                    z-index: 1;
                 "></div>`,
-                iconSize: [18, 26],
-                iconAnchor: [9, 26],
-                popupAnchor: [0, -28]
+                iconSize: [16, 24],
+                iconAnchor: [8, 24],
+                popupAnchor: [0, -26]
             });
         }
 
@@ -1347,6 +1407,14 @@
         // ══════════════════════════════════════════
         // UI UPDATES
         // ══════════════════════════════════════════
+        function get_circle_radius(co2) {
+            // Logarithmic scale for better visualization
+            // Base: 50m, Max: ~2000m
+            const base = 50;
+            const factor = 15;
+            return base + Math.log2(Math.max(1, co2 / 100)) * factor * 50;
+        }
+
         function updateGlobalRiskBadge() {
             if (!overviewData) return;
             const badge = document.getElementById('globalRiskBadge');
@@ -1374,18 +1442,18 @@
         function updateOverviewBar() {
             if (!overviewData) return;
 
-            document.getElementById('ovRiskScore').textContent = overviewData.globalRisk || '--';
-            const riskLevel = overviewData.globalRiskLevel || {};
-            document.getElementById('ovRiskScore').style.color = riskLevel.color || 'var(--risk-warning)';
-            document.getElementById('ovRiskLabel').textContent = riskLevel.label || '';
+            const avgDaily = overviewData.avgDailyCO2 || 0;
+            const total = overviewData.gctSynthesis?.totalCO2_6months || 0;
+            const exceedance = overviewData.gctSynthesis?.exceedanceRate || '0%';
 
-            document.getElementById('ovTotalCO2').textContent = overviewData.totalMeanCO2 || '--';
-            const synthesis = overviewData.gctSynthesis || {};
-            document.getElementById('ovCO2Sub').textContent = synthesis.exceedanceRate ? `${synthesis.exceedanceRate} exceed` : '';
+            // Cleaner display for large numbers
+            const totalFormatted = total > 1000 ? Math.round(total / 1000) + 'k' : total;
 
-            document.getElementById('ovFacilities').textContent = overviewData.facilityCount || '--';
-            const topRisk = overviewData.topRisks?.[0];
-            document.getElementById('ovFacilitySub').textContent = topRisk ? `Top: ${topRisk.label.split(' - ')[1] || topRisk.label}` : '';
+            document.getElementById('ovAvgDailyCO2').innerHTML = `<span style="font-size: 26px;">${avgDaily}</span><span style="font-size: 14px; margin-left:4px;">t/d</span>`;
+            document.getElementById('ovTotalCO2').innerHTML = `<span style="font-size: 26px;">${totalFormatted}</span><span style="font-size: 14px; margin-left:4px;">t</span>`;
+            document.getElementById('ovExceedance').innerHTML = `<span style="font-size: 26px;">${exceedance}</span>`;
+            
+            document.getElementById('ovExceedance').style.color = parseInt(exceedance) > 25 ? 'var(--risk-danger)' : 'var(--risk-warning)';
         }
 
         function updateMapChips() {
@@ -1436,53 +1504,90 @@
         // ══════════════════════════════════════════
         // POLLUTION CIRCLES
         // ══════════════════════════════════════════
-        function updatePollutionCircles() {
+        function updatePollutionCircles(monthIndex = 5) {
             pollutionCircles.forEach(c => map.removeLayer(c));
             pollutionCircles = [];
 
-            allCircles.forEach(circle => {
-                const riskColor = circle.color;
-                const isDanger = circle.riskLevel === 'danger';
+            const monthsRaw = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
+            document.getElementById('timelineLabel').textContent = monthsRaw[monthIndex] + " 2026";
 
-                const c = L.circle([circle.lat, circle.lng], {
-                    radius: circle.radius,
+            allCircles.forEach(circle => {
+                // Determine values for selected month if available, else use mean
+                let currentCO2 = circle.meanCO2;
+                let currentDaily = circle.meanDailyCO2;
+                if (circle.monthlyData && circle.monthlyData[monthIndex]) {
+                    currentCO2 = circle.monthlyData[monthIndex].co2;
+                    currentDaily = Math.round(currentCO2 / 30);
+                }
+
+                // Recalculate risk level based on the monthly CO2 value (Monthly Scale: 1500/1800)
+                let riskColor = RISK_COLORS.safe;
+                let riskLabel = 'SAFE';
+                let isDanger = false;
+                let opacity = 0.15;
+
+                if (currentCO2 > 1800) {
+                    riskColor = RISK_COLORS.danger;
+                    riskLabel = 'DANGER';
+                    isDanger = true;
+                    opacity = 0.65;
+                } else if (currentCO2 > 1500) {
+                    riskColor = RISK_COLORS.warning;
+                    riskLabel = 'WARNING';
+                    opacity = 0.4;
+                }
+
+                // Add slight jitter to prevent perfect stacking
+                const jitterLat = (Math.random() - 0.5) * 0.0008;
+                const jitterLng = (Math.random() - 0.5) * 0.0008;
+
+                const c = L.circle([circle.lat + jitterLat, circle.lng + jitterLng], {
+                    radius: get_circle_radius(currentCO2),
                     fillColor: riskColor,
-                    fillOpacity: isDanger ? 0.25 : 0.18,
+                    fillOpacity: opacity,
                     color: riskColor,
-                    weight: isDanger ? 2 : 1.5,
-                    opacity: isDanger ? 0.7 : 0.5,
+                    weight: isDanger ? 3 : 1.5,
+                    opacity: isDanger ? 0.8 : 0.5,
                     className: isDanger ? 'danger-circle' : ''
                 }).addTo(map);
 
-                // Build a mini sparkline for the popup
-                const sparkData = circle.monthlyData || [];
-                const sparkHtml = generateSparkline(sparkData, riskColor, 200, 30);
+                const sparkHtml = generateSparkline(circle.monthlyData, riskColor, 200, 30);
 
                 c.bindPopup(`
                     <div style="font-family: Inter, sans-serif; min-width: 240px; padding: 4px;">
-                        <div style="font-weight: 800; font-size: 14px; margin-bottom: 4px;">${circle.label}</div>
+                        <div style="font-weight: 800; font-size: 14px; margin-bottom: 2px; color:${riskColor};">
+                            ${isDanger ? 'CRITICAL POLLUTION ZONE' : circle.label}
+                        </div>
+                        <div style="font-weight: 700; font-size: 15px; margin-bottom: 4px;">
+                            ${circle.label} — ${currentDaily} t/day
+                        </div>
                         <div style="font-size: 10px; color: #8b95b8; margin-bottom: 8px;">${circle.anchor}</div>
                         <div style="display: flex; gap: 6px; margin-bottom: 10px;">
                             <span style="background: ${riskColor}1a; color: ${riskColor};
                                 padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 700;
-                                text-transform: uppercase; letter-spacing: 0.5px;">${circle.riskLabel} — ${circle.riskScore}/100</span>
+                                text-transform: uppercase; letter-spacing: 0.5px;">Risk: ${riskLabel}</span>
                         </div>
+                        
+                        <div style="font-size: 11px; margin-bottom: 10px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 3px solid ${riskColor};">
+                            <strong>Impact:</strong> This zone affects nearby agriculture and urban population density.
+                        </div>
+
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px;">
                             <div style="text-align:center; padding: 4px; background: rgba(255,255,255,0.04); border-radius: 6px;">
-                                <div style="font-size: 14px; font-weight: 700; color: var(--accent-cyan);">${circle.meanCO2}</div>
-                                <div style="font-size: 8px; text-transform: uppercase; color: #4d567a;">Avg t/m</div>
+                                <div style="font-size: 14px; font-weight: 700; color: var(--accent-cyan);">${currentDaily}</div>
+                                <div style="font-size: 8px; text-transform: uppercase; color: #4d567a;">t/day</div>
                             </div>
                             <div style="text-align:center; padding: 4px; background: rgba(255,255,255,0.04); border-radius: 6px;">
                                 <div style="font-size: 14px; font-weight: 700; color: ${riskColor};">${circle.maxCO2}</div>
-                                <div style="font-size: 8px; text-transform: uppercase; color: #4d567a;">Max</div>
+                                <div style="font-size: 8px; text-transform: uppercase; color: #4d567a;">Max (m)</div>
                             </div>
                             <div style="text-align:center; padding: 4px; background: rgba(255,255,255,0.04); border-radius: 6px;">
                                 <div style="font-size: 14px; font-weight: 700;">${circle.threshold}</div>
-                                <div style="font-size: 8px; text-transform: uppercase; color: #4d567a;">Seuil</div>
+                                <div style="font-size: 8px; text-transform: uppercase; color: #4d567a;">Threshold</div>
                             </div>
                         </div>
                         <div style="margin-top: 6px;">
-                            <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #4d567a; margin-bottom: 2px;">Trend 6 months</div>
+                            <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #4d567a; margin-bottom: 2px;">Trend (6 Months)</div>
                             ${sparkHtml}
                         </div>
                     </div>
@@ -1490,6 +1595,11 @@
 
                 pollutionCircles.push(c);
             });
+        }
+
+        function updateTimeline() {
+            const val = document.getElementById('timelineSlider').value;
+            updatePollutionCircles(parseInt(val));
         }
 
         // ══════════════════════════════════════════
@@ -1525,12 +1635,12 @@
                         </div>
                         <div class="pollution-stats">
                             <div class="pollution-stat">
-                                <div class="pollution-stat-value" style="color: var(--accent-cyan);">${c.meanCO2}</div>
-                                <div class="pollution-stat-label">Avg t/m</div>
+                                <div class="pollution-stat-value" style="color: var(--accent-cyan);">${c.meanDailyCO2}</div>
+                                <div class="pollution-stat-label">t/day</div>
                             </div>
                             <div class="pollution-stat">
                                 <div class="pollution-stat-value" style="color: ${c.color};">${c.maxCO2}</div>
-                                <div class="pollution-stat-label">Max</div>
+                                <div class="pollution-stat-label">Max (m)</div>
                             </div>
                             <div class="pollution-stat">
                                 <div class="pollution-stat-value">${c.exceedanceCount}</div>
