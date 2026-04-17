@@ -28,6 +28,8 @@ logs/
 # Evaluation outputs
 eval_data/
 eval_results/
+backend/.deepeval/
+backend/.pytest_cache/
 
 # OS
 .DS_Store
