@@ -105,7 +105,8 @@ Gabesi-AIGuardian/
 │   ├── ingest.py                  # Chunk, embed, upsert to Qdrant
 │   ├── smoke_test.py              # 6-query retrieval verification
 │   ├── evaluate_retrieval.py      # DeepEval retrieval pipeline
-│   └── evaluate_diagnosis.py      # DeepEval diagnosis agent pipeline
+│   ├── evaluate_diagnosis.py      # DeepEval diagnosis agent pipeline
+│   └── evaluate_irrigation.py     # DeepEval irrigation agent pipeline
 ├── .env.example
 └── README.md
 ```
@@ -216,8 +217,23 @@ in English, French, and Arabic.
 # Agent must be running
 cd backend && uvicorn app.main:app --reload --port 8000
 
-python scripts/evaluate_diagnosis.py --synthesize-only
 python scripts/evaluate_diagnosis.py --eval-only
+```
+
+### Irrigation Agent (Feature 3)
+
+Evaluated with hardcoded FAO-56 test cases (12) · GPT-4o-mini judge (GEval)
+
+| Metric | Score | Pass Rate | Status |
+|---|---|---|---|
+| Kc Accuracy | **1.000** | **100%** | ✅ Target met |
+| ETc Math Consistency | **1.000** | **100%** | ✅ Target met |
+| No Technical Terms | **1.000** | **100%** | ✅ Target met |
+| Advisory Quality (GEval) | **0.883** | **100%** | ✅ Target met |
+
+```bash
+# Agent must be running
+python scripts/evaluate_irrigation.py
 ```
 
 ---
@@ -270,7 +286,7 @@ Diagnose a crop symptom described in plain text.
 - [x] Feature 2: Symptom Diagnosis — LangGraph agent, RAG, faithfulness check
 - [x] Diagnosis evaluation — Faithfulness 0.97, Relevancy 0.91, PollutionLink 100%
 - [x] LangSmith tracing — full pipeline observability, $0.0004–$0.0006/call
-- [ ] Feature 3: Irrigation Advisory — NASA POWER ET₀ + FAO-56 Kc
+- [x] Feature 3: Irrigation Advisory — NASA POWER ET₀ + FAO-56 Kc, GEval 0.88
 - [ ] Feature 5: Pollution Exposure Logger — per-plot dossier, PDF export
 - [ ] REST API — remaining endpoints
 - [ ] React frontend
