@@ -12,23 +12,18 @@ knowledge base.**
 [![FastAPI](https://img.shields.io/badge/FastAPI-backend-green?logo=fastapi)](https://fastapi.tiangolo.com)
 [![Qdrant](https://img.shields.io/badge/Qdrant-vector_db-red)](https://qdrant.tech)
 [![DeepEval](https://img.shields.io/badge/DeepEval-evaluation-orange)](https://deepeval.com)
+[![Tests](https://img.shields.io/badge/tests-51%20passing-brightgreen)](https://github.com/omarfh111/Gabesi-AIGuardian)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 </div>
 
 ---
 
-## 🎬 Demo Preview
-
-🚧 Demo screenshots coming soon
-A full demo video and interactive dashboard will be available soon.
-
----
-
 ## 🌍 The Problem
 
 Gabès, Tunisia is home to the **only coastal oasis in the Mediterranean** — and
-it is being destroyed. The Tunisian Chemical Group (GCT) has discharged large quantities of phosphogypsum into the Gulf since 1972. SO₂, fluoride,
+it is being destroyed. The Tunisian Chemical Group (GCT) has discharged over
+150 million tonnes of phosphogypsum into the Gulf since 1972. SO₂, fluoride,
 and heavy metals blanket the oasis zones. Soil salinity rises every year.
 
 The environmental cost: **76 million Tunisian dinars per year**.
@@ -38,81 +33,16 @@ The farmers who bear this cost have **zero access to the data that documents it*
 
 ## 💡 What Gabesi AIGuardian Does
 
-A farmer opens the app and asks: *"Why are my palm trees yellowing?"*
+A farmer opens the app and types: *"Why are my palm trees yellowing?"*
 
-The system:
-1. Expands the symptom into domain-specific search queries
-2. Retrieves evidence from scientific papers, municipal audits, and EU project
-   reports grounded in the Gabès oasis context
-3. Diagnoses the probable cause — pollution, pest, disease, or irrigation —
-   with a faithfulness-verified response
-4. Returns a plain-language diagnosis in the farmer's language (Arabic, French,
-   or English) with a concrete action and cited sources
+The system automatically:
+1. Classifies the intent — diagnosis, irrigation, pollution question, or report request
+2. Routes to the correct specialized agent
+3. Retrieves grounded evidence from scientific papers, municipal audits, and EU reports
+4. Returns a plain-language response in the farmer's language (Arabic, French, or English)
+5. For pollution events — generates a timestamped PDF dossier the farmer can use as evidence
 
-Additionally, the system includes a **Pollution Exposure Agent** that:
-
-- Analyzes historical and forecast air quality data
-- Identifies dominant pollutants (SO₂, NO₂)
-- Detects exposure trends
-- Generates per-plot risk assessments
-- Provides actionable recommendations tailored to farm location
-- Uses deterministic and explainable modeling (no black-box predictions)
-
----
-
-## 🧠 How It Works (Simple)
-
-User → FastAPI → LangGraph Router → Specialized Agent → Structured Response
-
-- The router selects the correct agent (diagnosis, irrigation, pollution)
-- Each agent executes a deterministic + AI-assisted pipeline
-- The system returns a grounded, explainable result in the user’s language
-
----
-
-## ⚡ Key Features
-
-- 🌱 **Symptom Diagnosis Agent**
-  - RAG-powered, faithfulness-verified crop diagnosis
-
-- 💧 **Irrigation Advisory Agent**
-  - FAO-56 compliant ET₀ and crop coefficient modeling
-
-- 🌫️ **Pollution Exposure Agent**
-  - Deterministic, explainable pollution risk modeling (SO₂, NO₂)
-  - Per-plot exposure classification (near_gct → ultra_remote)
-  - Actionable recommendations with calibrated confidence
-
-- 🌍 **Multilingual Support**
-  - Arabic, French, and English outputs
-
-- 🔍 **Grounded Scientific Knowledge**
-  - 1,700+ curated chunks from domain-specific sources
-
----
-
-## 🌫️ Pollution Intelligence (Key Innovation)
-
-A core innovation of this system is the **Pollution Exposure Agent**, which transforms regional atmospheric data into actionable, farm-level insights.
-
-- Deterministic and explainable modeling (no black-box predictions)
-- Per-plot exposure classification (near_gct → ultra_remote)
-- Historical + forecast risk analysis
-- Dominant pollutant detection (SO₂, NO₂)
-- Actionable recommendations with calibrated confidence
-- Designed for real-world decision support, not generic reporting
-
----
-
-## 🧠 Why This Is Different
-
-Unlike generic AI assistants or black-box models, Gabesi AIGuardian:
-
-- Uses **deterministic + explainable modeling** for pollution analysis
-- Verifies diagnosis responses with **faithfulness checks**
-- Avoids hallucinations through **grounded RAG pipelines**
-- Explicitly communicates **confidence and limitations**
-- Is tailored specifically to the **Gabès environmental context**
+No other system does this for Gabès.
 
 ---
 
@@ -120,26 +50,78 @@ Unlike generic AI assistants or black-box models, Gabesi AIGuardian:
 
 ```mermaid
 graph TD
-    A[Farmer App] -->|HTTP POST| B[FastAPI Backend]
-    B --> C{LangGraph Router}
+    A[Farmer — EN/FR/AR] -->|POST /api/v1/chat| B[FastAPI Backend]
+    B --> C{Intent Router\nGPT-4o-mini}
     C -->|symptom| D[Diagnosis Agent]
     C -->|irrigation| E[Irrigation Agent]
-    C -->|pollution| F[Pollution Exposure Agent]
-    D --> G[query_expansion]
-    G --> H[retrieve]
-    H --> I[diagnose]
-    I --> J[verify]
-    J -->|DiagnosisResponse| B
-    E --> K[fetch_weather]
-    K --> L[compute_et0]
-    L --> M[lookup_kc]
-    M --> N[format_advisory]
-    N -->|IrrigationResponse| B
-    H -->|vector search| O[(Qdrant\ngabes_knowledge\n1718 chunks)]
-    K -->|daily weather| P[NASA POWER API]
-    I -->|GPT-4o-mini| Q[OpenAI]
-    N -->|GPT-4o-mini| Q
+    C -->|pollution question| F[Pollution QA Agent]
+    C -->|report request| G[Pollution Report Agent]
+
+    D --> D1[query_expansion]
+    D1 --> D2[retrieve]
+    D2 --> D3[diagnose]
+    D3 --> D4[verify faithfulness]
+    D4 -->|DiagnosisResponse| B
+
+    E --> E1[fetch_weather\nNASA POWER]
+    E1 --> E2[compute_ET₀\nPenman-Monteith]
+    E2 --> E3[lookup_Kc\nFAO-56]
+    E3 --> E4[format_advisory]
+    E4 -->|IrrigationResponse| B
+
+    F --> F1[retrieve RAG]
+    F1 --> F2[calibrate confidence]
+    F2 -->|PollutionQAResponse| B
+
+    G --> G1[fetch air quality\nOpen-Meteo CAMS]
+    G1 --> G2[compute thresholds\nP80/P95]
+    G2 --> G3[classify events]
+    G3 --> G4[annotate RAG]
+    G4 --> G5[generate PDF dossier]
+    G5 -->|PollutionReport + PDF| B
+
+    D2 -->|vector search| KB[(Qdrant\ngabes_knowledge\n1,718 chunks · 21 docs)]
+    F1 -->|vector search| KB
+    G4 -->|vector search| KB
 ```
+
+---
+
+## ⚡ Key Capabilities
+
+| Agent | Trigger | Output |
+|---|---|---|
+| **Diagnosis** | Crop symptom description | Grounded diagnosis, pollution link, cited sources |
+| **Irrigation** | Watering question | FAO-56 ET₀ calculation, daily irrigation depth in mm |
+| **Pollution QA** | General pollution question | RAG-grounded answer with confidence calibration |
+| **Pollution Report** | Report/dossier request | Full PDF dossier with event timeline, risk badge, recommendations |
+
+**All agents support Arabic, French, and English.**
+
+---
+
+## 🌫️ Pollution Intelligence
+
+The pollution agent transforms regional atmospheric data into farm-level evidence dossiers.
+
+- **Deterministic modeling** — no LLM hallucinations in the risk calculation
+- **Exposure band classification** — near_gct → mid_exposure → lower_exposure → ultra_remote
+- **Rolling percentile thresholds** — P80/P95 over 30-day window (relative background, not WHO absolute)
+- **RAG-grounded annotations** — each pollution event cites peer-reviewed evidence
+- **PDF export** — professional dossier with risk badge, event breakdown, and legal disclaimer
+
+---
+
+## 🧠 Why This Is Different
+
+| Property | This system | Generic AI assistant |
+|---|---|---|
+| Pollution attribution | Conditional — only when symptom signals warrant it | Always mentions pollution |
+| Faithfulness | Hard-verified — response rejected if < 50% claims grounded | No check |
+| Pollution modeling | Deterministic P80/P95 thresholds | LLM estimation |
+| Narrative generation | Template-based for legal-sensitive outputs | LLM free-form |
+| Confidence | Explicitly calibrated and communicated | Rarely stated |
+| Domain specificity | Gabès oasis, GCT complex, Deglet Nour palms | Generic agriculture |
 
 ---
 
@@ -149,36 +131,44 @@ graph TD
 Gabesi-AIGuardian/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py                # FastAPI app (lifespan, CORS, router)
-│   │   ├── config.py              # Pydantic settings (loaded from .env)
+│   │   ├── main.py                    # FastAPI, lifespan, CORS
+│   │   ├── config.py                  # Pydantic BaseSettings
 │   │   ├── agents/
-│   │   │   ├── diagnosis_agent.py # LangGraph: query_expansion→retrieve→diagnose→verify
-│   │   │   ├── irrigation_agent.py # FAO-56 compliance + advisory generation
-│   │   │   └── pollution_agent.py  # Deterministic exposure modeling + insights
-│   │   ├── api/
-│   │   │   └── routes.py          # POST /diagnosis, GET /health
+│   │   │   ├── intent_router.py       # GPT-4o-mini classifier → agent dispatch
+│   │   │   ├── diagnosis_agent.py     # query_expansion → retrieve → diagnose → verify
+│   │   │   ├── irrigation_agent.py    # NASA POWER → ET₀ → Kc → advisory
+│   │   │   ├── pollution_agent.py     # Open-Meteo → thresholds → classify → RAG → PDF
+│   │   │   └── pollution_qa_agent.py  # RAG → confidence calibration → answer
+│   │   ├── api/routes.py              # All endpoints
 │   │   ├── models/
-│   │   │   └── diagnosis.py       # DiagnosisRequest, DiagnosisResponse, RetrievedChunk
-│   │   └── rag/
-│   │       └── retriever.py       # QdrantRetriever (text-embedding-3-large)
-│   ├── tests/
-│   │   └── test_diagnosis_agent.py # 4 pytest tests (zero real API calls)
-│   └── requirements.txt           # All dependencies (merged root + backend)
-├── data/                          # Knowledge corpus (gitignored)
-│   ├── papers/                    # Scientific PDFs
-│   ├── pdl_reports/               # Municipal + EU project reports
-│   ├── processed/                 # Preprocessed markdown (41 PDL tables)
-│   ├── references/                # FAO-56 irrigation reference
-│   └── structured/                # JSON: oasis zones, GCT coords, crop Kc values
-├── eval_data/                     # Gitignored — generated by eval scripts
-├── eval_results/                  # Gitignored — generated by eval scripts
+│   │   │   ├── chat.py                # ChatRequest, ChatResponse
+│   │   │   ├── diagnosis.py
+│   │   │   ├── irrigation.py
+│   │   │   ├── pollution.py
+│   │   │   └── pollution_qa.py
+│   │   ├── services/
+│   │   │   └── pdf_generator.py       # Pollution dossier PDF
+│   │   └── rag/retriever.py           # QdrantRetriever
+│   ├── tests/                         # 51 tests, 0 failures
+│   │   ├── test_diagnosis_agent.py    # 4 tests
+│   │   ├── test_irrigation_agent.py   # 4 tests
+│   │   ├── test_intent_router.py      # 5 tests
+│   │   ├── test_pollution_agent.py    # 6 tests
+│   │   ├── test_pollution_qa_agent.py # 23 tests
+│   │   └── test_pdf_generation.py     # 9 tests
+│   └── requirements.txt
+├── data/                              # Gitignored — large corpus files
+│   └── structured/                    # oasis_zones.json, gct_coordinates.json,
+│                                      # crop_coefficients.json (committed)
+├── eval_data/                         # Gitignored — generated by eval scripts
+├── eval_results/                      # Gitignored — generated by eval scripts
 ├── scripts/
-│   ├── preprocess_docx.py         # PDL docx → markdown, 41 tables preserved
-│   ├── ingest.py                  # Chunk, embed, upsert to Qdrant
-│   ├── smoke_test.py              # 6-query retrieval verification
-│   ├── evaluate_retrieval.py      # DeepEval retrieval pipeline
-│   ├── evaluate_diagnosis.py      # DeepEval diagnosis agent pipeline
-│   └── evaluate_irrigation.py     # DeepEval irrigation agent pipeline
+│   ├── preprocess_docx.py
+│   ├── ingest.py
+│   ├── smoke_test.py
+│   ├── evaluate_retrieval.py
+│   ├── evaluate_diagnosis.py
+│   └── evaluate_irrigation.py
 ├── .env.example
 └── README.md
 ```
@@ -210,7 +200,8 @@ pip install -r backend/requirements.txt
 
 ```bash
 cp .env.example .env
-# Fill in: QDRANT_URL, QDRANT_API_KEY, OPENAI_API_KEY
+# Fill in: QDRANT_URL, QDRANT_API_KEY, OPENAI_API_KEY,
+#          LANGCHAIN_API_KEY, LANGCHAIN_PROJECT=Gabes
 ```
 
 ### Run the Backend
@@ -218,15 +209,15 @@ cp .env.example .env
 ```bash
 cd backend
 uvicorn app.main:app --reload --port 8000
-# API docs: http://localhost:8000/docs
+# Swagger UI: http://localhost:8000/docs
 ```
 
 ### Reproduce the Knowledge Base
 
 ```bash
-python scripts/preprocess_docx.py   # PDL docx → markdown
+python scripts/preprocess_docx.py   # PDL Gabès docx → markdown, 41 tables
 python scripts/ingest.py            # chunk + embed + upsert to Qdrant
-python scripts/smoke_test.py        # verify retrieval
+python scripts/smoke_test.py        # verify retrieval works
 ```
 
 ---
@@ -237,178 +228,179 @@ python scripts/smoke_test.py        # verify retrieval
 |---|---|---|---|
 | `gabes_knowledge` | 21 | 1,718 | Static domain RAG |
 | `satellite_timeseries` | — | 0* | Weekly oasis snapshots |
-| `farmer_context` | — | 0* | Per-farmer memory |
+| `farmer_context` | — | runtime | Per-farmer pollution event log |
 
-*Populated at runtime.
+**Ingestion specs:** `text-embedding-3-large` · Chonkie SemanticChunker ·
+dense + sparse (BM25/IDF) vectors · payload indexes on `source_type`,
+`language`, `doc_name`
 
-**Specs:** `text-embedding-3-large` · Chonkie SemanticChunker · dense + sparse
-(BM25/IDF) vectors · payload indexes on `source_type`, `language`, `doc_name`
-
-### Pollution Modeling Approach
-
-The pollution agent does not rely on direct plot-level sensors. Instead, it combines:
-- Open-Meteo CAMS atmospheric data (regional baseline)
-- Deterministic exposure band modeling (distance-based attenuation)
-- Relative threshold analysis (p80 / p95 background levels)
-
-This ensures explainable, reproducible, and location-aware risk estimation without overclaiming precision.
+**Corpus includes:**
+- PDL Gabès 2023 — full municipal audit (French, 41 tables preserved)
+- 6 peer-reviewed papers — fluoride damage, heavy metals, phosphate pollution,
+  date palm diseases, soil salinity, remote sensing
+- 9 EU environmental project reports — ADMIRE, CIGEN, OASIS AQUATIQUE
+- FAO-56 Allen 1998 — irrigation reference
+- Arabic strategic study 2015-2035
+- 3 structured JSON files — oasis zones, GCT coordinates, FAO-56 crop coefficients
 
 ---
 
-## 📈 Evaluation
+## 📈 Evaluation Results
 
 ### Retrieval Pipeline
 
-Evaluated with DeepEval · 68 synthetic goldens · GPT-4o-mini judge
+68 synthetic goldens · GPT-4o-mini judge · stratified by source type
 
 | Metric | Score | Pass Rate | Status |
 |---|---|---|---|
 | Contextual Recall | **0.9512** | **98.33%** | ✅ Target met |
 | Contextual Relevancy | 0.4395 | 41.67% | ⚠️ Known limitation* |
 
-*Relevancy penalises multi-topic chunks (avg 841 chars). Recall is the
-operationally meaningful metric for retrieval quality.
+*Multi-topic chunks (avg 841 chars) are penalised by ContextualRelevancyMetric.
+Recall is the operationally meaningful metric — it confirms the right information
+is retrieved for 98% of queries.
 
-```bash
-python scripts/evaluate_retrieval.py --synthesize-only --use-openai-synthesis --n-contexts 120
-python scripts/evaluate_retrieval.py --eval-only --top-k 5
-```
+### Diagnosis Agent
 
-### Diagnosis Agent (Feature 2)
-
-Evaluated with DeepEval · 16 synthetic farmer inputs · GPT-4o-mini judge
-Inputs cover: pollution-linked, irrigation, pest/disease, mixed, vague symptoms
-in English, French, and Arabic.
+16 synthetic inputs (EN/FR/AR) · GPT-4o-mini judge
 
 | Metric | Score | Pass Rate | Status |
 |---|---|---|---|
-| Faithfulness | **0.9667** | **100%** | ✅ Target met |
-| Answer Relevancy | **0.9115** | **100%** | ✅ Target met |
-| Pollution Link Accuracy | **100%** | **16/16** | ✅ Target met |
+| Faithfulness | **0.9667** | **100%** | ✅ |
+| Answer Relevancy | **0.9115** | **100%** | ✅ |
+| Pollution Link Accuracy | **100%** | **16/16** | ✅ |
 
-**Key design decisions evaluated:**
-- Query expansion with conditional pollution queries — pollution queries only
-  generated when symptom contains proximity signals (factory smell, white
-  crust, multiple plots affected). Eliminates false pollution attribution for
-  pure pest/irrigation cases.
-- Faithfulness verification node — rejects diagnoses where < 50% of claims
-  are grounded in retrieved chunks.
+Key design: conditional pollution queries — only generated when symptom contains
+proximity signals (factory smell, white crust, multiple plots affected).
 
-```bash
-# Agent must be running
-cd backend && uvicorn app.main:app --reload --port 8000
+### Irrigation Agent
 
-python scripts/evaluate_diagnosis.py --eval-only
-```
-
-### Irrigation Agent (Feature 3)
-
-Evaluated with hardcoded FAO-56 test cases (12) · GPT-4o-mini judge (GEval)
+12 hardcoded FAO-56 test cases · GPT-4o-mini GEval
 
 | Metric | Score | Pass Rate | Status |
 |---|---|---|---|
-| Kc Accuracy | **1.000** | **100%** | ✅ Target met |
-| ETc Math Consistency | **1.000** | **100%** | ✅ Target met |
-| No Technical Terms | **1.000** | **100%** | ✅ Target met |
-| Advisory Quality (GEval) | **0.883** | **100%** | ✅ Target met |
+| Kc Accuracy | **1.000** | **100%** | ✅ |
+| ETc Math Consistency | **1.000** | **100%** | ✅ |
+| No Technical Jargon | **1.000** | **100%** | ✅ |
+| Advisory Quality (GEval) | **0.883** | **100%** | ✅ |
 
-```bash
-# Agent must be running
-python scripts/evaluate_irrigation.py
+```mermaid
+graph LR
+    A[RAG Pipeline\n68 goldens] --> B[Recall 0.95\n98.33% pass ✅]
+    C[Diagnosis Agent\n16 inputs EN/FR/AR] --> D[Faithfulness 0.97\nRelevancy 0.91\nPollution 100% ✅]
+    E[Irrigation Agent\n12 FAO-56 cases] --> F[Kc 100%\nETc 100%\nGEval 0.88 ✅]
 ```
-
----
-
-## ⚡ Performance
-
-- Average response time: **~900ms**
-- Fully cached requests: **< 300ms**
-- Deterministic outputs (reproducible results)
-- 12/12 stress test scenarios passed
 
 ---
 
 ## 🛠️ API Reference
 
-### POST `/api/v1/diagnosis`
+### `POST /api/v1/chat` — Unified Chat Endpoint
 
-Diagnose a crop symptom described in plain text.
+The primary endpoint. Takes any free-text message, classifies intent,
+routes to the correct agent, and returns a structured response.
 
 **Request:**
 ```json
 {
-  "symptom_description": "My date palm leaves are turning yellow at the tips and there is a white crust forming on the soil surface near the roots.",
+  "message": "My date palm leaves are turning yellow and there is white powder on the soil",
+  "farmer_id": "farmer_001",
+  "plot_id": "bahria_plot_a",
   "language": "en",
-  "farmer_id": null,
-  "plot_id": null
+  "crop_type": "date_palm",
+  "growth_stage": "mid"
 }
 ```
 
 **Response:**
 ```json
 {
-  "diagnosis_id": "uuid",
-  "symptom_input": "...",
-  "probable_cause": "Phosphate pollution affecting plant health",
-  "confidence": 0.8,
-  "severity": "medium",
-  "recommended_action": "...",
-  "pollution_link": true,
-  "sources": ["Heavy metals Gabès Gulf.pdf", "Screening_biological_traits_and_fluoride.pdf"],
-  "faithfulness_verified": true,
-  "timestamp": "2026-04-17T10:28:06Z"
+  "intent": "diagnosis",
+  "agent_used": "diagnosis_agent",
+  "response": { ... },
+  "processing_time_ms": 9192,
+  "timestamp": "2026-04-17T22:32:42Z"
 }
 ```
 
-### POST `/api/v1/pollution`
-
-Analyze pollution exposure for a specific farm plot.
-
-**Request:**
-```json
-{
-  "farmer_id": "string",
-  "plot_id": "string",
-  "language": "en | fr | ar",
-  "window_days": 7
-}
-```
-
-**Response (simplified):**
-```json
-{
-  "plot_exposure_band": "near_gct | mid_exposure | lower_exposure | ultra_remote",
-  "historical_event_count": 3,
-  "forecast_event_count": 2,
-  "risk_level": "low | moderate | high",
-  "trend": "increasing | decreasing | stable | insufficient_history",
-  "dominant_pollutant": "SO2 | NO2",
-  "dominance_reason": "string explanation",
-  "recommendations": [
-    {"text": "...", "priority": "high"}
-  ],
-  "confidence": {
-    "overall": "low | medium"
-  },
-  "processing_time_ms": 950
-}
-```
-
-### GET `/api/v1/health`
-
-```json
-{"status": "ok", "collection": "gabes_knowledge", "timestamp": "..."}
-```
+Possible `intent` values: `diagnosis` · `irrigation` · `pollution_qa` ·
+`pollution_report` · `unknown`
 
 ---
 
-### Evaluation Pipeline
+### `POST /api/v1/diagnosis`
 
-```mermaid
-graph LR
-    A[RAG Pipeline] -->|68 goldens\nGPT-4o-mini| B[Recall 0.95\n98.33% pass]
-    C[Diagnosis Agent] -->|16 inputs\nEN/FR/AR| D[Faithfulness 0.97\nRelevancy 0.91\nPollution 100%]
-    E[Irrigation Agent] -->|12 FAO-56\ntest cases| F[Kc 100%\nETc 100%\nGEval 0.88]
+```json
+{
+  "symptom_description": "Leaves yellowing at tips, white crust on soil",
+  "language": "en",
+  "farmer_id": "farmer_001",
+  "plot_id": "bahria_plot_a"
+}
+```
+
+Returns `DiagnosisResponse` with `probable_cause`, `confidence`, `severity`,
+`pollution_link`, `sources`, `faithfulness_verified`.
+
+---
+
+### `POST /api/v1/irrigation`
+
+```json
+{
+  "crop_type": "date_palm",
+  "growth_stage": "mid",
+  "language": "en"
+}
+```
+
+Returns `IrrigationResponse` with `et0_mm_day`, `kc`, `etc_mm_day`,
+`irrigation_depth_mm`, `advisory_text`, `rs_estimated`.
+
+---
+
+### `POST /api/v1/pollution/report`
+
+```json
+{
+  "farmer_id": "farmer_001",
+  "plot_id": "bahria_plot_a",
+  "language": "en",
+  "window_days": 30
+}
+```
+
+Returns `PollutionReport` with events, insights, recommendations, narrative,
+disclaimer. Events are also logged to Qdrant `farmer_context` collection.
+
+---
+
+### `POST /api/v1/pollution/dossier`
+
+Same request as `/pollution/report`. Returns `application/pdf` — a
+professionally formatted 3-page dossier with risk badge, event timeline,
+confidence assessment, and legal disclaimer.
+
+---
+
+### `POST /api/v1/pollution/qa`
+
+```json
+{
+  "question": "How does SO2 from the GCT factory affect date palm trees?",
+  "language": "en"
+}
+```
+
+Returns `PollutionQAResponse` with `answer`, `confidence`, `sources`,
+`limitations`.
+
+---
+
+### `GET /api/v1/health`
+
+```json
+{"status": "ok", "collection": "gabes_knowledge", "timestamp": "..."}
 ```
 
 ---
@@ -417,15 +409,17 @@ graph LR
 
 - [x] Knowledge base — 1,718 chunks, 21 docs, dense + sparse vectors
 - [x] Retrieval evaluation — Recall 0.95, 98.33% pass rate
-- [x] Feature 2: Symptom Diagnosis — LangGraph agent, RAG, faithfulness check
-- [x] Diagnosis evaluation — Faithfulness 0.97, Relevancy 0.91, PollutionLink 100%
-- [x] LangSmith tracing — full pipeline observability, $0.0004–$0.0006/call
-- [x] Feature 3: Irrigation Advisory — NASA POWER ET₀ + FAO-56 Kc, GEval 0.88
-- [x] Feature 4: Pollution Exposure Agent — deterministic risk modeling, insights, and recommendations
-- [ ] Feature 5: Pollution Exposure Logger — per-plot dossier, PDF export
-- [ ] REST API — remaining endpoints
-- [ ] React frontend
-- [ ] End-to-end evaluation — Faithfulness + Answer Relevancy at scale
+- [x] Feature 2: Symptom Diagnosis — LangGraph, RAG, faithfulness verification
+- [x] Feature 2 evaluation — Faithfulness 0.97, Relevancy 0.91, PollutionLink 100%
+- [x] Feature 3: Irrigation Advisory — NASA POWER + FAO-56 Penman-Monteith
+- [x] Feature 3 evaluation — Kc 100%, ETc 100%, GEval 0.88
+- [x] Feature 5: Pollution Exposure Logger — P80/P95 thresholds, RAG annotations, Qdrant logging
+- [x] Feature 5b: Pollution QA Agent — RAG-grounded Q&A, confidence calibration
+- [x] Feature 5c: PDF Dossier Generator — professional evidence document
+- [x] LangSmith tracing — full pipeline observability, ~$0.0004/call
+- [x] Intent Router — unified /api/v1/chat, 51 tests passing
+- [ ] React frontend — farmer chat interface with PDF download
+- [ ] End-to-end evaluation — full pipeline faithfulness at scale
 
 ---
 
@@ -437,17 +431,6 @@ intelligence feed about their own land, and an automatically generated
 pollution dossier they can bring to a meeting, a journalist, or a court.
 
 The invisible becomes visible. The anecdotal becomes documented.
-
----
-
-## 📸 Upcoming Dashboard
-
-- Interactive farm map with pollution overlays
-- Per-plot pollution dossier (PDF export)
-- AI assistant routing between diagnosis, irrigation, and pollution agents
-
-🚧 Dashboard preview coming soon
-Interactive UI with pollution maps and AI assistant is under development.
 
 ---
 
