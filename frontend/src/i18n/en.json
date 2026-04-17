@@ -1,0 +1,27 @@
+{
+  "appName": "🌿 Gabesi AIGuardian",
+  "nav": {
+    "chat": "Chat",
+    "pollution": "Pollution",
+    "irrigation": "Irrigation"
+  },
+  "chat": {
+    "title": "Chat with your AI assistant",
+    "placeholder": "Type your question...",
+    "send": "Send"
+  },
+  "pollution": {
+    "title": "Pollution Dashboard",
+    "riskLevel": "Pollution risk level",
+    "downloadPdf": "Download PDF Dossier"
+  },
+  "irrigation": {
+    "title": "Irrigation Advisory",
+    "applyWater": "Apply {{mm}} mm of water today"
+  },
+  "common": {
+    "probableCause": "Probable cause",
+    "recommendedAction": "Recommended action",
+    "sources": "Sources"
+  }
+}
