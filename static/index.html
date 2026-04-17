@@ -53,6 +53,10 @@
                             <input type="number" id="age" name="age" required min="0" max="120">
                         </div>
                         <div class="form-group">
+                            <label for="cin" data-i18n="label_cin">CIN (National ID)</label>
+                            <input type="text" id="cin" name="cin" required pattern="\d{8}" maxlength="8" data-i18n-placeholder="ph_cin" placeholder="12345678">
+                        </div>
+                        <div class="form-group">
                             <label for="sex" data-i18n="label_sex">Sex at Birth</label>
                             <select id="sex" name="sex" required>
                                 <option value="male" data-i18n="opt_male">Male</option>
@@ -85,6 +89,7 @@
                         <div class="form-group">
                             <label for="proximity" data-i18n="label_proximity">Proximity to Industrial Plants</label>
                             <select id="proximity" name="proximity" required>
+                                <option value="i_work_in_an_industrial_plant" data-i18n="opt_prox_work">I work in an industrial plant</option>
                                 <option value="visible_from_home_or_work" data-i18n="opt_prox_visible">Visible from home or work</option>
                                 <option value="frequent_chemical_smell" data-i18n="opt_prox_smell">I often smell chemicals/gas</option>
                                 <option value="rarely_noticed" data-i18n="opt_prox_rarely">I rarely notice any industry signs</option>
@@ -102,6 +107,10 @@
                                 <option value="former" data-i18n="opt_smoke_former">Former smoker</option>
                                 <option value="current" data-i18n="opt_smoke_current">Current smoker</option>
                             </select>
+                        </div>
+                        <div class="form-group span-2">
+                            <label for="workplace_exposure" data-i18n="label_work_exposure">Specific Workplace Exposures</label>
+                            <input type="text" id="workplace_exposure" name="workplace_exposure" data-i18n-placeholder="ph_work_exposure" placeholder="e.g. Asbestos, Lead, Specific Chemicals (comma separated)">
                         </div>
                     </div>
                     <div class="checkbox-group">
@@ -142,6 +151,14 @@
                         <div class="form-group">
                             <label for="severity" data-i18n="label_severity">Severity (0-10)</label>
                             <input type="number" id="severity" name="severity" min="0" max="10">
+                        </div>
+                        <div class="form-group">
+                            <label for="duration" data-i18n="label_duration">Duration</label>
+                            <input type="text" id="duration" name="duration" required data-i18n-placeholder="ph_duration" placeholder="e.g. 3 days">
+                        </div>
+                        <div class="form-group">
+                            <label for="progression" data-i18n="label_progression">Progression</label>
+                            <input type="text" id="progression" name="progression" required data-i18n-placeholder="ph_progression" placeholder="e.g. Getting worse at night">
                         </div>
                     </div>
                 </section>
@@ -202,6 +219,16 @@
                         <label><input type="checkbox" name="history" value="hypertension"> <span data-i18n="hist_hypertension">Hypertension</span></label>
                         <label><input type="checkbox" name="history" value="diabetes"> <span data-i18n="hist_diabetes">Diabetes</span></label>
                         <label><input type="checkbox" name="history" value="heart_disease"> <span data-i18n="hist_heart">Heart Disease</span></label>
+                    </div>
+                    <div class="grid-2 margin-top">
+                        <div class="form-group">
+                            <label for="medications" data-i18n="label_medications">Current Medications</label>
+                            <textarea id="medications" name="medications" rows="2" data-i18n-placeholder="ph_medications" placeholder="List medications separated by commas..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="family_history" data-i18n="label_family_history">Family History</label>
+                            <textarea id="family_history" name="family_history" rows="2" data-i18n-placeholder="ph_family_history" placeholder="Note chronic diseases in family..."></textarea>
+                        </div>
                     </div>
                 </section>
 

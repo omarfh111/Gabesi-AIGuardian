@@ -21,12 +21,14 @@ class ExposureFactor(str, Enum):
 
 class PatientProfile(BaseModel):
     name: str
+    cin: str = Field(..., pattern=r"^\d{8}$", description="Tunisian National ID (8 digits)")
     age: int
     sex: Sex
     height: float # cm
     weight: float # kg
 
 class Proximity(str, Enum):
+    WORKS_IN_PLANT = "i_work_in_an_industrial_plant"
     VISIBLE = "visible_from_home_or_work"
     FREQUENT_SMELL = "frequent_chemical_smell"
     RARELY_NOTICED = "rarely_noticed"

@@ -14,7 +14,11 @@ The system operates as a multi-stage medical pipeline:
 2.  **Multilingual Layer**: Automatically detects input language, including **Tunisian Darija** (spoken dialect) and **Arabizi** (Latin-script Arabic).
 3.  **RAG Layer (Qdrant)**: Performs a **Hybrid Search** (Dense + Sparse) on the `gabes_knowledge` collection to retrieve scientific papers and local health context.
 4.  **Triage Engine (LLM)**: An OpenAI GPT-4o-mini engine that provides **Formal Language Locking**. It parses informal dialects but responds in the Standard/Formal version of the patient's language (e.g., Modern Standard Arabic or Professional French).
-5.  **Local Router (Safety Fail-safe)**: A deterministic logic layer that enforces "Red Flag" overrides and boosts specialty scores based on environmental industrial triggers.
+5. **Local Router (Safety Fail-safe)**: A deterministic logic layer that enforces "Red Flag" overrides and boosts specialty scores based on environmental industrial triggers.
+6. **Persistence Layer (Phase 2)**: 
+    *   **Patient Identity**: 8-digit **CIN (National ID)** tracking for persistent medical history.
+    *   **Operational DB (Supabase)**: Stores operational telemetry, demographics, and case decisions.
+    *   **Vector Index (Qdrant)**: High-density, nested case indexing for Phase 2 similarity search and clinical history retrieval.
 
 ---
 
@@ -58,6 +62,19 @@ pip install -r requirements.txt
 venv\Scripts\python.exe main.py
 ```
 Access the dashboard at: **http://localhost:8000**
+
+### 5. Database Setup (Supabase)
+Run the following SQL migration to enable Phase 2 tracking:
+```sql
+-- Track patients via National ID
+ALTER TABLE patients ADD COLUMN cin TEXT UNIQUE;
+
+-- Add clinical analytics columns
+ALTER TABLE intake_cases 
+ADD COLUMN occupation TEXT,
+ADD COLUMN proximity_status TEXT,
+ADD COLUMN duration TEXT;
+```
 
 ---
 

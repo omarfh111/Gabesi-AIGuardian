@@ -86,11 +86,13 @@ class TriageAnalysisService:
 
         user_prompt = (
             "Analyze the following patient intake data from Gabès, Tunisia. "
-            "Consider environmental factors like industrial pollution if relevant.\n\n"
+            "DEEPLY CONSIDER environmental factors like industrial pollution if relevant.\n"
+            "If the patient works in an industrial plant (proximity = 'i_work_in_an_industrial_plant') or lives in 'visible' proximity, "
+            "this MUST be the primary focus of your clinical summary and risk assessment.\n\n"
             f"[SCIENTIFIC CONTEXT FROM GABES KNOWLEDGE BASE]\n{context}\n\n"
             f"[PATIENT INTAKE DATA]\n{intake.model_dump_json(indent=2)}\n\n"
             "Instructions:\n"
-            "1. Summarize the case.\n"
+            "1. Summarize the case (Explicitly address industrial/workplace exposure if high-risk. Utilize 'duration' and 'progression' for clinical context).\n"
             "2. Detect symptom clusters (Respiratory, Cardiac, etc.).\n"
             "3. Estimate urgency (low | moderate | high | emergency).\n"
             "4. Rank relevant specialties (MUST stick to this list: pneumologist, cardiologist, oncologist, neurologist, dermatologist, toxicologist, generalist).\n"
