@@ -162,6 +162,7 @@ def diagnose_node(state: AgentState) -> AgentState:
         sources = list(set([c.doc_name for c in state["chunks"]]))
 
         state["diagnosis"] = DiagnosisResponse(
+            diagnosis_id=str(uuid4()),
             symptom_input=state["symptom"],
             probable_cause=data["probable_cause"],
             confidence=float(data["confidence"]),
@@ -267,6 +268,7 @@ def run_diagnosis(request: DiagnosisRequest) -> DiagnosisResponse:
         if final_state.get("error") or not final_state.get("diagnosis"):
             wait_for_all_tracers()
             return DiagnosisResponse(
+                diagnosis_id=str(uuid4()),
                 symptom_input=request.symptom_description,
                 probable_cause="Unable to diagnose — please describe symptoms in more detail",
                 confidence=0.0,
@@ -278,6 +280,7 @@ def run_diagnosis(request: DiagnosisRequest) -> DiagnosisResponse:
                 reasoning=final_state.get("error", "Unknown error"),
                 faithfulness_verified=False,
                 processing_time_ms=int((time.time() - start_time) * 1000),
+                timestamp=datetime.now(UTC),
             )
 
         diagnosis = final_state["diagnosis"]
@@ -288,6 +291,7 @@ def run_diagnosis(request: DiagnosisRequest) -> DiagnosisResponse:
     except Exception as e:
         wait_for_all_tracers()
         return DiagnosisResponse(
+            diagnosis_id=str(uuid4()),
             symptom_input=request.symptom_description,
             probable_cause="Unable to diagnose — please describe symptoms in more detail",
             confidence=0.0,
@@ -299,4 +303,5 @@ def run_diagnosis(request: DiagnosisRequest) -> DiagnosisResponse:
             reasoning=f"Unhandled exception: {str(e)}",
             faithfulness_verified=False,
             processing_time_ms=int((time.time() - start_time) * 1000),
+            timestamp=datetime.now(UTC),
         )

@@ -11,9 +11,11 @@ import json
 import logging
 import math
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, date, UTC, timedelta
+from functools import lru_cache
 from pathlib import Path
-from typing import Optional, TypedDict
+from typing import Dict, Any, List, Optional, TypedDict
+from uuid import uuid4
 
 import httpx
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -348,6 +350,7 @@ def format_advisory_node(state: IrrigationState) -> IrrigationState:
     elapsed_ms = int((time.time() - state["start_time"]) * 1000)
 
     state["advisory"] = IrrigationResponse(
+        advisory_id=str(uuid4()),
         crop_type=state["crop_type"],
         growth_stage=stage,
         weather_date=weather.date,
@@ -359,6 +362,7 @@ def format_advisory_node(state: IrrigationState) -> IrrigationState:
         advisory_text=advisory_text,
         rs_estimated=weather.rs_estimated,
         processing_time_ms=elapsed_ms,
+        timestamp=datetime.now(UTC),
     )
 
     return state

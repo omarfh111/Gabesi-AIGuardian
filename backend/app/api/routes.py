@@ -5,10 +5,12 @@ from app.models.diagnosis import DiagnosisRequest, DiagnosisResponse
 from app.models.irrigation import IrrigationRequest, IrrigationResponse
 from app.models.pollution import PollutionReportRequest, PollutionReport
 from app.models.pollution_qa import PollutionQARequest, PollutionQAResponse
+from app.models.chat import ChatRequest, ChatResponse
 from app.agents.diagnosis_agent import run_diagnosis
 from app.agents.irrigation_agent import run_irrigation
 from app.agents.pollution_agent import run_pollution_agent
 from app.agents.pollution_qa_agent import run_pollution_qa
+from app.agents.intent_router import run_intent_router
 from app.services.pdf_generator import generate_pollution_pdf
 from app.config import settings
 
@@ -113,3 +115,15 @@ def get_health():
         "collection": settings.collection_name,
         "timestamp": datetime.utcnow().isoformat()
     }
+
+
+@router.post("/chat", response_model=ChatResponse)
+def post_chat(request: ChatRequest):
+    try:
+        response = run_intent_router(request)
+        return response
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={"detail": f"Intent router failure: {str(e)}"}
+        )
