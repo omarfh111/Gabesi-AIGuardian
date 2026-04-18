@@ -56,12 +56,12 @@ Gabes has specific industrial exposure risk profiles. This platform is built to:
 ## System Architecture
 ```mermaid
 flowchart LR
-    A[Frontend Intake + Chat UI] --> B[FastAPI Backend]
-    B --> C[TriageAnalysisService]
-    C --> D[RouterService]
-    D --> DG[Route: Generalist]
-    D --> DS[Route: Specialist]
-    D --> DT[Route: Toxicologist]
+    A[Frontend Intake Chat UI] --> B[FastAPI Backend]
+    B --> C[Triage Analysis Service]
+    C --> D[Router Service]
+    D --> DG[Route Generalist]
+    D --> DS[Route Specialist]
+    D --> DT[Route Toxicologist]
     DG --> E[Agent Factory]
     DS --> E
     DT --> E
@@ -74,23 +74,23 @@ flowchart LR
     E --> L[Toxicologist Agent]
     E --> M[Bilan Expert Agent]
 
-    C --> N[OpenAI LLM + Embeddings]
+    C --> N[OpenAI LLM Embeddings]
     E --> N
     B --> O[Qdrant]
-    O --> P[gabes_knowledge]
-    O --> Q[historical_cases + dossier]
-    O --> R[specialty collections]
-    O --> S[bilan_expert_collection]
+    O --> P[Gabes Knowledge]
+    O --> Q[Historical Cases Dossier]
+    O --> R[Specialty Collections]
+    O --> S[Bilan Expert Collection]
 
     B --> X[Step3 Orchestrator]
     X --> M
     X --> L
-    L --> T[Final Medical Report Generator]
-    T --> U[PDF Download Endpoints]
+    L --> T[Final Medical Report]
+    T --> U[PDF Download API]
 
     A --> HM[Medical History Popup]
-    HM --> HV[GET /api/patient/history]
-    HM --> HP[GET /api/patient/history/report/pdf]
+    HM --> HV[History List API]
+    HM --> HP[History PDF API]
 ```
 
 ## Pipeline
@@ -107,34 +107,34 @@ sequenceDiagram
     participant TOX as Toxicologist
 
     U->>FE: Submit intake form
-    FE->>API: POST /triage
-    API->>TRI: Analyze intake + RAG context
-    TRI-->>RTR: suspected_domains + urgency
-    RTR-->>API: selected_specialty (generalist/specialist/toxicologist)
-    API->>QD: Persist dossier + triage summary
+    FE->>API: POST triage
+    API->>TRI: Analyze intake and context
+    TRI-->>RTR: Domains and urgency
+    RTR-->>API: Route to generalist specialist or toxicologist
+    API->>QD: Persist dossier and summary
     API-->>FE: Routing decision
 
     U->>FE: Start consultation
-    FE->>API: POST /api/chat [INITIALIZE]
+    FE->>API: POST chat initialize
     API->>AG: Selected agent question loop
-    AG->>QD: Read/write chat history + context
+    AG->>QD: Read and write chat history context
     AG-->>FE: Questions, advice, handoff trigger
 
     U->>FE: Upload blood test PDF
-    FE->>API: POST /api/bilan/upload
-    API->>QD: Index extracted blood-test content
-    FE->>API: POST /api/step3/finalize
+    FE->>API: POST bilan upload
+    API->>QD: Index extracted blood test content
+    FE->>API: POST step3 finalize
     API->>BL: Analyze latest blood test
     API->>TOX: Final integrated synthesis
-    API->>QD: Persist step3_final_report
-    API-->>FE: report_pdf_url
-    U->>API: GET /api/step3/report/pdf
+    API->>QD: Persist final step3 report
+    API-->>FE: Final report URL
+    U->>API: GET step3 report pdf
 
     U->>FE: Open Medical History popup + CIN
-    FE->>API: GET /api/patient/history
+    FE->>API: GET patient history
     API-->>FE: Previous records list
     U->>FE: Click Download for one record
-    FE->>API: GET /api/patient/history/report/pdf
+    FE->>API: GET patient history pdf
 ```
 
 ## Agent Catalog
