@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import EmergencyMap from '../components/emergency/EmergencyMap';
 import EmergencyChat from '../components/emergency/EmergencyChat';
+import AgricultureChat from '../components/emergency/AgricultureChat';
 import EmergencySidebar from '../components/emergency/EmergencySidebar';
 
 const Emergency = () => {
@@ -9,6 +10,7 @@ const Emergency = () => {
   const [logs, setLogs] = useState([]);
   const [overview, setOverview] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [agriChatOpen, setAgriChatOpen] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
   const [manualMarker, setManualMarker] = useState(null);
 
@@ -97,12 +99,32 @@ const Emergency = () => {
       {/* Floating Emergency Chat */}
       <EmergencyChat
         isOpen={chatOpen}
-        onToggle={() => setChatOpen(v => !v)}
+        onToggle={() => {
+          setChatOpen(v => !v);
+          if (!chatOpen) setAgriChatOpen(false);
+        }}
         manualMarker={manualMarker}
         isSelecting={isSelecting}
         onRequestMapSelect={() => {
           setIsSelecting(true);
           if (!chatOpen) setChatOpen(true);
+          setAgriChatOpen(false);
+        }}
+      />
+
+      {/* Floating Agriculture Chat */}
+      <AgricultureChat
+        isOpen={agriChatOpen}
+        onToggle={() => {
+          setAgriChatOpen(v => !v);
+          if (!agriChatOpen) setChatOpen(false);
+        }}
+        manualMarker={manualMarker}
+        isSelecting={isSelecting}
+        onRequestMapSelect={() => {
+          setIsSelecting(true);
+          if (!agriChatOpen) setAgriChatOpen(true);
+          setChatOpen(false);
         }}
       />
     </div>

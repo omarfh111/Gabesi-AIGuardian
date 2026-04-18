@@ -36,6 +36,7 @@ from services.emissions_service import (
 )
 from services.analysis_agent import analyze_zone
 from services.emergency_agent import process_assistant_message
+from services.agriculture_agent import process_agriculture_message
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
 
@@ -437,6 +438,27 @@ def assistant_chat():
         return jsonify(result)
     except Exception as e:
         print(f'[ERROR] /api/assistant/chat: {e}')
+        return jsonify({'error': str(e)}), 500
+
+# ─────────────────────────────────────────────
+# POST /api/agriculture/chat — Agriculture Assistant
+# ─────────────────────────────────────────────
+@app.route('/api/agriculture/chat', methods=['POST'])
+def agriculture_chat():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Missing payload'}), 400
+            
+        session_id = data.get('session_id', 'default_session')
+        message = data.get('message', '')
+        lat = data.get('lat')
+        lng = data.get('lng')
+        
+        result = process_agriculture_message(session_id, message, lat, lng)
+        return jsonify(result)
+    except Exception as e:
+        print(f'[ERROR] /api/agriculture/chat: {e}')
         return jsonify({'error': str(e)}), 500
 
 # ─────────────────────────────────────────────

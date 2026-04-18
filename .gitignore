@@ -90,5 +90,6 @@ data_an/
 *.tar.gz
 *.rar
 
-# Ignore the cloned branch directory as it's fully integrated
+# Ignore the cloned branch directories as they are fully integrated
 warningsMarks/
+ai-assistant-agriculture/

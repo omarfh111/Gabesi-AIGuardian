@@ -248,7 +248,7 @@ const EmergencyMap = ({
       )}
 
       {/* Legend */}
-      <div className="absolute bottom-20 right-4 z-[800] p-4 rounded-xl text-xs"
+      <div className="absolute bottom-[160px] right-4 z-[800] p-4 rounded-xl text-xs"
         style={{ background: 'rgba(12,16,32,.88)', backdropFilter: 'blur(16px)', border: '1px solid #1e2548' }}>
         <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">CO₂ Impact Level</div>
         {[
