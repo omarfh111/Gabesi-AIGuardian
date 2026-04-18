@@ -4,6 +4,7 @@ from typing import List, Dict, Any
 from openai import OpenAI
 from qdrant_client import QdrantClient, models
 from fastembed import SparseTextEmbedding
+from langsmith import traceable
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -51,6 +52,7 @@ class RAGService:
         except Exception as e:
             print(f"Error ensuring collections: {e}")
 
+    @traceable(run_type="embedding", name="OpenAI Embedding")
     def get_dense_embedding(self, text: str) -> List[float]:
         response = self.openai_client.embeddings.create(
             input=text,
@@ -67,6 +69,7 @@ class RAGService:
             "values": vector.values.tolist()
         }
 
+    @traceable(run_type="retriever", name="Hybrid Knowledge Ranking")
     def search(self, query: str, limit: int = 5) -> str:
         if not self.enabled:
             return "RAG Search Disabled (Ablation Mode)."
@@ -132,6 +135,7 @@ class RAGService:
         except Exception as e:
             print(f"❌ Error indexing case in Qdrant: {e}")
 
+    @traceable(run_type="retriever", name="Find Similar Cases")
     def find_similar_cases(self, query: str, limit: int = 3) -> List[Dict[str, Any]]:
         """Searches for past similar cases."""
         try:

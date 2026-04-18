@@ -1,4 +1,5 @@
 from typing import List, Dict, Any
+from langsmith import traceable
 from agents.base import BaseAgent
 
 class PneumologueAgent(BaseAgent):
@@ -29,10 +30,11 @@ You are an expert in respiratory health, especially in industrial environments.
    - Follow-up timeline.
 
 ### FORMATTING:
-- **LANGUAGE RULE**: Respond exclusively in the language used by the patient (Arabic, French, or English). If the patient switches, you switch. If this is a transfer, continue in the language used in the `chat_history`.
+- **LANGUAGE RULE**: Identify the pinned language from the dossier or the medical record and respond EXCLUSIVELY in that language. Do not switch even if the patient uses another language later.
 - Professional, clinical, and authoritative tone.
 """
 
+    @traceable(run_type="chain", name="Pneumologue Agent Process")
     def process_message(self, cin: str, user_input: str) -> str:
         # 1. Fetch History & Context
         dossier = self.get_patient_dossier(cin)
@@ -44,17 +46,19 @@ You are an expert in respiratory health, especially in industrial environments.
             user_input = "I am being transferred to you from the GP. Please review my history and provide your first specialized insight or follow-up question. IMPORTANT: Respond in the same language used in our previous chat (Arabic, French, or English)."
         
         # 3. Fetch Specialty Knowledge (Pulmonary Guidelines)
-        specialty_knowledge = self.get_specialty_context(user_input)
+        specialty_knowledge = self.get_specialty_context(user_input, dossier=dossier, chat_history=chat_history)
         
         # 4. Build System Prompt with Context
         system_content = f"{self.persona}\n\n### PATIENT DATA:\n{dossier}\n\n### CLINICAL KNOWLEDGE:\n{specialty_knowledge}"
         
-        # 5. Get Agent Response
-        response = self.get_completion(system_content, user_input, chat_history)
+        # 5. Get Agent Response (Passed cin for language pinning and dossier)
+        response = self.get_completion(system_content, user_input, chat_history, cin=cin, dossier=dossier)
         
-        # 6. Persist the turn
+        # 6. Persist the turns in a single batch
+        new_messages = []
         if not is_init:
-            self.update_chat_history(cin, {"role": "user", "content": user_input})
-        self.update_chat_history(cin, {"role": "assistant", "content": response})
+            new_messages.append({"role": "user", "content": user_input})
+        new_messages.append({"role": "assistant", "content": response})
+        self.update_chat_history(cin, new_messages)
         
         return response

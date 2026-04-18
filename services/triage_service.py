@@ -2,6 +2,7 @@ import os
 import json
 from typing import Optional
 from openai import OpenAI
+from langsmith import wrappers, traceable
 from dotenv import load_dotenv
 from models.intake import PatientIntake
 from models.analysis import TriageAnalysis
@@ -15,10 +16,11 @@ class TriageAnalysisService:
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY not found in environment variables.")
         
-        self.client = OpenAI(api_key=self.api_key)
+        self.client = wrappers.wrap_openai(OpenAI(api_key=self.api_key))
         self.model = model
         self.rag_service = RAGService()
 
+    @traceable(run_type="tool", name="Translate to English")
     def _translate_to_english(self, text: str) -> str:
         """Translates input (including informal dialects like Tunisian Arabic) to English for RAG search."""
         try:
@@ -34,6 +36,7 @@ class TriageAnalysisService:
         except:
             return text
 
+    @traceable(run_type="tool", name="Detect Language")
     def _detect_language(self, text: str) -> str:
         """Detects the language of the input text."""
         try:
@@ -49,6 +52,7 @@ class TriageAnalysisService:
         except:
             return "english"
 
+    @traceable(run_type="chain", name="Triage AI Analysis")
     def analyze(self, intake: PatientIntake) -> TriageAnalysis:
         # 1. Normalize for RAG (Scientific papers are in English)
         main_problem = intake.chief_complaint.main_problem

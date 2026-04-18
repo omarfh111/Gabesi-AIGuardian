@@ -1,4 +1,4 @@
-from typing import List, Optional
+from langsmith import traceable
 from models.analysis import TriageAnalysis, SpecialtyScore
 from models.router import RouterDecision
 
@@ -8,6 +8,7 @@ class RouterService:
         "neurologist", "dermatologist", "toxicologist", "generalist"
     ]
 
+    @traceable(run_type="tool", name="Router Logic")
     def route(self, analysis: TriageAnalysis) -> RouterDecision:
         # 1. Normalize and Map Variants
         mapping = {

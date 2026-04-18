@@ -9,6 +9,7 @@ from services.router_service import RouterService
 from services.persistence_service import PersistenceService
 from dotenv import load_dotenv
 import os
+from langsmith import traceable
 from pydantic import BaseModel
 from agents.generalist_agent import GeneralistAgent
 from agents.pneumologue_agent import PneumologueAgent
@@ -45,6 +46,7 @@ class ChatRequest(BaseModel):
     agent: str
 
 @app.post("/api/chat")
+@traceable(run_type="chain", name="Agentic Chat Pipeline", metadata={"cin_lookup": "true"})
 async def chat_with_agent(request: ChatRequest):
     try:
         # 1. Agent Factory
@@ -93,6 +95,7 @@ def health_check():
     return {"status": "healthy", "service": "medical-triage"}
 
 @app.post("/triage", response_model=RouterDecision)
+@traceable(run_type="chain", name="Triage Pipeline", metadata={"system": "gabes_triage"})
 async def perform_triage(intake: PatientIntake, background_tasks: BackgroundTasks):
     try:
         # 1. LLM Analysis

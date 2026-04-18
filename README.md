@@ -32,14 +32,20 @@ Every specialty is a dedicated, stateful agent with its own RAG knowledge base:
 ---
 
 ## 🧠 Memory & Persistence
-*   **Persistent Chat History**: All consultation turns are saved in real-time as a `chat_history` payload within the patient's master record in Qdrant.
+*   **Persistent Chat History**: All consultation turns are saved in real-time as a `chat_history` payload within the patient's master record in Qdrant. **Optimized with Batched Persistence** to reduce database round-trips and minimize latency.
 *   **CIN Identity Tracking**: Patients are uniquely tracked via their 8-digit **CIN**, allowing for long-term medical history retrieval across multiple sessions and agents.
 
 ---
 
 ## 🌍 Multilingual Performance
-*   **Per-Turn Language Mirroring**: Agents detect the patient's language turn-by-turn. If a patient switches between Arabic, French, or English, the agent immediately switches to the new language.
-*   **Clinical Formalization**: While the engine interprets informal **Tunisian Darija** and **Arabizi**, it responds in the professional/formal variant of the chosen language.
+*   **Strict Language Pinning**: Agents detect the patient's preferred language (Arabic, French, or English) during the very first interaction and **pin it** to the patient's dossier. The language is then strictly enforced across all agents, even during specialist handoffs, to ensure absolute clinical consistency and professionalism.
+*   **Clinical Formalization**: While the engine interprets informal **Tunisian Darija** and **Arabizi**, it sets the pinned response language to a formal, professional standard.
+
+---
+
+## 🔍 Observability & Precision Retrieval
+*   **Production-Grade Tracing**: Fully instrumented with **LangSmith**. Every interaction produces a single, unified performance waterfall trace containing deeply nested steps for retrieval, language detection, persistence, and LLM reasoning.
+*   **Clinical Query Rewriting**: Transforms vague patient inputs (e.g., "really sharp") into high-precision scientific search queries (e.g., "sharp chest pain causes phosphate exposure") to ensure that retrieved context from the `gabes_knowledge` vector base is hyper-relevant.
 
 ---
 
