@@ -51,14 +51,16 @@ desktop.ini
 *.pt
 *.ckpt
 
-
-# Future: frontend build artifacts
+# Frontend build artifacts and caches
 node_modules/
 .next/
 dist/
 build/
 .deepeval/
 brain/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
 
 # Test outputs
 backend/tests/test_results.json
@@ -85,3 +87,8 @@ data_an/
 # Still ignore large binary archives or system junk if any
 *.zip
 *.7z
+*.tar.gz
+*.rar
+
+# Ignore the cloned branch directory as it's fully integrated
+warningsMarks/

@@ -52,3 +52,5 @@ openpyxl
 PyMuPDF
 requests
 
+# ── Feature 8: Community Warnings Map ──────────────────────────────────────────
+supabase>=2.11.0

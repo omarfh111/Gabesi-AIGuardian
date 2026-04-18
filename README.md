@@ -9,6 +9,7 @@
 ![Tests](https://img.shields.io/badge/Tests-56_Passing-success)
 ![Guardrails](https://img.shields.io/badge/Security-4--Layer_Guardrails-yellow)
 ![React](https://img.shields.io/badge/Frontend-React_18-blue)
+![Supabase](https://img.shields.io/badge/Database-Supabase-3ECF8E)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
 **Gabesi AIGuardian** is a unified environmental intelligence and emergency response platform designed specifically for the oasis farmers and residents of Gabès, Tunisia. By integrating real-time NASA satellite data, local industrial CO₂ monitoring, and a RAG-powered medical assistant, the system provides mission-critical advisory and life-saving triage in a region heavily impacted by industrial phosphate processing.
@@ -54,9 +55,18 @@ graph TD
         Firecrawl[Firecrawl + Serper]
     end
 
+    subgraph "Module 4: Community Warnings (FastAPI :8000)"
+        CommunityRouter[community.py router]
+        Supabase[(Supabase PostgreSQL)]
+        Haversine[Haversine Distance Engine]
+    end
+
     UI --> FA
     UI --> FS
     UI --> StrategicBlueprint
+    UI --> CommunityRouter
+    CommunityRouter --> Supabase
+    CommunityRouter --> Haversine
     StrategicBlueprint --> LG3
     LG3 --> Firecrawl
     FA --> LG1
@@ -90,6 +100,19 @@ graph TD
     Diagnosis --> Verifier[Faithfulness Verifier]
     Verifier --> Final[Final Response]
 ```
+
+---
+
+## Design Decisions & Tradeoffs
+
+| Decision | Choice Made | Alternative Rejected and Why |
+| :--- | :--- | :--- |
+| Pollution thresholds | P80/P95 rolling 30-day relative bands | WHO absolute 40 μg/m³ threshold — Open-Meteo CAMS regional background values (0.1–3.4 μg/m³) are 20-400× below WHO limit, absolute thresholds would never fire |
+| LangGraph node execution | Synchronous def functions | Async — Windows asyncio event loop conflicts with LangGraph on Python 3.12 |
+| farmer_context vector storage | Zero-vector [0.0] × 3072 placeholder | Real embeddings — collection is payload-only storage for pollution events, vector search is never performed against it |
+| Guardrail toxicity + scope check | Single GPT-4o-mini call returning {is_toxic, is_out_of_scope} | Two parallel calls — same wall-clock latency, 2× API cost, larger failure surface |
+| Faithfulness verification | Keyword overlap between claims and retrieved chunks, pure Python | LLM-as-judge — 0ms latency, no additional cost, deterministic |
+| Pollution query expansion | Conditional — only when symptom contains proximity signals | Always — unconditional pollution queries before fix returned only generic palm disease docs (scores 0.36-0.45), post-fix scores 0.57-0.63 with 3-6 documents |
 
 ---
 
@@ -178,7 +201,35 @@ graph TD
 
 ---
 
-## 7. Security & Guardrails
+## 7. Module 4: Community Warnings Map
+
+*   **Description**: anonymous citizen environmental reporting system, interactive Leaflet map centered on Gabès
+*   **Integration**: natively merged into FastAPI Module 1 on port 8000 under /api/v1/community prefix — no new backend process required
+*   **AI Pipeline**: report submitted → text-embedding-3-large generates embedding → Qdrant similarity search (cosine ≥ 0.85) finds similar past reports → confidence score computed from cluster density → gpt-4o-mini generates neutral objective summary
+*   **Spatial Intelligence**: Haversine distance computed to 14 local GCT industrial facility JSON files in backend/app/data/
+*   **Database**: Supabase PostgreSQL, 3 tables — environmental_reports, report_analysis, report_meta (IP hash rate limiting)
+*   **Privacy**: anonymous, no login, no personal data, coordinates rounded to ~100m precision for public display
+*   **Frontend**: CommunityMap.jsx with react-leaflet marker clustering, color-coded markers by issue type (smoke/smell/dust/water/waste/symptoms), filter panel by type and severity, 30-second polling interval
+*   **Issue types**: smoke, smell, dust, water contamination, waste, health symptoms
+*   **Severity levels**: low, medium, high
+
+```mermaid
+graph TD
+    User[User clicks map] --> ReportModal[ReportModal]
+    ReportModal --> POST[POST /api/v1/community/reports]
+    POST --> FastAPI[FastAPI]
+    FastAPI --> Embed[generate embedding text-embedding-3-large]
+    Embed --> Qdrant[Qdrant similarity search]
+    Qdrant --> Haversine[Haversine distance to facilities]
+    Haversine --> GPT[gpt-4o-mini summary]
+    GPT --> Supabase[Supabase store]
+    Supabase --> GET[GET /api/v1/community/reports]
+    GET --> Markers[CommunityMap markers]
+```
+
+---
+
+## 8. Security & Guardrails
 A 4-layer chain protecting the LLM pipeline with ~800ms total latency. LangSmith produces **one unified trace per request**.
 
 ```mermaid
@@ -207,7 +258,7 @@ graph TD
 
 ---
 
-## 8. Evaluation Results
+## 9. Evaluation Results
 Validated using **DeepEval** with 68 goldens and 56 mocked unit tests.
 
 ### RAG & Diagnosis Performance
@@ -236,7 +287,7 @@ graph LR
 
 ---
 
-## 9. API Reference
+## 10. API Reference
 
 | Method | Endpoint | Request Shape | Response Shape |
 | :--- | :--- | :--- | :--- |
@@ -247,13 +298,18 @@ graph LR
 | **POST** | `/api/v1/pollution/dossier` | same as /pollution/report, returns application/pdf | PDF binary stream |
 | **POST** | `/api/v1/pollution/qa` | `{"question": "str (min 10)", "language": "str"}` | `{"answer": "str", "sources": ["str"]}` |
 | **GET** | `/api/v1/health` | None | `{"status": "ok", "collection": "gabes_knowledge", "timestamp": "ISO8601"}` |
+| **POST** | `/api/v1/community/reports` | `{"lat": float, "lng": float, "issue_type": "smoke\|smell\|dust\|water\|waste\|symptoms", "severity": "low\|medium\|high", "description": "str"}` | `{"id": "uuid", "ai_summary": "str", "confidence": float, "similar_count": int}` |
+| **GET** | `/api/v1/community/reports` | optional query params issue_type and severity | array |
+| **GET** | `/api/v1/community/reports/{id}` | None | single report with AI analysis |
 
 ---
 
-## 10. Setup & Installation
+## 11. Setup & Installation
 
 ### Backend Services
 Both modules share one merged `requirements.txt` located at `backend/requirements.txt`.
+Supabase setup required for Module 4: run schema.sql in your Supabase SQL Editor to initialize environmental_reports, report_analysis, and report_meta tables.
+Module 4 requires SUPABASE_URL and SUPABASE_KEY in backend/.env — see .env.example.
 
 **Terminal 1: FastAPI (Module 1)**
 ```cmd
@@ -281,13 +337,16 @@ npm run dev
 
 ---
 
-## 11. Project Structure
+## 12. Project Structure
 ```text
 .
 ├── backend/                   # FastAPI Server (Module 1)
 │   ├── app/
 │   │   ├── agents/            # LangGraph Implementation
+│   │   ├── routers/community.py    # Community reports router
 │   │   ├── services/          # NASA/CAMS/Qdrant Connectors
+│   │   │   └── community_service.py  # AI pipeline + Haversine
+│   │   ├── data/                  # 14 GCT industrial facility JSON files
 │   │   └── guardrails/        # 4-Layer Chain
 │   ├── tests/                 # DeepEval Test Suite
 │   └── requirements.txt       # Unified dependencies
@@ -308,7 +367,7 @@ npm run dev
 
 ---
 
-## 12. Roadmap
+## 13. Roadmap
 - [x] Integrate LangGraph state machines for complex multi-agent flows
 - [x] Build and test 4-layer security guardrail chain
 - [x] Connect robust RAG pipeline via Qdrant with hybrid semantic chunking
@@ -318,4 +377,5 @@ npm run dev
 - [x] Strategic Pipeline — 5-agent environmental analysis
 - [x] Expert Chat "Gabesi" — session memory, markdown reports, data tables
 - [x] Firecrawl + Serper hybrid web intelligence
+- [x] Community Warnings Map — anonymous citizen reporting, Supabase, Qdrant similarity, gpt-4o-mini summaries.
 - [ ] Run end-to-end pipeline GEval at scale

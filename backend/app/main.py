@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from qdrant_client import QdrantClient
 
 from app.api.routes import router
+from app.routers.community import router as community_router
 from app.config import settings
 
 # Setup logging
@@ -52,3 +53,4 @@ app.add_middleware(
 )
 
 app.include_router(router, prefix="/api/v1")
+app.include_router(community_router, prefix="/api/v1/community")

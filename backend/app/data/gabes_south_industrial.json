@@ -1,0 +1,53 @@
+{
+  "facility_label": "Zone Industrielle Sud — Gabès",
+  "public_anchor": "Gabes South Industrial Zone, zone mixte industrielle",
+  "exceedances": [],
+  "notes": "Zone industrielle mixte avec PME et ateliers de transformation. Émissions plus faibles que le complexe GCT mais en croissance.",
+  "start_month_assumption": "2026-01",
+  "period_months": 6,
+  "unit": "tonnes_CO2/month",
+  "bounds": {
+    "min": 1200,
+    "max": 2000
+  },
+  "internal_exceedance_threshold": 1850,
+  "months": [
+    {
+      "month": "2026-01",
+      "co2": 1380,
+      "tags": ["hiver", "activité PME stable", "chauffage ateliers"]
+    },
+    {
+      "month": "2026-02",
+      "co2": 1420,
+      "tags": ["pré-Ramadan", "stockage produits", "cadence normale"]
+    },
+    {
+      "month": "2026-03",
+      "co2": 1280,
+      "tags": ["Ramadan", "activité réduite", "fermeture partielle"]
+    },
+    {
+      "month": "2026-04",
+      "co2": 1350,
+      "tags": ["reprise", "nouvelles commandes", "ramp-up"]
+    },
+    {
+      "month": "2026-05",
+      "co2": 1490,
+      "tags": ["haute saison", "export", "climatisation ateliers"]
+    },
+    {
+      "month": "2026-06",
+      "co2": 1560,
+      "tags": ["été", "demande croissante", "refroidissement industriel"]
+    }
+  ],
+  "statistics": {
+    "mean": 1413.3,
+    "variance_sample": 9626.7,
+    "lag1_autocorrelation": 0.28,
+    "min": 1280,
+    "max": 1560
+  }
+}

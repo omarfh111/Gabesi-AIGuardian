@@ -1,0 +1,64 @@
+{
+  "facility_label": "Usine B - DAP / engrais phosphatés",
+  "public_anchor": "Complexe GCT de Ghannouch (Gabès)",
+  "exceedances": [
+    {
+      "month": "2026-05",
+      "co2": 1870,
+      "reason": "Distribution d'engrais et accélération des expéditions."
+    },
+    {
+      "month": "2026-06",
+      "co2": 1900,
+      "reason": "Pleine cadence et hausse de la demande électrique auxiliaire."
+    }
+  ],
+  "notes": "La saisonnalité suit surtout la campagne agricole et les rythmes de distribution d'intrants.",
+  "start_month_assumption": "2026-01",
+  "period_months": 6,
+  "unit": "tonnes_CO2/month",
+  "bounds": {
+    "min": 1200,
+    "max": 2000
+  },
+  "internal_exceedance_threshold": 1850,
+  "months": [
+    {
+      "month": "2026-01",
+      "co2": 1760,
+      "tags": ["hiver", "pré-campagne agricole", "cadence élevée"]
+    },
+    {
+      "month": "2026-02",
+      "co2": 1800,
+      "tags": ["pré-Ramadan", "stockage distributeurs", "cadence soutenue"]
+    },
+    {
+      "month": "2026-03",
+      "co2": 1570,
+      "tags": ["Ramadan", "équipes allégées", "maintenance courte"]
+    },
+    {
+      "month": "2026-04",
+      "co2": 1690,
+      "tags": ["redémarrage", "inspection", "demande encore bridée"]
+    },
+    {
+      "month": "2026-05",
+      "co2": 1870,
+      "tags": ["distribution d'engrais", "commandes intérieures", "température en hausse"]
+    },
+    {
+      "month": "2026-06",
+      "co2": 1900,
+      "tags": ["été précoce", "pleine cadence", "froid industriel renforcé"]
+    }
+  ],
+  "statistics": {
+    "mean": 1765.0,
+    "variance_sample": 14830.0,
+    "lag1_autocorrelation": 0.226,
+    "min": 1570,
+    "max": 1900
+  }
+}
