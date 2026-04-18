@@ -10,6 +10,7 @@
 ![Guardrails](https://img.shields.io/badge/Security-4--Layer_Guardrails-yellow)
 ![React](https://img.shields.io/badge/Frontend-React_18-blue)
 ![Supabase](https://img.shields.io/badge/Database-Supabase-3ECF8E)
+![Agriculture](https://img.shields.io/badge/Agent-Agriculture_RAG-green)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
 **Gabesi AIGuardian** is a unified environmental intelligence and emergency response platform designed specifically for the oasis farmers and residents of Gabès, Tunisia. By integrating real-time NASA satellite data, local industrial CO₂ monitoring, and a RAG-powered medical assistant, the system provides mission-critical advisory and life-saving triage in a region heavily impacted by industrial phosphate processing.
@@ -61,10 +62,17 @@ graph TD
         Haversine[Haversine Distance Engine]
     end
 
+    subgraph "Module 5: Agriculture Assistant (Flask :3000)"
+        AgriAgent[agriculture_agent.py]
+        GeoVerify[Verification + Classification Agents]
+        AgriRAG[(Qdrant: gabes_knowledge)]
+    end
+
     UI --> FA
     UI --> FS
     UI --> StrategicBlueprint
     UI --> CommunityRouter
+    UI --> AgriAgent
     CommunityRouter --> Supabase
     CommunityRouter --> Haversine
     StrategicBlueprint --> LG3
@@ -73,6 +81,8 @@ graph TD
     FS --> LG2
     LG1 --> Q1
     LG2 --> Q2
+    AgriAgent --> GeoVerify
+    AgriAgent --> AgriRAG
 ```
 
 ---
@@ -113,6 +123,7 @@ graph TD
 | Guardrail toxicity + scope check | Single GPT-4o-mini call returning {is_toxic, is_out_of_scope} | Two parallel calls — same wall-clock latency, 2× API cost, larger failure surface |
 | Faithfulness verification | Keyword overlap between claims and retrieved chunks, pure Python | LLM-as-judge — 0ms latency, no additional cost, deterministic |
 | Pollution query expansion | Conditional — only when symptom contains proximity signals | Always — unconditional pollution queries before fix returned only generic palm disease docs (scores 0.36-0.45), post-fix scores 0.57-0.63 with 3-6 documents |
+| Agriculture agent placement | Ported into emergency_intel Flask server (port 3000) | Separate backend — emergency_intel already owns CO2 pollution risk scores needed by the agriculture decision matrix, colocation avoids cross-service API calls |
 
 ---
 
@@ -229,7 +240,36 @@ graph TD
 
 ---
 
-## 8. Security & Guardrails
+## 8. Module 5: Agriculture Assistant
+
+*   **Integration**: ported agriculture_agent.py into emergency_intel/services/, new POST /api/agriculture/chat endpoint on Flask port 3000. Frontend: AgricultureChat.jsx embedded in Emergency.jsx — mutually exclusive with EmergencyChat (opening one minimizes the other), dark green theme with leaf toggle icon
+*   **Two pipelines**: Geographic Discovery Pipeline (SerpAPI → AI Verification Agent validates GPS bounds against Gabès governorate → Classification Agent categorizes into industrial/agriculture/coastal/urban → Leaflet map display) and Agriculture Decision Pipeline (LangGraph state machine: LOCATION node detects location vs discovery query → CROP_SELECTION node performs single-pass RAG)
+*   **Single-Pass RAG Engine**: one AI turn performs semantic retrieval from gabes_knowledge Qdrant collection + pollution risk score analysis + localized cited response. 3× faster than multi-turn approach
+*   **Fast Discovery Mode**: farmer asks "Where can I plant [crop]?" → agent performs global scan of 23 Gabès industrial/agricultural zones, cross-references P80/P95 pollution bands with soil fertility data, returns top 3 optimal planting sites
+*   **Source Citation**: every recommendation includes doc_name references from retrieved chunks — prevents hallucination by proving which documents grounded the advice
+*   **Models**: GPT-4o-mini for all reasoning, text-embedding-3-large for semantic retrieval from gabes_knowledge
+*   **Zero-hallucination design**: LangGraph enforces strict RAG-only responses — agent cannot recommend zones without retrieved evidence
+
+```mermaid
+graph TD
+    Query[Farmer query] --> LocNode[LOCATION node]
+    LocNode -- discovery vs specific --> Branch1[Branch 1: specific location]
+    LocNode -- discovery vs specific --> Branch2[Branch 2: discovery mode]
+    
+    Branch1 --> CropSel1[CROP_SELECTION]
+    CropSel1 --> Qdrant1[Qdrant retrieval]
+    Qdrant1 --> RiskCheck[pollution risk check]
+    RiskCheck --> Resp1[cited response]
+    
+    Branch2 --> Scan[scan 23 zones]
+    Scan --> Matrix[Decision Matrix pollution + fertility]
+    Matrix --> Rank[top 3 sites ranked]
+    Rank --> Resp2[cited response]
+```
+
+---
+
+## 9. Security & Guardrails
 A 4-layer chain protecting the LLM pipeline with ~800ms total latency. LangSmith produces **one unified trace per request**.
 
 ```mermaid
@@ -258,7 +298,7 @@ graph TD
 
 ---
 
-## 9. Evaluation Results
+## 10. Evaluation Results
 Validated using **DeepEval** with 68 goldens and 56 mocked unit tests.
 
 ### RAG & Diagnosis Performance
@@ -287,7 +327,7 @@ graph LR
 
 ---
 
-## 10. API Reference
+## 11. API Reference
 
 | Method | Endpoint | Request Shape | Response Shape |
 | :--- | :--- | :--- | :--- |
@@ -301,10 +341,11 @@ graph LR
 | **POST** | `/api/v1/community/reports` | `{"lat": float, "lng": float, "issue_type": "smoke\|smell\|dust\|water\|waste\|symptoms", "severity": "low\|medium\|high", "description": "str"}` | `{"id": "uuid", "ai_summary": "str", "confidence": float, "similar_count": int}` |
 | **GET** | `/api/v1/community/reports` | optional query params issue_type and severity | array |
 | **GET** | `/api/v1/community/reports/{id}` | None | single report with AI analysis |
+| **POST** | `/api/agriculture/chat` | `{"message": "str", "session_id": "str", "location": {"lat": float, "lng": float} | null}` | `{"response": "str", "sources": ["doc_name strings"], "zones_scanned": int | null, "recommended_sites": [...] | null}` |
 
 ---
 
-## 11. Setup & Installation
+## 12. Setup & Installation
 
 ### Backend Services
 Both modules share one merged `requirements.txt` located at `backend/requirements.txt`.
@@ -337,7 +378,7 @@ npm run dev
 
 ---
 
-## 12. Project Structure
+## 13. Project Structure
 ```text
 .
 ├── backend/                   # FastAPI Server (Module 1)
@@ -354,12 +395,15 @@ npm run dev
 │   ├── strategic_routes.py    # Flask Blueprint for strategic pipeline
 │   ├── data_an/               # Fishery Excel files and industrial PDF templates
 │   ├── services/              # Triage, Strategic Agents & Analysis
+│   │   └── agriculture_agent.py    # LangGraph agriculture RAG agent.
 │   ├── data/                  # CO2 JSON Timeseries
 │   └── app.py                 # Port 3000 Entry
 ├── frontend/                  # Unified React Frontend
 │   ├── src/
 │   │   ├── components/        # Glass-morphic UI components
-│   │   ├── pages/             # Dashboard, Emergency, Irrigation
+│   │   │   └── emergency/AgricultureChat.jsx    # Agriculture assistant with dark green theme
+│   │   ├── pages/             # Dashboard, Irrigation
+│   │   │   └── Emergency.jsx  # includes AgricultureChat.jsx integration
 │   │   └── i18n/              # Lang files (EN/FR/AR)
 │   └── vite.config.js         # Port Proxying Config
 └── README.md
@@ -367,7 +411,7 @@ npm run dev
 
 ---
 
-## 13. Roadmap
+## 14. Roadmap
 - [x] Integrate LangGraph state machines for complex multi-agent flows
 - [x] Build and test 4-layer security guardrail chain
 - [x] Connect robust RAG pipeline via Qdrant with hybrid semantic chunking
@@ -378,4 +422,5 @@ npm run dev
 - [x] Expert Chat "Gabesi" — session memory, markdown reports, data tables
 - [x] Firecrawl + Serper hybrid web intelligence
 - [x] Community Warnings Map — anonymous citizen reporting, Supabase, Qdrant similarity, gpt-4o-mini summaries.
+- [x] Agriculture Assistant — LangGraph RAG agent, single-pass retrieval, 23-zone pollution/fertility decision matrix, source citation
 - [ ] Run end-to-end pipeline GEval at scale
