@@ -396,6 +396,91 @@ const setLanguage = function(lang) {
 
 let currentRecommendedSpecialty = 'generalist';
 
+function formatIsoDate(value) {
+    if (!value) return 'N/A';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleString();
+}
+
+function renderHistoryRecords(records, cin) {
+    const container = document.getElementById('history-records');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (!records || !records.length) {
+        container.innerHTML = '<div class="history-record-card">No previous medical records found for this CIN.</div>';
+        return;
+    }
+
+    records.forEach((record) => {
+        const card = document.createElement('div');
+        card.className = 'history-record-card';
+        const summary = (record.summary || '').trim() || 'No summary available.';
+        card.innerHTML = `
+            <div class="history-record-title">Case ${record.case_id}</div>
+            <div class="history-record-meta">
+                Patient: ${record.patient_name || 'N/A'} | Age: ${record.age || 'N/A'} |
+                Specialty: ${record.specialty || 'N/A'} | Urgency: ${record.urgency || 'N/A'} |
+                Date: ${formatIsoDate(record.indexed_at)}
+            </div>
+            <div class="history-record-summary">${summary}</div>
+            <div class="history-record-actions">
+                <button class="btn-secondary btn-download-history-record" data-cin="${cin}" data-case-id="${record.case_id}">
+                    Download PDF
+                </button>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+async function loadMedicalHistory() {
+    const cinInput = document.getElementById('history-cin-input');
+    const statusEl = document.getElementById('history-status');
+    const cin = (cinInput?.value || '').trim();
+    if (!cin) {
+        statusEl.textContent = 'Please enter CIN first.';
+        return;
+    }
+    statusEl.textContent = 'Loading medical records...';
+
+    try {
+        const response = await fetch(`/api/patient/history?cin=${encodeURIComponent(cin)}`);
+        const data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            throw new Error(data.detail || 'Failed to load medical history.');
+        }
+        renderHistoryRecords(data.records || [], cin);
+        statusEl.textContent = `${data.count || 0} record(s) loaded.`;
+    } catch (err) {
+        statusEl.textContent = `Error: ${err.message}`;
+        renderHistoryRecords([], cin);
+    }
+}
+
+async function downloadHistoryRecordPdf(cin, caseId) {
+    const url = `/api/patient/history/report/pdf?cin=${encodeURIComponent(cin)}&case_id=${encodeURIComponent(caseId)}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+        let detail = 'Failed to download history PDF.';
+        try {
+            const errData = await response.json();
+            detail = errData?.detail || detail;
+        } catch (_) {}
+        throw new Error(detail);
+    }
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = `medical_history_${cin}_${caseId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Language Initialization
     const langSelect = document.getElementById('lang-select');
@@ -412,6 +497,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('triage-form');
     const overlay = document.getElementById('results-overlay');
     const closeBtn = document.querySelector('.close-results');
+    const btnOpenHistory = document.getElementById('btn-open-history');
+    const historyModal = document.getElementById('history-modal');
+    const btnCloseHistory = document.getElementById('btn-close-history');
+    const btnLoadHistory = document.getElementById('btn-load-history');
+    const historyCinInput = document.getElementById('history-cin-input');
+    const historyRecords = document.getElementById('history-records');
 
     // 3. Results UI Controller
     const displayResults = (result) => {
@@ -443,6 +534,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 4. Form Actions
     if (closeBtn) closeBtn.addEventListener('click', () => overlay.classList.add('hidden'));
+
+    if (btnOpenHistory && historyModal) {
+        btnOpenHistory.addEventListener('click', () => {
+            historyModal.classList.remove('hidden');
+            const intakeCin = (document.getElementById('cin')?.value || '').trim();
+            if (historyCinInput && intakeCin && !historyCinInput.value) {
+                historyCinInput.value = intakeCin;
+            }
+        });
+    }
+    if (btnCloseHistory && historyModal) {
+        btnCloseHistory.addEventListener('click', () => historyModal.classList.add('hidden'));
+    }
+    if (historyModal) {
+        historyModal.addEventListener('click', (e) => {
+            if (e.target === historyModal) historyModal.classList.add('hidden');
+        });
+    }
+    if (btnLoadHistory) {
+        btnLoadHistory.addEventListener('click', loadMedicalHistory);
+    }
+    if (historyCinInput) {
+        historyCinInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                loadMedicalHistory();
+            }
+        });
+    }
+    if (historyRecords) {
+        historyRecords.addEventListener('click', async (e) => {
+            const target = e.target;
+            if (!(target instanceof HTMLElement)) return;
+            const btn = target.closest('.btn-download-history-record');
+            if (!btn) return;
+            const cin = btn.getAttribute('data-cin') || '';
+            const caseId = btn.getAttribute('data-case-id') || '';
+            const statusEl = document.getElementById('history-status');
+            if (!cin || !caseId) return;
+            try {
+                if (statusEl) statusEl.textContent = `Downloading PDF for case ${caseId}...`;
+                await downloadHistoryRecordPdf(cin, caseId);
+                if (statusEl) statusEl.textContent = `Downloaded case ${caseId}.`;
+            } catch (err) {
+                if (statusEl) statusEl.textContent = `Download error: ${err.message}`;
+            }
+        });
+    }
 
     if (form) {
         form.addEventListener('submit', async (e) => {

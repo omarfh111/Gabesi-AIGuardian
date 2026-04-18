@@ -45,11 +45,13 @@ Gabes has specific industrial exposure risk profiles. This platform is built to:
 - Structured intake (20+ clinical/environmental signals).
 - LLM triage (`gpt-4o-mini`) with domain ranking and urgency estimation.
 - Router confidence gate (default to Generalist when unclear).
+- Explicit routing paths to `generalist` and `toxicologist` when clinically indicated.
 - Multi-agent specialist consultation with controlled handoff.
 - Qdrant-backed RAG for specialty and historical context.
 - Blood-test PDF upload, extraction, indexing, and expert interpretation.
 - Toxicology final synthesis with urgency decision.
 - Downloadable final PDF report (structured physician format).
+- Medical History popup by CIN with previous records list + per-record PDF download.
 
 ## System Architecture
 ```mermaid
@@ -57,7 +59,12 @@ flowchart LR
     A[Frontend Intake + Chat UI] --> B[FastAPI Backend]
     B --> C[TriageAnalysisService]
     C --> D[RouterService]
-    D --> E[Agent Factory]
+    D --> DG[Route: Generalist]
+    D --> DS[Route: Specialist]
+    D --> DT[Route: Toxicologist]
+    DG --> E[Agent Factory]
+    DS --> E
+    DT --> E
     E --> F[Generalist Agent]
     E --> G[Pneumologist Agent]
     E --> H[Cardiologist Agent]
@@ -75,8 +82,15 @@ flowchart LR
     O --> R[specialty collections]
     O --> S[bilan_expert_collection]
 
-    B --> T[PDF Report Generator]
-    T --> U[Download Endpoint]
+    B --> X[Step3 Orchestrator]
+    X --> M
+    X --> L
+    L --> T[Final Medical Report Generator]
+    T --> U[PDF Download Endpoints]
+
+    A --> HM[Medical History Popup]
+    HM --> HV[GET /api/patient/history]
+    HM --> HP[GET /api/patient/history/report/pdf]
 ```
 
 ## Pipeline
@@ -96,7 +110,7 @@ sequenceDiagram
     FE->>API: POST /triage
     API->>TRI: Analyze intake + RAG context
     TRI-->>RTR: suspected_domains + urgency
-    RTR-->>API: selected_specialty
+    RTR-->>API: selected_specialty (generalist/specialist/toxicologist)
     API->>QD: Persist dossier + triage summary
     API-->>FE: Routing decision
 
@@ -115,6 +129,12 @@ sequenceDiagram
     API->>QD: Persist step3_final_report
     API-->>FE: report_pdf_url
     U->>API: GET /api/step3/report/pdf
+
+    U->>FE: Open Medical History popup + CIN
+    FE->>API: GET /api/patient/history
+    API-->>FE: Previous records list
+    U->>FE: Click Download for one record
+    FE->>API: GET /api/patient/history/report/pdf
 ```
 
 ## Agent Catalog
@@ -225,6 +245,12 @@ med/
 
 6. `GET /health`
 - Purpose: liveness probe.
+
+7. `GET /api/patient/history?cin=...`
+- Purpose: retrieve all previous dossier records for a CIN (for Medical History popup).
+
+8. `GET /api/patient/history/report/pdf?cin=...&case_id=...`
+- Purpose: download PDF report for a specific historical case record.
 
 ## Data and Collections
 - `historical_cases`: dossier storage, chat history, indexed case payloads, blood-test documents.

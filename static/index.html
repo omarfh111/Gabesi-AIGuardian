@@ -35,6 +35,7 @@
                         <option value="ar">العربية</option>
                     </select>
                 </div>
+                <button id="btn-open-history" class="btn-secondary btn-history">Medical History</button>
                 <div class="location-badge" data-i18n="badge_location">📍 Gabès, Tunisia</div>
             </header>
 
@@ -306,6 +307,23 @@
                     </div>
                     <div id="report-actions" class="chat-actions hidden">
                         <button id="btn-download-final-report" class="btn-secondary">Download Final Report PDF</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="history-modal" class="history-modal hidden">
+                <div class="history-modal-card">
+                    <header class="history-modal-header">
+                        <h3>Medical History</h3>
+                        <button id="btn-close-history" class="close-history">&times;</button>
+                    </header>
+                    <div class="history-modal-body">
+                        <div class="history-search-row">
+                            <input type="text" id="history-cin-input" maxlength="8" placeholder="Enter CIN (8 digits)">
+                            <button id="btn-load-history" class="btn-primary">Load Records</button>
+                        </div>
+                        <p id="history-status" class="history-status"></p>
+                        <div id="history-records" class="history-records"></div>
                     </div>
                 </div>
             </div>

@@ -25,6 +25,7 @@ from agents.dermatologue_agent import DermatologueAgent
 from agents.toxicologue_agent import ToxicologueAgent
 from agents.bilan_expert_agent import BilanExpertAgent
 from pypdf import PdfReader
+from qdrant_client import models as qdrant_models
 
 load_dotenv()
 
@@ -54,6 +55,39 @@ class ChatRequest(BaseModel):
 
 class Step3Request(BaseModel):
     cin: str
+
+class HistoryRecord(BaseModel):
+    case_id: str
+    cin: str
+    patient_name: str
+    age: str
+    specialty: str
+    urgency: str
+    summary: str
+    indexed_at: str
+    has_final_report: bool
+
+def _safe_datetime_sort_key(value: str) -> datetime:
+    try:
+        return datetime.fromisoformat((value or "").replace("Z", "+00:00"))
+    except Exception:
+        return datetime.min
+
+def get_patient_history_records(cin: str, limit: int = 100) -> list[dict]:
+    """Fetch all dossier records for a CIN from Qdrant."""
+    results = triage_service.rag_service.qdrant_client.scroll(
+        collection_name=triage_service.rag_service.history_collection,
+        scroll_filter=qdrant_models.Filter(
+            must=[
+                qdrant_models.FieldCondition(key="cin", match=qdrant_models.MatchValue(value=cin)),
+                qdrant_models.FieldCondition(key="is_dossier", match=qdrant_models.MatchValue(value=True))
+            ]
+        ),
+        limit=limit,
+        with_payload=True
+    )
+    points = results[0] or []
+    return [point.payload or {} for point in points]
 
 def build_report_text(cin: str, dossier: dict) -> str:
     """Builds a detailed physician-ready text report from dossier + step3 outputs."""
@@ -568,6 +602,74 @@ async def download_step3_report_pdf(cin: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
 
+@app.get("/api/patient/history")
+@traceable(run_type="chain", name="Patient History List", metadata={"system": "gabes_triage"})
+async def get_patient_history(cin: str):
+    try:
+        cin_value = (cin or "").strip()
+        if not cin_value:
+            raise HTTPException(status_code=400, detail="CIN is required.")
+
+        payloads = get_patient_history_records(cin_value, limit=200)
+        records: list[dict] = []
+        for idx, payload in enumerate(payloads):
+            patient = payload.get("patient", {}) or {}
+            analysis = payload.get("analysis", {}) or {}
+            record = {
+                "case_id": str(payload.get("case_id") or f"record_{idx+1}"),
+                "cin": cin_value,
+                "patient_name": str(patient.get("full_name") or "N/A"),
+                "age": str(patient.get("age") or "N/A"),
+                "specialty": str(analysis.get("specialty") or "generalist"),
+                "urgency": str(analysis.get("urgence") or "N/A"),
+                "summary": str(payload.get("triage_summary") or payload.get("summary") or ""),
+                "indexed_at": str(payload.get("indexed_at") or ""),
+                "has_final_report": bool(payload.get("step3_final_report"))
+            }
+            records.append(record)
+
+        records = sorted(records, key=lambda r: _safe_datetime_sort_key(r.get("indexed_at", "")), reverse=True)
+
+        return {
+            "status": "success",
+            "cin": cin_value,
+            "count": len(records),
+            "records": records
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"History retrieval failed: {str(e)}")
+
+@app.get("/api/patient/history/report/pdf")
+@traceable(run_type="chain", name="Patient History Report PDF", metadata={"system": "gabes_triage"})
+async def download_patient_history_report(cin: str, case_id: str):
+    try:
+        cin_value = (cin or "").strip()
+        case_id_value = (case_id or "").strip()
+        if not cin_value:
+            raise HTTPException(status_code=400, detail="CIN is required.")
+        if not case_id_value:
+            raise HTTPException(status_code=400, detail="case_id is required.")
+
+        payloads = get_patient_history_records(cin_value, limit=300)
+        dossier = None
+        for payload in payloads:
+            if str(payload.get("case_id") or "") == case_id_value:
+                dossier = payload
+                break
+        if not dossier:
+            raise HTTPException(status_code=404, detail="Medical history record not found for this CIN/case_id.")
+
+        pdf_buffer = render_structured_report_pdf(cin_value, dossier)
+        filename = f"medical_history_{cin_value}_{case_id_value[:12]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+        return StreamingResponse(pdf_buffer, media_type="application/pdf", headers=headers)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"History PDF generation failed: {str(e)}")
+
 triage_service = TriageAnalysisService(model="gpt-4o-mini")
 router_service = RouterService()
 persistence_service = PersistenceService()
@@ -650,6 +752,7 @@ async def perform_triage(intake: PatientIntake, background_tasks: BackgroundTask
                     "urgence": decision.urgency,
                     "risk_score": decision.confidence
                 },
+                "indexed_at": datetime.now(timezone.utc).isoformat(),
                 "triage_summary": analysis.triage_summary,
                 "summary": analysis.triage_summary,
                 "red_flags": extract_true_flags(intake.red_flags)
