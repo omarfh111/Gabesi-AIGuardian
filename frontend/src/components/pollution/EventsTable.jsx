@@ -24,14 +24,16 @@ const EventsTable = ({ events }) => {
         <tbody className="divide-y divide-gray-100">
           {events.map((event, idx) => (
             <tr key={idx} className="bg-white hover:bg-gray-50 transition-colors">
-              <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500 font-medium">{event.date}</td>
+              <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500 font-medium">
+                {new Date(event.event_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+              </td>
               <td className="px-4 py-3 font-black uppercase text-gray-800">{event.pollutant}</td>
               <td className="px-4 py-3">
                 <span className={`px-2 py-1 rounded-sm text-[10px] font-bold uppercase tracking-wider ${severityColors[event.severity] || 'bg-gray-100'}`}>
                   {event.severity}
                 </span>
               </td>
-              <td className="px-4 py-3 whitespace-nowrap text-[11px] font-medium text-gray-600">{event.type}</td>
+              <td className="px-4 py-3 whitespace-nowrap text-[11px] font-medium text-gray-600 uppercase">{event.temporal_type}</td>
             </tr>
           ))}
         </tbody>

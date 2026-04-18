@@ -8,18 +8,19 @@ const TrendChart = ({ events }) => {
     </div>
   );
 
-  // Filter for SO2 events and reverse the array so chronological order is left-to-right
+  // Filter for SO2 events, map to chart format, and sort chronologically
   const chartData = events
-    .filter(e => e.pollutant.toLowerCase() === 'so2' && e.event_value)
+    .filter(e => e.pollutant === 'SO2')
     .map(e => ({
-      date: new Date(e.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-      value: parseFloat(e.event_value)
+      date: e.event_date,
+      displayDate: new Date(e.event_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      value: parseFloat(e.daily_mean_ug_m3 || 0)
     }))
-    .reverse();
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   if (chartData.length === 0) return (
     <div className="h-64 flex items-center justify-center text-gray-400 text-sm italic">
-      No SO₂ events to display.
+      No SO₂ events in this period.
     </div>
   );
 
@@ -49,7 +50,7 @@ const TrendChart = ({ events }) => {
           </defs>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
           <XAxis 
-            dataKey="date" 
+            dataKey="displayDate" 
             tick={{ fontSize: 10, fill: '#9ca3af', fontWeight: 600 }} 
             axisLine={false} 
             tickLine={false} 

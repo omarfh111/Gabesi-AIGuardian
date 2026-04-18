@@ -25,7 +25,7 @@ const PollutionReportCard = ({ data }) => {
     setIsDownloading(true);
     try {
       const resp = await axios.post(
-        `${API_BASE_URL}/api/v1/pollution/dossier`,
+        `${API_BASE_URL}/api/v1/pollution/pdf`,
         {
           farmer_id: 'demo_farmer',
           plot_id: 'bahria_plot_a',
@@ -35,13 +35,15 @@ const PollutionReportCard = ({ data }) => {
         { responseType: 'blob' }
       );
 
-      const url = window.URL.createObjectURL(new Blob([resp.data]));
+      const blob = new Blob([resp.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `Gabes_Pollution_Report_${data.report_id.slice(0,8)}.pdf`);
+      link.download = `pollution_dossier_${data.report_id.slice(0, 8)}.pdf`;
       document.body.appendChild(link);
       link.click();
-      link.remove();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Download failed:', err);
       alert('Failed to generate PDF. Please try again.');
