@@ -50,8 +50,18 @@ class RouterService:
             confidence = 0.5
             alternatives = []
         else:
-            selected, confidence = processed_domains[0]
-            alternatives = [name for name, score in processed_domains[1:] if score > 0.4]
+            top_specialty, top_score = processed_domains[0]
+            
+            # CONFIDENCE THRESHOLD LOGIC
+            # If not an emergency and score is too low (< 0.7), default to generalist
+            if top_score < 0.7 and not is_emergency:
+                selected = "generalist"
+                confidence = 1.0
+                alternatives = [top_specialty] + [name for name, score in processed_domains[1:] if score > 0.4]
+            else:
+                selected = top_specialty
+                confidence = top_score
+                alternatives = [name for name, score in processed_domains[1:] if score > 0.4]
 
         # Handle alternatives
         # (already handled above)

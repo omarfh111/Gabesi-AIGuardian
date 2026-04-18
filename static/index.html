@@ -264,6 +264,39 @@
                             <strong data-i18n="res_disclaimer_title">Medical Disclaimer:</strong>
                             <p id="result-disclaimer"></p>
                         </div>
+                        <div class="form-actions result-actions">
+                            <button id="btn-consult" class="btn-primary" data-i18n="btn_consult">Consult Specialist</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agentic Chat Section -->
+            <div id="chat-section" class="chat-section hidden">
+                <div class="chat-container">
+                    <header class="chat-header">
+                        <div class="agent-info">
+                            <div class="agent-avatar" id="agent-avatar">🩺</div>
+                            <div>
+                                <h3 id="agent-name">Medical Agent</h3>
+                                <span id="agent-status">Online</span>
+                            </div>
+                        </div>
+                        <button class="close-chat">&times;</button>
+                    </header>
+                    <div id="chat-messages" class="chat-messages">
+                        <!-- Messages appended here -->
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" data-i18n-placeholder="ph_chat_input" placeholder="Type your message...">
+                        <button id="btn-send-chat" class="btn-send">
+                            <svg viewBox="0 0 24 24" width="24" height="24">
+                                <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="chat-actions" class="chat-actions hidden">
+                        <button id="btn-transfer" class="btn-secondary danger" data-i18n="btn_transfer">Transfer me to Specialist</button>
                     </div>
                 </div>
             </div>

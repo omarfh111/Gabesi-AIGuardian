@@ -96,6 +96,9 @@ const translations = {
         ph_family_history: "Note chronic diseases...",
         btn_submit: "Analyze & Triage",
         btn_reset: "Reset Form",
+        btn_consult: "Consult Specialist",
+        btn_transfer: "Transfer me to Specialist",
+        ph_chat_input: "Type your message...",
         res_title: "Triage Analysis Result",
         res_summary: "Summary",
         res_specialty: "Recommended Specialty",
@@ -211,6 +214,9 @@ const translations = {
         ph_family_history: "Notez les maladies chroniques...",
         btn_submit: "Analyser & Trier",
         btn_reset: "Réinitialiser",
+        btn_consult: "Consulter le spécialiste",
+        btn_transfer: "Me transférer au spécialiste",
+        ph_chat_input: "Tapez votre message...",
         res_title: "Résultat de l'Analyse",
         res_summary: "Résumé",
         res_specialty: "Spécialité Recommandée",
@@ -326,6 +332,9 @@ const translations = {
         ph_family_history: "ملاحظات حول الأمراض المزمنة...",
         btn_submit: "تحليل وفرز",
         btn_reset: "إعادة تعيين",
+        btn_consult: "استشر أخصائي",
+        btn_transfer: "حولني إلى أخصائي",
+        ph_chat_input: "اكتب رسالتك...",
         res_title: "نتائج تحليل الفرز",
         res_summary: "ملخص",
         res_specialty: "التخصص الموصى به",
@@ -538,3 +547,186 @@ style.textContent = `
     @keyframes spin { to { transform: rotate(360deg); } }
 `;
 document.head.appendChild(style);
+
+// --- Agentic Chat Logic ---
+let currentAgent = null;
+let chatCIN = null;
+let suggestedSpecialty = null;
+
+function appendMessage(role, text) {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+    
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `message ${role}`;
+    
+    // Process basic formatting: Newlines -> BR, **text** -> bold, numeric lists
+    let formattedText = text
+        .replace(/\n/g, '<br>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^(\d+\.)\s/gm, '<strong>$1</strong> ') // Bold list numbers
+        .replace(/\[SUGGEST_TRANSFER:.*?\]/g, ''); // Hide the trigger tag from UI
+        
+    msgDiv.innerHTML = formattedText;
+    container.appendChild(msgDiv);
+    container.scrollTop = container.scrollHeight;
+}
+
+async function sendMessage() {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+
+    appendMessage('patient', text);
+    input.value = '';
+
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                cin: chatCIN, 
+                message: text,
+                agent: currentAgent
+            })
+        });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            appendMessage('agent', data.response);
+            
+            // Dynamic Transfer Detection
+            const transferMatch = data.response.match(/\[SUGGEST_TRANSFER:\s*(\w+)\]/);
+            if (transferMatch) {
+                suggestedSpecialty = transferMatch[1].toLowerCase();
+                const actions = document.getElementById('chat-actions');
+                actions.classList.remove('hidden');
+                
+                // Update transfer button text
+                const btnTransfer = document.getElementById('btn-transfer');
+                if (btnTransfer) {
+                    const displayName = suggestedSpecialty.charAt(0).toUpperCase() + suggestedSpecialty.slice(1);
+                    btnTransfer.textContent = `Transfer me to ${displayName}`;
+                }
+            }
+        } else {
+            appendMessage('agent', 'Error: ' + data.detail);
+        }
+    } catch (err) {
+        console.error('Chat error:', err);
+        appendMessage('agent', 'Sorry, I encountered an error. Please try again.');
+    }
+}
+
+// Event Listeners for Chat
+document.addEventListener('DOMContentLoaded', () => {
+    const btnConsult = document.getElementById('btn-consult');
+    if (btnConsult) {
+        btnConsult.addEventListener('click', async () => {
+            chatCIN = document.getElementById('cin').value;
+            currentAgent = document.getElementById('result-specialty').textContent.toLowerCase();
+            
+            // UI Transition
+            document.getElementById('results-overlay').classList.add('hidden');
+            document.getElementById('chat-section').classList.remove('hidden');
+            
+            // Set Agent Name
+            document.getElementById('agent-name').textContent = `${currentAgent.charAt(0).toUpperCase() + currentAgent.slice(1)} Agent`;
+            
+            // Dynamic Initialization
+            appendMessage('agent', 'Analyzing your medical history...');
+            
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        cin: chatCIN, 
+                        message: "[INITIALIZE]",
+                        agent: currentAgent
+                    })
+                });
+                const data = await response.json();
+                
+                // Clear the "Analyzing" message and show the real greeting
+                const messagesContainer = document.getElementById('chat-messages');
+                messagesContainer.lastElementChild?.remove();
+                
+                if (data.status === 'success') {
+                    appendMessage('agent', data.response);
+                }
+            } catch (err) {
+                console.error('Init error:', err);
+                appendMessage('agent', 'Hello. I am here to help. How can I assist you?');
+            }
+        });
+    }
+
+    const btnSendChat = document.getElementById('btn-send-chat');
+    if (btnSendChat) btnSendChat.addEventListener('click', sendMessage);
+
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    }
+
+    const closeChat = document.querySelector('.close-chat');
+    if (closeChat) {
+        closeChat.addEventListener('click', () => {
+            document.getElementById('chat-section').classList.add('hidden');
+        });
+    }
+
+    const btnTransfer = document.getElementById('btn-transfer');
+    if (btnTransfer) {
+        btnTransfer.addEventListener('click', async () => {
+            if (!suggestedSpecialty) return;
+            
+            currentAgent = suggestedSpecialty; 
+            document.getElementById('chat-actions').classList.add('hidden');
+            
+            // Switch UI based on specialty
+            const nameEl = document.getElementById('agent-name');
+            const avatarEl = document.getElementById('agent-avatar');
+            
+            const config = {
+                pneumologist: { name: "Pneumologist Agent", icon: "🫁" },
+                pneumologue: { name: "Pneumologist Agent", icon: "🫁" },
+                cardiologist: { name: "Cardiologist Agent", icon: "🫀" },
+                cardiologue: { name: "Cardiologist Agent", icon: "🫀" },
+                neurologist: { name: "Neurologist Agent", icon: "🧠" },
+                oncologist: { name: "Oncologist Agent", icon: "🔬" },
+                dermatologist: { name: "Dermatologist Agent", icon: "🧴" },
+                toxicologist: { name: "Toxicologist Agent", icon: "🧪" }
+            };
+            
+            const agentUI = config[suggestedSpecialty] || { name: `${suggestedSpecialty} Agent`, icon: "🩺" };
+            nameEl.textContent = agentUI.name;
+            avatarEl.textContent = agentUI.icon;
+            
+            appendMessage('agent', `Transferring your clinical notes to the ${agentUI.name}...`);
+            
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        cin: chatCIN, 
+                        message: "[INITIALIZE]",
+                        agent: currentAgent
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    appendMessage('agent', data.response);
+                }
+            } catch (err) {
+                console.error('Transfer error:', err);
+                appendMessage('agent', 'Hello. I am the Pneumologist. I have reviewed your case from the GP. How are you breathing now?');
+            }
+        });
+    }
+});

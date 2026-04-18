@@ -9,6 +9,14 @@ from services.router_service import RouterService
 from services.persistence_service import PersistenceService
 from dotenv import load_dotenv
 import os
+from pydantic import BaseModel
+from agents.generalist_agent import GeneralistAgent
+from agents.pneumologue_agent import PneumologueAgent
+from agents.cardiologue_agent import CardiologueAgent
+from agents.neurologue_agent import NeurologueAgent
+from agents.oncologue_agent import OncologueAgent
+from agents.dermatologue_agent import DermatologueAgent
+from agents.toxicologue_agent import ToxicologueAgent
 
 load_dotenv()
 
@@ -28,6 +36,46 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/")
 async def read_index():
     return FileResponse("static/index.html")
+
+# --- Agentic RAG Chat API ---
+
+class ChatRequest(BaseModel):
+    cin: str
+    message: str
+    agent: str
+
+@app.post("/api/chat")
+async def chat_with_agent(request: ChatRequest):
+    try:
+        # 1. Agent Factory
+        agent_type = request.agent.lower()
+        if agent_type == "generalist":
+            agent = GeneralistAgent()
+        elif agent_type == "pneumologist" or agent_type == "pneumologue":
+            agent = PneumologueAgent()
+        elif agent_type == "cardiologist" or agent_type == "cardiologue":
+            agent = CardiologueAgent()
+        elif agent_type == "neurologist" or agent_type == "neurologue":
+            agent = NeurologueAgent()
+        elif agent_type == "oncologist" or agent_type == "oncologue":
+            agent = OncologueAgent()
+        elif agent_type == "dermatologist" or agent_type == "dermatologue":
+            agent = DermatologueAgent()
+        elif agent_type == "toxicologist" or agent_type == "toxicologue":
+            agent = ToxicologueAgent()
+        else:
+            # Default fallback
+            agent = GeneralistAgent()
+            
+        # 2. Process Message
+        response = agent.process_message(request.cin, request.message)
+        
+        return {
+            "status": "success",
+            "response": response
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 triage_service = TriageAnalysisService(model="gpt-4o-mini")
 router_service = RouterService()
@@ -76,8 +124,8 @@ async def perform_triage(intake: PatientIntake, background_tasks: BackgroundTask
             
             payload = {
                 "case_id": case_id,
-                f"dossier_medical_{intake.patient_profile.cin}": True,
                 "cin": intake.patient_profile.cin,
+                "is_dossier": True,
                 "patient": {
                     "full_name": intake.patient_profile.name,
                     "age": intake.patient_profile.age,

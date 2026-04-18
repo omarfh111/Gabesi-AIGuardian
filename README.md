@@ -1,115 +1,68 @@
-# 🩺 Gabès Medical Triage System
-### Phase 1: High-Fidelity Medical Pipeline & RAG Integration
+# 🩺 Gabès Medical Triage & Agentic RAG System
+### Phase 2: Multi-Agent Clinical Consultations & Specialist Handoffs
 
-A production-ready medical triage and routing system specifically designed for the industrial context of Gabès, Tunisia. This pipeline combines **Doctor-grade Patient Intake**, **Hybrid RAG (Retrieval-Augmented Generation)**, and a **Deterministic Safety Router** to provide accurate specialty recommendations while accounting for local environmental pollution factors.
-
----
+A state-of-the-art medical triage system evolved into a **Multi-Agent Agentic RAG** architecture. Beyond initial routing, the system now facilitates **Live Clinical Consultations** where specialized medical agents (GPs and Specialists) manage patient records, perform ambiguity resolution, and execute intelligent clinical handoffs triggered by real-time diagnostic reasoning.
 
 ---
 
-## 🏗️ Pipeline Architecture
+## 🏗️ System Architecture
 
-The system operates as a multi-stage medical pipeline:
-1.  **Intake (Frontend/UI)**: A sectioned, qualitative medical form. Fully localized with an **i18n Switcher** (EN/FR/AR) and **Native RTL Support** for Arabic.
-2.  **Multilingual Layer**: Automatically detects input language, including **Tunisian Darija** (spoken dialect) and **Arabizi** (Latin-script Arabic).
-3.  **RAG Layer (Qdrant)**: Performs a **Hybrid Search** (Dense + Sparse) on the `gabes_knowledge` collection to retrieve scientific papers and local health context.
-4.  **Triage Engine (LLM)**: An OpenAI GPT-4o-mini engine that provides **Formal Language Locking**. It parses informal dialects but responds in the Standard/Formal version of the patient's language (e.g., Modern Standard Arabic or Professional French).
-5. **Local Router (Safety Fail-safe)**: A deterministic logic layer that enforces "Red Flag" overrides and boosts specialty scores based on environmental industrial triggers.
-6. **Persistence Layer (Phase 2)**: 
-    *   **Patient Identity**: 8-digit **CIN (National ID)** tracking for persistent medical history.
-    *   **Operational DB (Supabase)**: Stores operational telemetry, demographics, and case decisions.
-    *   **Vector Index (Qdrant)**: High-density, nested case indexing for Phase 2 similarity search and clinical history retrieval.
+The system operates as a tiered agentic network:
 
----
+### 1. Triage & Clinical Correlation Engine
+*   **LLM Analysis**: Powered by `gpt-4o-mini` for high-speed constellation analysis.
+*   **Routing Safeguards**: Implements a **0.7 Confidence Gatekeeper**. Ambiguous or non-specific symptoms (e.g., slight headache) are automatically routed to the **Generalist Agent** for clarification before specialization is allowed.
 
-## 🌍 Multilingual & Localized Support
+### 2. Multi-Agent Specialist Network
+Every specialty is a dedicated, stateful agent with its own RAG knowledge base:
+*   **Generalist (GP) 🩺**: The primary diagnostic intermediary and gateway.
+*   **Pneumologist 🫁**: Senior specialist in respiratory health & industrial exposure.
+*   **Cardiologist 🫀**: Heart health and hypertension specialist.
+*   **Neurologist 🧠**: Brain and nervous system expert.
+*   **Oncologist 🔬**: Cancer staging and diagnostic planning.
+*   **Dermatologist 🧴**: Clinical skin and chemical irritation specialist.
+*   **Toxicologist 🧪**: Industrial toxicant (fluoride, sulfur) poisoning expert.
 
-This system is specifically optimized for the Gabès medical landscape:
-*   **Dialect Understanding**: The backend is trained to interpret **Tunisian Darija** and **Arabizi**, allowing patients to describe symptoms in their natural spoken tongue.
-*   **Formal Translation**: Ensures that the output summary is professional and suitable for medical records (Formal Arabic/French).
-*   **RTL Interface**: A native Right-to-Left layout for Arabic-speaking users, ensuring maximum accessibility for the local population.
-
----
-
-## 🚀 Getting Started
-
-### 1. Prerequisites
-*   Python 3.10+
-*   OpenAI API Key
-*   Qdrant Cloud URL & API Key (with `gabes_knowledge` collection)
-
-### 2. Configuration
-Create a `.env` file in the root directory (already provided in this workspace):
-```env
-OPENAI_API_KEY=your_key
-QDRANT_URL=your_url
-QDRANT_API_KEY=your_key
-```
-
-### 3. Installation
-```powershell
-# Create and activate virtual environment
-python -m venv venv
-.\venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 4. Running the System
-**Full Web Application (UI + API):**
-```powershell
-venv\Scripts\python.exe main.py
-```
-Access the dashboard at: **http://localhost:8000**
-
-### 5. Database Setup (Supabase)
-Run the following SQL migration to enable Phase 2 tracking:
-```sql
--- Track patients via National ID
-ALTER TABLE patients ADD COLUMN cin TEXT UNIQUE;
-
--- Add clinical analytics columns
-ALTER TABLE intake_cases 
-ADD COLUMN occupation TEXT,
-ADD COLUMN proximity_status TEXT,
-ADD COLUMN duration TEXT;
-```
+### 3. Agentic Capabilities
+*   **Dynamic Initialization**: Agents read the patient's `CIN`-linked record and provide a personalized clinical opening.
+*   **One-Question Rule**: Agents are strictly constrained to ask exactly one high-precision question per turn to ensure focused diagnostic loops.
+*   **Specialist Handoff**: The Generalist can trigger a `[SUGGEST_TRANSFER]` command. The UI executes a seamless handover, updating the specialist's icon and providing a "Case Handoff" summary to the new doctor.
+*   **Professional Reporting**: Once a conclusion is reached, the agent generates a structured **Medical Consultation Report** including **Diagnosis**, **Prescriptions (with dosages)**, and **Gabès-specific recommendations**.
 
 ---
 
-## 📊 Phase 1 Evaluation & Benchmarks
-
-The pipeline has been rigorously tested using our custom **Evaluation Suite** against real-world Gabès patient scenarios.
-
-### Core Metrics
-| **Specialty Accuracy** | ✅ 100% | Correct routing across all test cases. |
-| **Emergency Detection** | ✅ 100% | Zero missed "Red Flags" (Cardiology/Emergency). |
-| **Multilingual Detection**| ✅ 100% | Correctly parses Tunisian Darija and remains in formal MSA/FR. |
-| **RAG Stability** | ✅ Pass | 100% reliable context injection from scientific papers. |
-| **Avg. Latency** | ⏱️ ~8.1s | End-to-end processing (Search + Analysis). |
-
-### Ablation Study
-We conducted an ablation study comparing the system with and without the **gabes_knowledge** RAG context.
-*   **Finding**: RAG integration significantly improved the depth of "Industrial Exposure" summaries, correctly identifying phosphate-specific scientific triggers in patient summaries.
+## 🧠 Memory & Persistence
+*   **Persistent Chat History**: All consultation turns are saved in real-time as a `chat_history` payload within the patient's master record in Qdrant.
+*   **CIN Identity Tracking**: Patients are uniquely tracked via their 8-digit **CIN**, allowing for long-term medical history retrieval across multiple sessions and agents.
 
 ---
 
-## 📁 Project Structure
+## 🌍 Multilingual Performance
+*   **Per-Turn Language Mirroring**: Agents detect the patient's language turn-by-turn. If a patient switches between Arabic, French, or English, the agent immediately switches to the new language.
+*   **Clinical Formalization**: While the engine interprets informal **Tunisian Darija** and **Arabizi**, it responds in the professional/formal variant of the chosen language.
 
-*   `main.py`: FastAPI application entry point.
-*   `services/`:
-    *   `triage_service.py`: LLM-based triage logic.
-    *   `rag_service.py`: Qdrant Hybrid Search integration.
-    *   `router_service.py`: Local safety rules and specialty normalization.
-*   `models/`: Pydantic schemas for data integrity.
-*   `static/`: High-fidelity HTML/CSS/JS frontend.
-*   `evaluation/`: Automated benchmarking scripts and test banks.
+---
+
+## 🚀 Technical Stack
+*   **Core Logic**: Python / FastAPI
+*   **Language Models**: GPT-4o-mini (Triage & Agents) for optimal speed/reasoning balance.
+*   **Vector Database**: **Qdrant Cloud** (High-density indexing for 7 specialty collections).
+*   **Embeddings**: `text-embedding-3-large` (3072 dims) for high-precision medical matching.
+
+---
+
+## 📁 Updated Project structure
+*   `agents/`: 
+    *   `base.py`: Core Agent logic (Memory, RAG, Completion).
+    *   `generalist_agent.py`: The primary GP persona.
+    *   `pneumologue_agent.py`, `cardiologue_agent.py`, ... : Specialized specialist agents.
+*   `main.py`: Agent Factory and FastAPI endpoints.
+*   `static/`: Premium glassmorphism UI with integrated **Agentic Chatroom**.
 
 ---
 
 ## 🛡️ Medical Disclaimer
-This system is a **Phase 1 Preliminary Triage** tool. It is designed to aid medical routing and does not provide an official medical diagnosis. It must be used in conjunction with qualified healthcare professionals.
+This system is an **Agentic Triage Aid**. It provides professional clinical suggestions and triage reports but does not replace the judgment of a licensed human physician.
 
 ---
-**Developed for the Gabès Medical Community | 2026**
+**Advanced Agentic Triage | Developed for the Gabès Medical Community | 2026**
