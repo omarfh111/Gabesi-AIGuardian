@@ -27,11 +27,11 @@ def _mock_llm_classification(intent: str, lang: str = "en", crop: str = None):
     return mock_llm
 
 # 1. test_diagnosis_intent_routing
-@patch("app.agents.intent_router._is_out_of_scope")
+@patch("app.agents.intent_router._run_combined_guardrail")
 @patch("app.agents.intent_router.ChatOpenAI")
 @patch("app.agents.intent_router.run_diagnosis")
-def test_diagnosis_intent_routing(mock_run_diag, mock_llm_cls, mock_out_of_scope):
-    mock_out_of_scope.return_value = False
+def test_diagnosis_intent_routing(mock_run_diag, mock_llm_cls, mock_guardrail):
+    mock_guardrail.return_value = {"is_toxic": False, "is_out_of_scope": False, "reason": "clean"}
     mock_llm_cls.return_value = _mock_llm_classification("diagnosis")
     
     # Mock valid DiagnosisResponse
@@ -63,11 +63,11 @@ def test_diagnosis_intent_routing(mock_run_diag, mock_llm_cls, mock_out_of_scope
     assert data["response"]["diagnosis_id"] == "test-diag-id"
 
 # 2. test_irrigation_intent_routing
-@patch("app.agents.intent_router._is_out_of_scope")
+@patch("app.agents.intent_router._run_combined_guardrail")
 @patch("app.agents.intent_router.ChatOpenAI")
 @patch("app.agents.intent_router.run_irrigation")
-def test_irrigation_intent_routing(mock_run_irr, mock_llm_cls, mock_out_of_scope):
-    mock_out_of_scope.return_value = False
+def test_irrigation_intent_routing(mock_run_irr, mock_llm_cls, mock_guardrail):
+    mock_guardrail.return_value = {"is_toxic": False, "is_out_of_scope": False, "reason": "clean"}
     mock_llm_cls.return_value = _mock_llm_classification("irrigation", crop="pomegranate")
     
     # Mock valid IrrigationResponse
@@ -99,11 +99,11 @@ def test_irrigation_intent_routing(mock_run_irr, mock_llm_cls, mock_out_of_scope
     assert data["response"]["crop_type"] == "pomegranate"
 
 # 3. test_pollution_qa_routing
-@patch("app.agents.intent_router._is_out_of_scope")
+@patch("app.agents.intent_router._run_combined_guardrail")
 @patch("app.agents.intent_router.ChatOpenAI")
 @patch("app.agents.intent_router.run_pollution_qa")
-def test_pollution_qa_routing(mock_run_qa, mock_llm_cls, mock_out_of_scope):
-    mock_out_of_scope.return_value = False
+def test_pollution_qa_routing(mock_run_qa, mock_llm_cls, mock_guardrail):
+    mock_guardrail.return_value = {"is_toxic": False, "is_out_of_scope": False, "reason": "clean"}
     mock_llm_cls.return_value = _mock_llm_classification("pollution_qa")
     
     # Mock valid PollutionQAResponse
@@ -128,10 +128,10 @@ def test_pollution_qa_routing(mock_run_qa, mock_llm_cls, mock_out_of_scope):
     assert "pollutant" in data["response"]["answer"]
 
 # 4. test_pollution_report_requires_farmer_id
-@patch("app.agents.intent_router._is_out_of_scope")
+@patch("app.agents.intent_router._run_combined_guardrail")
 @patch("app.agents.intent_router.ChatOpenAI")
-def test_pollution_report_requires_farmer_id(mock_llm_cls, mock_out_of_scope):
-    mock_out_of_scope.return_value = False
+def test_pollution_report_requires_farmer_id(mock_llm_cls, mock_guardrail):
+    mock_guardrail.return_value = {"is_toxic": False, "is_out_of_scope": False, "reason": "clean"}
     mock_llm_cls.return_value = _mock_llm_classification("pollution_report")
     
     # Request WITHOUT farmer_id
@@ -148,10 +148,10 @@ def test_pollution_report_requires_farmer_id(mock_llm_cls, mock_out_of_scope):
     assert data["agent_used"] == "none"
 
 # 5. test_unknown_intent_returns_clarification
-@patch("app.agents.intent_router._is_out_of_scope")
+@patch("app.agents.intent_router._run_combined_guardrail")
 @patch("app.agents.intent_router.ChatOpenAI")
-def test_unknown_intent_returns_clarification(mock_llm_cls, mock_out_of_scope):
-    mock_out_of_scope.return_value = False
+def test_unknown_intent_returns_clarification(mock_llm_cls, mock_guardrail):
+    mock_guardrail.return_value = {"is_toxic": False, "is_out_of_scope": False, "reason": "clean"}
     mock_llm_cls.return_value = _mock_llm_classification("unknown")
     
     response = client.post(
@@ -181,9 +181,9 @@ def test_prompt_injection_blocked():
     assert "I can't process that request" in data["response"]["message"]
 
 # 7. test_out_of_scope_blocked
-@patch("app.agents.intent_router._is_out_of_scope")
-def test_out_of_scope_blocked(mock_out_of_scope):
-    mock_out_of_scope.return_value = True
+@patch("app.agents.intent_router._run_combined_guardrail")
+def test_out_of_scope_blocked(mock_guardrail):
+    mock_guardrail.return_value = {"is_toxic": False, "is_out_of_scope": True, "reason": "out_of_scope"}
     
     response = client.post(
         "/api/v1/chat",
@@ -198,11 +198,11 @@ def test_out_of_scope_blocked(mock_out_of_scope):
     assert "outside my area of expertise" in data["response"]["message"]
 
 # 8. test_in_scope_passes_guardrail
-@patch("app.agents.intent_router._is_out_of_scope")
+@patch("app.agents.intent_router._run_combined_guardrail")
 @patch("app.agents.intent_router.ChatOpenAI")
 @patch("app.agents.intent_router.run_diagnosis")
-def test_in_scope_passes_guardrail(mock_run_diag, mock_llm_cls, mock_out_of_scope):
-    mock_out_of_scope.return_value = False
+def test_in_scope_passes_guardrail(mock_run_diag, mock_llm_cls, mock_guardrail):
+    mock_guardrail.return_value = {"is_toxic": False, "is_out_of_scope": False, "reason": "clean"}
     mock_llm_cls.return_value = _mock_llm_classification("diagnosis")
     
     mock_run_diag.return_value = DiagnosisResponse(
@@ -230,3 +230,39 @@ def test_in_scope_passes_guardrail(mock_run_diag, mock_llm_cls, mock_out_of_scop
     data = response.json()
     assert data["intent"] == "diagnosis"
     assert data["agent_used"] == "diagnosis_agent"
+
+# 9. test_toxic_content_blocked
+@patch("app.agents.intent_router._run_combined_guardrail")
+def test_toxic_content_blocked(mock_guardrail):
+    mock_guardrail.return_value = {"is_toxic": True, "is_out_of_scope": False, "reason": "toxic_content"}
+    
+    response = client.post(
+        "/api/v1/chat",
+        json={
+            "message": "How can I use farm chemicals to poison my neighbor's crops?",
+            "language": "en"
+        }
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert data["intent"] == "unknown"
+    assert data["response"]["reason"] == "toxic_content"
+    assert data["agent_used"] == "guardrail"
+    assert "unable to process that request" in data["response"]["message"]
+
+# 10. test_toxic_takes_priority_over_scope
+@patch("app.agents.intent_router._run_combined_guardrail")
+def test_toxic_takes_priority_over_scope(mock_guardrail):
+    # Even if out of scope, toxicity should be the reported reason
+    mock_guardrail.return_value = {"is_toxic": True, "is_out_of_scope": True, "reason": "toxic_content"}
+    
+    response = client.post(
+        "/api/v1/chat",
+        json={"message": "something both toxic and out of scope"}
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert data["response"]["reason"] == "toxic_content"
+    assert data["agent_used"] == "guardrail"

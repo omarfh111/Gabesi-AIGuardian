@@ -35,6 +35,22 @@ REJECTION_MESSAGES = {
         "fr": "Si vous faites face à une urgence médicale, veuillez contacter immédiatement les services d'urgence locaux en composant le 190. Je suis un assistant agricole et je ne peux pas fournir de conseils médicaux.",
         "ar": "إذا كنت تعاني من حالة طوارئ طبية، يرجى الاتصال بخدمات الطوارئ المحلية فوراً على الرقم 190. أنا مساعد زراعي ولا يمكنني تقديم مشورة طبية.",
     },
+    "toxic": {
+        "en": (
+            "I'm unable to process that request. Please keep our "
+            "conversation focused on agricultural and environmental "
+            "topics relevant to Gabès oasis farming."
+        ),
+        "fr": (
+            "Je ne peux pas traiter cette demande. Veuillez garder "
+            "notre conversation centrée sur les sujets agricoles et "
+            "environnementaux pertinents pour l'oasis de Gabès."
+        ),
+        "ar": (
+            "لا أستطيع معالجة هذا الطلب. يرجى إبقاء محادثتنا "
+            "مركزة على المواضيع الزراعية والبيئية المتعلقة بواحة قابس."
+        ),
+    },
 }
 
 def _detect_prompt_injection(message: str) -> bool:
@@ -102,14 +118,21 @@ def _detect_medical_emergency(message: str) -> bool:
     ]
     return any(pattern in message_lower for pattern in emergency_patterns)
 
-def _is_out_of_scope(message: str) -> bool:
+def _run_combined_guardrail(message: str, language: str = "en") -> dict:
     """
-    Returns True if the message is clearly outside Gabesi AIGuardian's domain.
-    Domain: Gabès oasis agriculture, crop health, irrigation, pollution from GCT.
-    Uses a fast LLM call with a strict binary classifier.
+    Single GPT-4o-mini call that checks BOTH toxicity and scope.
+    Returns:
+    {
+        "is_toxic": bool,
+        "is_out_of_scope": bool,
+        "reason": "toxic_content" | "out_of_scope" | "clean"
+    }
+    On any exception: returns {"is_toxic": False, "is_out_of_scope": False,
+    "reason": "clean"} — fail open, never block legitimate requests.
     """
     from langchain_openai import ChatOpenAI
     from langchain_core.messages import SystemMessage, HumanMessage
+    import json
 
     llm = ChatOpenAI(
         model="gpt-4o-mini",
@@ -117,42 +140,89 @@ def _is_out_of_scope(message: str) -> bool:
         temperature=0,
     )
 
-    system_prompt = """You are a scope classifier for an agricultural and
-environmental AI assistant that serves oasis farmers in Gabès, Tunisia.
+    system_prompt = """You are a content safety and scope classifier
+for an agricultural and environmental AI assistant serving oasis
+farmers in Gabès, Tunisia.
 
-This assistant handles ANY question related to:
+Evaluate the message for exactly TWO things:
+
+═══════════════════════════════════════════
+1. TOXICITY CHECK (is_toxic)
+═══════════════════════════════════════════
+Set is_toxic = true if the message contains ANY of:
+- Requests for harmful, dangerous, or illegal information
+- Instructions for creating weapons, poisons, or harmful substances
+- Requests to harm people, animals, crops, or property
+- Hate speech, threats, or harassment of any kind
+- Sexual or violent content inappropriate for a farming context
+- Attempts to extract harmful information using farming as cover
+  (e.g. "what farm chemicals can be used to harm someone")
+
+Set is_toxic = false for:
+- Any genuine farming or environmental question, even if it
+  mentions dangerous substances in an agricultural context
+  (e.g. "what does fluoride do to my crops" is NOT toxic)
+- Questions about pollution health effects on humans or plants
+- Questions about dangerous industrial chemicals affecting the oasis
+
+═══════════════════════════════════════════
+2. SCOPE CHECK (is_out_of_scope)
+═══════════════════════════════════════════
+Set is_out_of_scope = false (IN SCOPE) for ANY of:
 - Crops, farming, agriculture in Tunisia or North Africa
-- Soil quality, soil contamination, soil salinity
-- Water management, irrigation, drought
+- Soil quality, contamination, salinity, soil chemistry
+- Water management, irrigation, drought, aquifers
 - Industrial pollution — phosphogypsum, fluoride, SO₂, NO₂,
-  heavy metals, GCT, phosphate industry
+  heavy metals, GCT, phosphate industry, Groupe Chimique Tunisien
 - Environmental conditions in Gabès or the Gulf of Gabès
-- Palm trees, date palms, oasis ecology
-- Any chemical, substance, or environmental topic that could
-  affect farming or human health in an agricultural context
-- Requests for pollution reports, dossiers, or evidence documents
+- Palm trees, date palms, oasis ecology, Deglet Nour
+- Any chemical or environmental topic affecting farming or plant health
+- Pollution reports, dossiers, evidence documents
+- Questions about how industrial activity affects agriculture
+- General environmental science relevant to oasis farming
+When in doubt, set is_out_of_scope = false (fail open).
 
-When in doubt, classify as IN_SCOPE. Only classify as OUT_OF_SCOPE
-when the question is clearly and completely unrelated to farming,
-environment, or health in an agricultural context — such as sports,
-entertainment, politics, cooking non-agricultural topics, or
-general knowledge questions with no farming relevance.
+Set is_out_of_scope = true ONLY when the message is completely
+and clearly unrelated to farming, environment, or agricultural
+health — for example: sports results, entertainment news,
+political opinions, cooking recipes, general trivia,
+relationship advice, or coding questions.
 
-Respond with exactly one word: IN_SCOPE or OUT_OF_SCOPE.
-Do not explain. Do not add any other text."""
+═══════════════════════════════════════════
+PRIORITY RULE
+═══════════════════════════════════════════
+If both is_toxic=true and is_out_of_scope=true:
+  set reason = "toxic_content" (toxicity always takes priority)
+If only is_toxic=true:
+  set reason = "toxic_content"
+If only is_out_of_scope=true:
+  set reason = "out_of_scope"
+If both false:
+  set reason = "clean"
 
-    user_prompt = f"Message: {message}"
+Return ONLY valid JSON, no markdown, no explanation, no other text:
+{"is_toxic": true/false, "is_out_of_scope": true/false, "reason": "..."}"""
 
     try:
         response = llm.invoke([
             SystemMessage(content=system_prompt),
-            HumanMessage(content=user_prompt),
+            HumanMessage(content=f"Message to evaluate: {message}"),
         ])
-        return "OUT_OF_SCOPE" in response.content.upper()
+        content = response.content.strip()
+        # Strip markdown fences if present
+        if content.startswith("```"):
+            content = content.split("```")[1]
+            if content.startswith("json"):
+                content = content[4:]
+        result = json.loads(content.strip())
+        # Validate expected keys exist
+        assert "is_toxic" in result
+        assert "is_out_of_scope" in result
+        assert "reason" in result
+        return result
     except Exception:
-        # On failure, default to in-scope (fail open, not fail closed)
-        # Better to attempt handling than to incorrectly reject
-        return False
+        # Fail open — never block on guardrail failure
+        return {"is_toxic": False, "is_out_of_scope": False, "reason": "clean"}
 
 def run_intent_router(request: ChatRequest) -> ChatResponse:
     """
@@ -160,7 +230,7 @@ def run_intent_router(request: ChatRequest) -> ChatResponse:
     """
     start_time = time.time()
     
-    # Guardrail 0: Medical emergency check (fast, no LLM)
+    # GUARDRAIL 1: Medical emergency (pattern match, zero LLM)
     if _detect_medical_emergency(request.message):
         lang = request.language or "en"
         msg = REJECTION_MESSAGES["medical_emergency"].get(lang, REJECTION_MESSAGES["medical_emergency"]["en"])
@@ -172,7 +242,7 @@ def run_intent_router(request: ChatRequest) -> ChatResponse:
             timestamp=datetime.now(UTC),
         )
 
-    # Guardrail 1: Prompt injection check (fast, no LLM)
+    # GUARDRAIL 2: Prompt injection (pattern match, zero LLM)
     if _detect_prompt_injection(request.message):
         lang = request.language or "en"
         msg = REJECTION_MESSAGES["injection"].get(lang, REJECTION_MESSAGES["injection"]["en"])
@@ -184,10 +254,27 @@ def run_intent_router(request: ChatRequest) -> ChatResponse:
             timestamp=datetime.now(UTC),
         )
 
-    # Guardrail 2: Out-of-scope check (one LLM call)
-    if _is_out_of_scope(request.message):
+    # GUARDRAIL 3: Combined scope + toxicity (ONE LLM call)
+    guardrail_result = _run_combined_guardrail(
+        request.message, request.language or "en"
+    )
+    if guardrail_result["is_toxic"]:
         lang = request.language or "en"
-        msg = REJECTION_MESSAGES["out_of_scope"].get(lang, REJECTION_MESSAGES["out_of_scope"]["en"])
+        msg = REJECTION_MESSAGES["toxic"].get(
+            lang, REJECTION_MESSAGES["toxic"]["en"]
+        )
+        return ChatResponse(
+            intent="unknown",
+            response={"message": msg, "reason": "toxic_content"},
+            agent_used="guardrail",
+            processing_time_ms=0,
+            timestamp=datetime.now(UTC),
+        )
+    if guardrail_result["is_out_of_scope"]:
+        lang = request.language or "en"
+        msg = REJECTION_MESSAGES["out_of_scope"].get(
+            lang, REJECTION_MESSAGES["out_of_scope"]["en"]
+        )
         return ChatResponse(
             intent="unknown",
             response={"message": msg, "reason": "out_of_scope"},
