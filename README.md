@@ -52,6 +52,44 @@ graph TD
     LG2 --> Q2
 ```
 
+### Farmer Agent Architecture
+```mermaid
+graph TD
+    A[Farmer — EN/FR/AR] -->|POST /api/v1/chat| B[FastAPI Backend]
+    B --> C{Intent Router\nGPT-4o-mini}
+    C -->|symptom| D[Diagnosis Agent]
+    C -->|irrigation| E[Irrigation Agent]
+    C -->|pollution question| F[Pollution QA Agent]
+    C -->|report request| G[Pollution Report Agent]
+
+    D --> D1[query_expansion]
+    D1 --> D2[retrieve]
+    D2 --> D3[diagnose]
+    D3 --> D4[verify faithfulness]
+    D4 -->|DiagnosisResponse| B
+
+    E --> E1[fetch_weather\nNASA POWER]
+    E1 --> E2[compute_ET₀\nPenman-Monteith]
+    E2 --> E3[lookup_Kc\nFAO-56]
+    E3 --> E4[format_advisory]
+    E4 -->|IrrigationResponse| B
+
+    F --> F1[retrieve RAG]
+    F1 --> F2[calibrate confidence]
+    F2 -->|PollutionQAResponse| B
+
+    G --> G1[fetch air quality\nOpen-Meteo CAMS]
+    G1 --> G2[compute thresholds\nP80/P95]
+    G2 --> G3[classify events]
+    G3 --> G4[annotate RAG]
+    G4 --> G5[generate PDF dossier]
+    G5 -->|PollutionReport + PDF| B
+
+    D2 -->|vector search| KB[(Qdrant\ngabes_knowledge\n1,718 chunks · 21 docs)]
+    F1 -->|vector search| KB
+    G4 -->|vector search| KB
+```
+
 ---
 
 ## 3. Module 1: Gabesi AIGuardian (Farmer Intelligence)
@@ -118,6 +156,27 @@ A premium "Mission Control" interface built for high-stakes environmental monito
 ## 6. Security & Guardrails
 A 4-layer chain protecting the LLM pipeline with ~800ms total latency. LangSmith produces **one unified trace per request**.
 
+```mermaid
+graph TD
+    M[Incoming Message] --> G1
+
+    G1{1. Medical Emergency\nPattern Match}
+    G1 -->|Emergency detected| R1[Return 190 number\nEN/FR/AR · 0ms]
+    G1 -->|Clean| G2
+
+    G2{2. Prompt Injection\nPattern Match}
+    G2 -->|Injection detected| R2[Rejection message\nEN/FR/AR · 0ms]
+    G2 -->|Clean| G3
+
+    G3{3. Combined Guardrail\nGPT-4o-mini · ~400ms}
+    G3 -->|Toxic content| R3[Toxic rejection\nEN/FR/AR]
+    G3 -->|Out of scope| R4[Scope rejection\nEN/FR/AR]
+    G3 -->|Clean| G4
+
+    G4{4. Intent Classification\nGPT-4o-mini · ~400ms}
+    G4 --> A[Correct Agent]
+```
+
 | Layer | Type | Latency | Purpose |
 | :--- | :--- | :--- | :--- |
 | **1. Medical** | Regex/Pattern | 0ms | Detects medical emergencies (chest pain, can't breathe) and returns the 190 emergency number in the user's language. |
@@ -150,6 +209,13 @@ Validated using **DeepEval** with 68 goldens and 56 mocked unit tests (0 real AP
 | **ETc Math Accuracy** | 1.000 | 100% |
 | **GEval (Conversational)** | 0.883 | 100% |
 | **No Jargon Violation** | 1.000 | 100% |
+
+```mermaid
+graph LR
+    A[RAG Pipeline\n68 goldens] --> B[Recall 0.95\n98.33% pass ✅]
+    C[Diagnosis Agent\n16 inputs EN/FR/AR] --> D[Faithfulness 0.97\nRelevancy 0.91\nPollution 100% ✅]
+    E[Irrigation Agent\n12 FAO-56 cases] --> F[Kc 100%\nETc 100%\nGEval 0.88 ✅]
+```
 
 ---
 
