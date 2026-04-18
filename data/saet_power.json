@@ -1,0 +1,64 @@
+{
+  "facility_label": "SAET — Centrale Électrique de Gabès",
+  "public_anchor": "SAET Power Station, centre de Gabès",
+  "exceedances": [
+    {
+      "month": "2026-05",
+      "co2": 1920,
+      "reason": "Demande électrique maximale pré-été, tous groupes en service."
+    },
+    {
+      "month": "2026-06",
+      "co2": 1980,
+      "reason": "Canicule : climatisation massive, surcharge réseau, groupes diesel d'appoint."
+    }
+  ],
+  "notes": "Centrale thermique alimentant la zone industrielle et urbaine. Émissions fortement corrélées à la température ambiante et à la charge du réseau.",
+  "start_month_assumption": "2026-01",
+  "period_months": 6,
+  "unit": "tonnes_CO2/month",
+  "bounds": {
+    "min": 1200,
+    "max": 2000
+  },
+  "internal_exceedance_threshold": 1850,
+  "months": [
+    {
+      "month": "2026-01",
+      "co2": 1690,
+      "tags": ["hiver", "charge modérée", "chauffage résidentiel"]
+    },
+    {
+      "month": "2026-02",
+      "co2": 1720,
+      "tags": ["pré-Ramadan", "charge stable", "maintenance planifiée"]
+    },
+    {
+      "month": "2026-03",
+      "co2": 1480,
+      "tags": ["Ramadan", "faible charge nocturne", "maintenance groupe 2"]
+    },
+    {
+      "month": "2026-04",
+      "co2": 1750,
+      "tags": ["reprise", "charge croissante", "climatisation début"]
+    },
+    {
+      "month": "2026-05",
+      "co2": 1920,
+      "tags": ["chaleur", "climatisation industrielle", "tous groupes actifs"]
+    },
+    {
+      "month": "2026-06",
+      "co2": 1980,
+      "tags": ["canicule", "surcharge réseau", "groupes diesel d'appoint"]
+    }
+  ],
+  "statistics": {
+    "mean": 1756.7,
+    "variance_sample": 33866.7,
+    "lag1_autocorrelation": 0.41,
+    "min": 1480,
+    "max": 1980
+  }
+}

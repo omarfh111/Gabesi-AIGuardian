@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gabes-50: #f0f9ff;
+  --color-gabes-100: #e0f2fe;
+  --color-gabes-200: #bae6fd;
+  --color-gabes-500: #0ea5e9;
+  --color-gabes-600: #0284c7;
+  --color-gabes-900: #0c4a6e;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #f9fafb;
+    color: #111827;
+  }
+}
+
+.leaflet-container {
+  width: 100%;
+  height: 100vh;
+  z-index: 0;
+}
+
+/* Marker cluster overrides */
+.marker-cluster-small {
+  background-color: rgba(14, 165, 233, 0.2);
+}
+.marker-cluster-small div {
+  background-color: rgba(14, 165, 233, 0.6);
+}
+.marker-cluster-medium {
+  background-color: rgba(234, 179, 8, 0.2);
+}
+.marker-cluster-medium div {
+  background-color: rgba(234, 179, 8, 0.6);
+}
+.marker-cluster-large {
+  background-color: rgba(239, 68, 68, 0.2);
+}
+.marker-cluster-large div {
+  background-color: rgba(239, 68, 68, 0.6);
+}
+
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 0.15; }
+  50% { transform: scale(1.15); opacity: 0.25; }
+}
