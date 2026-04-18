@@ -52,10 +52,13 @@ def run_intent_router(request: ChatRequest) -> ChatResponse:
             model="gpt-4o-mini",
             model_kwargs={"response_format": {"type": "json_object"}},
         )
-        msg = llm.invoke([
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=f"Farmer message: {request.message}")
-        ])
+        msg = llm.invoke(
+            [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=f"Farmer message: {request.message}")
+            ],
+            config={"run_name": "Intent Router"}
+        )
         classification = json.loads(msg.content)
     except Exception as e:
         # Fallback for classification failure
