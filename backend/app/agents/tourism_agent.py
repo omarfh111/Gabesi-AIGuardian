@@ -1,8 +1,10 @@
+from langsmith import traceable
 import json
 import logging
 
 logger = logging.getLogger('TourismAgent')
 
+@traceable(name="Tourism Data Agent")
 def analyze_tourism():
     """Evaluates tourism metrics and issues."""
     try:

@@ -1,8 +1,10 @@
+from langsmith import traceable
 import json
 import logging
 
 logger = logging.getLogger('MarineAgent')
 
+@traceable(name="Marine Weather Agent")
 def analyze_marine():
     """Reads marine weather data to assess current environmental risk spread."""
     try:

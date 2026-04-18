@@ -4,6 +4,7 @@ import logging
 from tqdm import tqdm
 from dotenv import load_dotenv
 from openai import OpenAI
+from langsmith import wrappers
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 from uuid import uuid4
@@ -45,7 +46,7 @@ def ingest_industry_data():
         return
 
     client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-    openai_client = OpenAI(api_key=OPENAI_API_KEY)
+    openai_client = wrappers.wrap_openai(OpenAI(api_key=OPENAI_API_KEY))
 
     # Check if collection exists. If not, create it. Additive process.
     try:

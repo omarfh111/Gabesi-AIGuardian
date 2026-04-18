@@ -1,12 +1,15 @@
+from langsmith import traceable
 import json
 import logging
 from dotenv import load_dotenv
 from openai import OpenAI
+from langsmith import wrappers
 import os
 
 load_dotenv()
 logger = logging.getLogger('FusionAgent')
 
+@traceable(name="Global Fusion Engine")
 def fuse_results(pollution_data, fishing_data, marine_data, tourism_data):
     """Combines all agent results using an LLM to generate a global cross-domain risk score and insights."""
     try:
@@ -14,7 +17,7 @@ def fuse_results(pollution_data, fishing_data, marine_data, tourism_data):
         if not OPENAI_API_KEY:
             return {"error": "Missing OpenAI API Key"}
             
-        client = OpenAI(api_key=OPENAI_API_KEY)
+        client = wrappers.wrap_openai(OpenAI(api_key=OPENAI_API_KEY))
         
         prompt = f"""
         Tu es un analyste environnemental IA expert du golfe de Gabès, en Tunisie.

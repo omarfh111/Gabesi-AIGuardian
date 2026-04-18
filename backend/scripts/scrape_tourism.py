@@ -4,6 +4,7 @@ import logging
 import requests
 from dotenv import load_dotenv
 from openai import OpenAI
+from langsmith import wrappers
 
 load_dotenv()
 
@@ -26,7 +27,7 @@ def search_serper(query):
     return response.json()
 
 def process_with_openai(snippets):
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    client = wrappers.wrap_openai(OpenAI(api_key=OPENAI_API_KEY))
     
     prompt = f"""
     You are extracting structured tourism data for the region of Gabes, Tunisia.

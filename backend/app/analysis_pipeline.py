@@ -1,3 +1,4 @@
+from langsmith import traceable
 import os
 import sys
 
@@ -8,6 +9,7 @@ import json
 import logging
 from datetime import datetime
 import uuid
+import concurrent.futures
 
 from app.agents.pollution_agent import analyze_pollution
 from app.agents.fishing_agent import analyze_fishing
@@ -20,21 +22,22 @@ logger = logging.getLogger('AnalysisPipeline')
 
 OUTPUT_FILE = "data_an/processed/analysis_results.json"
 
+@traceable(name="Analysis Pipeline Main")
 def run_pipeline():
     logger.info("Starting Analysis Agent Pipeline...")
     
-    # 1. Run individual agents
-    logger.info("Running Pollution Agent...")
-    pollution = analyze_pollution()
-    
-    logger.info("Running Fishing Agent...")
-    fishing = analyze_fishing()
-    
-    logger.info("Running Marine Agent...")
-    marine = analyze_marine()
-    
-    logger.info("Running Tourism Agent...")
-    tourism = analyze_tourism()
+    # 1. Run individual agents IN PARALLEL to save massive time
+    logger.info("Running parallel agents (Pollution, Fishing, Marine, Tourism)...")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        future_pollution = executor.submit(analyze_pollution)
+        future_fishing = executor.submit(analyze_fishing)
+        future_marine = executor.submit(analyze_marine)
+        future_tourism = executor.submit(analyze_tourism)
+        
+        pollution = future_pollution.result()
+        fishing = future_fishing.result()
+        marine = future_marine.result()
+        tourism = future_tourism.result()
     
     # 2. Fuse results
     logger.info("Fusing results using Fusion Agent...")

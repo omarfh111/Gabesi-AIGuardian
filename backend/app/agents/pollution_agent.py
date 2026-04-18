@@ -1,12 +1,15 @@
+from langsmith import traceable
 import os
 import logging
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 from openai import OpenAI
+from langsmith import wrappers
 
 load_dotenv()
 logger = logging.getLogger('PollutionAgent')
 
+@traceable(name="Pollution Agent RAG")
 def analyze_pollution(query="Valeurs exactes des émissions (mg/L, tonnes) et rejets polluants des usines comme le GCT, et les projets ou solutions pour 2030"):
     """Uses Qdrant to retrieve industry context and OpenAI to extract pollution insights."""
     try:
@@ -18,7 +21,7 @@ def analyze_pollution(query="Valeurs exactes des émissions (mg/L, tonnes) et re
             return {"level": "unknown", "source": "unknown", "insight": "Missing API keys."}
             
         client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-        openai_client = OpenAI(api_key=OPENAI_API_KEY)
+        openai_client = wrappers.wrap_openai(OpenAI(api_key=OPENAI_API_KEY))
         
         # Query 1: Emissions and 2030 projects
         query_val = "Valeurs exactes des émissions (mg/L, tonnes) et rejets polluants des usines comme le GCT, et les projets ou solutions pour 2030"

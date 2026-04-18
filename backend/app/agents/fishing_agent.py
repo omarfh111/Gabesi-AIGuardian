@@ -1,9 +1,11 @@
+from langsmith import traceable
 import json
 import logging
 import os
 import requests
 from dotenv import load_dotenv
 from openai import OpenAI
+from langsmith import wrappers
 
 load_dotenv()
 logger = logging.getLogger('FishingAgent')
@@ -21,6 +23,7 @@ def search_serper(query):
     response = requests.request("POST", url, headers=headers, data=payload)
     return response.json()
 
+@traceable(name="Fishing Web Search Agent")
 def analyze_fishing():
     """Reads processed fishing JSON data, searches web for fish types/quality, and returns analysis via LLM."""
     try:
@@ -37,7 +40,7 @@ def analyze_fishing():
         snippets = "\n".join([f"- {item.get('title')}: {item.get('snippet')}" for item in search_results.get("organic", [])])
         
         # 2. LLM Processing
-        openai_client = OpenAI(api_key=OPENAI_API_KEY)
+        openai_client = wrappers.wrap_openai(OpenAI(api_key=OPENAI_API_KEY))
         
         prompt = f"""
         Tu es un analyste expert de la pêche à Gabès.

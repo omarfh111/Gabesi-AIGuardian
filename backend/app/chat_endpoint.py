@@ -1,3 +1,4 @@
+from langsmith import traceable
 import os
 import sys
 
@@ -7,6 +8,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 from openai import OpenAI
+from langsmith import wrappers
 import json
 from werkzeug.utils import secure_filename
 import subprocess
@@ -27,6 +29,7 @@ os.makedirs(UPLOAD_FOLDER_INDUSTRY, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER_FISHING, exist_ok=True)
 
 @app.route('/api/chat', methods=['POST'])
+@traceable(name="Agentic Chat Interface")
 def chat():
     """RAG Agentic Chat Layer - Memory & Expert Persona"""
     # Grab the conversation history array if it exists, else fallback to just message
@@ -39,7 +42,7 @@ def chat():
     try:
         analysis_path = "data_an/processed/analysis_results.json"
         
-        if "aujourd" in str(messages_history).lower() or "today" in str(messages_history).lower() or "aujourd" in user_input.lower():
+        if "aujourd" in user_input.lower() or "today" in user_input.lower():
              fetch_and_process()
              run_pipeline()
              
@@ -53,7 +56,7 @@ def chat():
         if not OPENAI_API_KEY:
             return jsonify({"error": "Missing API Key"}), 500
             
-        client = OpenAI(api_key=OPENAI_API_KEY)
+        client = wrappers.wrap_openai(OpenAI(api_key=OPENAI_API_KEY))
         context = json.dumps(latest_analysis, indent=2)
         
         # Inject exact fishing excel data if exists
