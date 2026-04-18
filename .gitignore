@@ -1,0 +1,24 @@
+# Environments
+.env
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local Cache & RAG Models
+.cache/
+
+# Evaluation Results & Temporary Data
+output_*.json
+evaluation/results.json
+evaluation/ablation_results.json
+*.log
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store

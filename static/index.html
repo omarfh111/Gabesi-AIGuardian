@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gabès Medical Triage - Patient Intake</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-icon">🩺</span>
+                <h1 data-i18n="app_title">Gabès Triage</h1>
+            </div>
+            <nav class="form-nav">
+                <a href="#profile" class="nav-item active" data-i18n="nav_profile">Patient Profile</a>
+                <a href="#environment" class="nav-item" data-i18n="nav_environment">Environment</a>
+                <a href="#complaint" class="nav-item" data-i18n="nav_complaint">Chief Complaint</a>
+                <a href="#symptoms" class="nav-item" data-i18n="nav_symptoms">Symptom Groups</a>
+                <a href="#red-flags" class="nav-item danger" data-i18n="nav_red_flags">Red Flags</a>
+                <a href="#history" class="nav-item" data-i18n="nav_history">Medical History</a>
+            </nav>
+        </aside>
+
+        <main class="content">
+            <header class="top-bar">
+                <div class="status-badge" data-i18n="badge_preliminary">Phase: Preliminary Triage</div>
+                <div class="lang-selector">
+                    <span style="font-size: 0.8rem; opacity: 0.7;">🌐</span>
+                    <select id="lang-select" class="lang-select">
+                        <option value="en">English</option>
+                        <option value="fr">Français</option>
+                        <option value="ar">العربية</option>
+                    </select>
+                </div>
+                <div class="location-badge" data-i18n="badge_location">📍 Gabès, Tunisia</div>
+            </header>
+
+            <form id="triage-form" class="triage-form">
+                <!-- Section: Profile -->
+                <section id="profile" class="form-section">
+                    <h2 data-i18n="sec_profile">Patient Profile</h2>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label for="name" data-i18n="label_name">Full Name</label>
+                            <input type="text" id="name" name="name" required data-i18n-placeholder="ph_name" placeholder="John Doe">
+                        </div>
+                        <div class="form-group">
+                            <label for="age" data-i18n="label_age">Age</label>
+                            <input type="number" id="age" name="age" required min="0" max="120">
+                        </div>
+                        <div class="form-group">
+                            <label for="cin" data-i18n="label_cin">CIN (National ID)</label>
+                            <input type="text" id="cin" name="cin" required pattern="\d{8}" maxlength="8" data-i18n-placeholder="ph_cin" placeholder="12345678">
+                        </div>
+                        <div class="form-group">
+                            <label for="sex" data-i18n="label_sex">Sex at Birth</label>
+                            <select id="sex" name="sex" required>
+                                <option value="male" data-i18n="opt_male">Male</option>
+                                <option value="female" data-i18n="opt_female">Female</option>
+                                <option value="other" data-i18n="opt_other">Other</option>
+                            </select>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="height" data-i18n="label_height">Height (cm)</label>
+                                <input type="number" id="height" name="height" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="weight" data-i18n="label_weight">Weight (kg)</label>
+                                <input type="number" id="weight" name="weight" required>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Environment -->
+                <section id="environment" class="form-section">
+                    <h2 data-i18n="sec_environment">Location & Environment</h2>
+                    <p class="section-desc" data-i18n="desc_environment">We ask these questions because the unique industrial environment of Gabès can impact your health.</p>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label for="neighborhood" data-i18n="label_neighborhood">Neighborhood / Area (Gabès)</label>
+                            <input type="text" id="neighborhood" name="neighborhood" required data-i18n-placeholder="ph_neighborhood" placeholder="e.g. Chott El Ferik">
+                        </div>
+                        <div class="form-group">
+                            <label for="proximity" data-i18n="label_proximity">Proximity to Industrial Plants</label>
+                            <select id="proximity" name="proximity" required>
+                                <option value="i_work_in_an_industrial_plant" data-i18n="opt_prox_work">I work in an industrial plant</option>
+                                <option value="visible_from_home_or_work" data-i18n="opt_prox_visible">Visible from home or work</option>
+                                <option value="frequent_chemical_smell" data-i18n="opt_prox_smell">I often smell chemicals/gas</option>
+                                <option value="rarely_noticed" data-i18n="opt_prox_rarely">I rarely notice any industry signs</option>
+                                <option value="very_far" data-i18n="opt_prox_far">I live/work very far from the industrial zone</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="occupation" data-i18n="label_occupation">Occupation</label>
+                            <input type="text" id="occupation" name="occupation" required data-i18n-placeholder="ph_occupation" placeholder="e.g. Teacher, Nurse, Worker">
+                        </div>
+                        <div class="form-group">
+                            <label for="smoking_status" data-i18n="label_smoking">Smoking Status</label>
+                            <select id="smoking_status" name="smoking_status" required>
+                                <option value="non-smoker" data-i18n="opt_smoke_never">Never smoked</option>
+                                <option value="former" data-i18n="opt_smoke_former">Former smoker</option>
+                                <option value="current" data-i18n="opt_smoke_current">Current smoker</option>
+                            </select>
+                        </div>
+                        <div class="form-group span-2">
+                            <label for="workplace_exposure" data-i18n="label_work_exposure">Specific Workplace Exposures</label>
+                            <input type="text" id="workplace_exposure" name="workplace_exposure" data-i18n-placeholder="ph_work_exposure" placeholder="e.g. Asbestos, Lead, Specific Chemicals (comma separated)">
+                        </div>
+                    </div>
+                    <div class="checkbox-group">
+                        <label data-i18n="label_obs">Environmental Observations at Home/Work:</label>
+                        <div class="checkbox-options grid-2">
+                            <label><input type="checkbox" name="pollution_obs" value="visible_smoke"> <span data-i18n="opt_obs_smoke">Visible smoke or flares</span></label>
+                            <label><input type="checkbox" name="pollution_obs" value="chemical_smells"> <span data-i18n="opt_obs_odor">Strong chemical odors</span></label>
+                            <label><input type="checkbox" name="pollution_obs" value="dust_accumulation"> <span data-i18n="opt_obs_dust">White/Black dust on surfaces</span></label>
+                            <label><input type="checkbox" name="pollution_obs" value="noise"> <span data-i18n="opt_obs_noise">Industrial noise</span></label>
+                        </div>
+                    </div>
+                    <div class="checkbox-group margin-top">
+                        <label data-i18n="label_worse_near">Symptoms feel worse near:</label>
+                        <div class="checkbox-options">
+                            <label><input type="checkbox" name="worse_near" value="industry"> <span data-i18n="opt_wn_industry">Industry</span></label>
+                            <label><input type="checkbox" name="worse_near" value="sea"> <span data-i18n="opt_wn_sea">Sea</span></label>
+                            <label><input type="checkbox" name="worse_near" value="dust"> <span data-i18n="opt_wn_dust">Dust</span></label>
+                            <label><input type="checkbox" name="worse_near" value="smoke"> <span data-i18n="opt_wn_smoke">Smoke</span></label>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Complaint -->
+                <section id="complaint" class="form-section">
+                    <h2 data-i18n="sec_complaint">Chief Complaint</h2>
+                    <div class="form-group">
+                        <label for="main_problem" data-i18n="label_main_problem">Main Problem</label>
+                        <textarea id="main_problem" name="main_problem" required rows="3" data-i18n-placeholder="ph_main_problem" placeholder="Describe what is going on..."></textarea>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label for="onset" data-i18n="label_onset">Onset</label>
+                            <select id="onset" name="onset">
+                                <option value="gradual" data-i18n="opt_onset_gradual">Gradual</option>
+                                <option value="sudden" data-i18n="opt_onset_sudden">Sudden</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="severity" data-i18n="label_severity">Severity (0-10)</label>
+                            <input type="number" id="severity" name="severity" min="0" max="10">
+                        </div>
+                        <div class="form-group">
+                            <label for="duration" data-i18n="label_duration">Duration</label>
+                            <input type="text" id="duration" name="duration" required data-i18n-placeholder="ph_duration" placeholder="e.g. 3 days">
+                        </div>
+                        <div class="form-group">
+                            <label for="progression" data-i18n="label_progression">Progression</label>
+                            <input type="text" id="progression" name="progression" required data-i18n-placeholder="ph_progression" placeholder="e.g. Getting worse at night">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Symptoms -->
+                <section id="symptoms" class="form-section">
+                    <h2 data-i18n="sec_symptoms">Symptom Groups</h2>
+                    <div class="accordion">
+                        <div class="accordion-item">
+                            <h3 data-i18n="grp_respiratory">Respiratory</h3>
+                            <div class="checkbox-grid">
+                                <label><input type="checkbox" name="resp" value="cough"> <span data-i18n="symp_cough">Cough</span></label>
+                                <label><input type="checkbox" name="resp" value="dyspnea"> <span data-i18n="symp_dyspnea">Dyspnea</span></label>
+                                <label><input type="checkbox" name="resp" value="wheezing"> <span data-i18n="symp_wheezing">Wheezing</span></label>
+                                <label><input type="checkbox" name="resp" value="hemoptysis"> <span data-i18n="symp_hemoptysis">Hemoptysis</span></label>
+                                <label><input type="checkbox" name="resp" value="chest_tightness"> <span data-i18n="symp_chest_tight">Chest Tightness</span></label>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h3 data-i18n="grp_cardiac">Cardiac</h3>
+                            <div class="checkbox-grid">
+                                <label><input type="checkbox" name="cardiac" value="chest_pain"> <span data-i18n="symp_chest_pain">Chest Pain</span></label>
+                                <label><input type="checkbox" name="cardiac" value="palpitations"> <span data-i18n="symp_palpitations">Palpitations</span></label>
+                                <label><input type="checkbox" name="cardiac" value="syncope"> <span data-i18n="symp_syncope">Syncope</span></label>
+                                <label><input type="checkbox" name="cardiac" value="leg_swelling"> <span data-i18n="symp_leg_swelling">Leg Swelling</span></label>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h3 data-i18n="grp_neurological">Neurological</h3>
+                            <div class="checkbox-grid">
+                                <label><input type="checkbox" name="neuro" value="headache"> <span data-i18n="symp_headache">Headache</span></label>
+                                <label><input type="checkbox" name="neuro" value="dizziness"> <span data-i18n="symp_dizziness">Dizziness</span></label>
+                                <label><input type="checkbox" name="neuro" value="weakness"> <span data-i18n="symp_weakness">Weakness</span></label>
+                                <label><input type="checkbox" name="neuro" value="seizure"> <span data-i18n="symp_seizure">Seizure</span></label>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Red Flags -->
+                <section id="red-flags" class="form-section danger-zone">
+                    <h2 data-i18n="sec_red_flags">Red Flags (Emergency)</h2>
+                    <p class="warning" data-i18n="desc_red_flags">Mark any critical symptoms below.</p>
+                    <div class="checkbox-grid">
+                        <label><input type="checkbox" name="red_flags" value="severe_breathing_difficulty"> <span data-i18n="symp_severe_resp">Severe Breathing Difficulty</span></label>
+                        <label><input type="checkbox" name="red_flags" value="crushing_chest_pain"> <span data-i18n="symp_crushing_pain">Crushing Chest Pain</span></label>
+                        <label><input type="checkbox" name="red_flags" value="confusion"> <span data-i18n="symp_confusion">Confusion/Fainting</span></label>
+                        <label><input type="checkbox" name="red_flags" value="toxic_exposure_event"> <span data-i18n="symp_toxic_event">Major Toxic Exposure Event</span></label>
+                    </div>
+                </section>
+
+                <!-- Section: History -->
+                <section id="history" class="form-section">
+                    <h2 data-i18n="sec_history">Medical History</h2>
+                    <div class="checkbox-grid">
+                        <label><input type="checkbox" name="history" value="asthma"> <span data-i18n="hist_asthma">Asthma</span></label>
+                        <label><input type="checkbox" name="history" value="copd"> <span data-i18n="hist_copd">COPD</span></label>
+                        <label><input type="checkbox" name="history" value="hypertension"> <span data-i18n="hist_hypertension">Hypertension</span></label>
+                        <label><input type="checkbox" name="history" value="diabetes"> <span data-i18n="hist_diabetes">Diabetes</span></label>
+                        <label><input type="checkbox" name="history" value="heart_disease"> <span data-i18n="hist_heart">Heart Disease</span></label>
+                    </div>
+                    <div class="grid-2 margin-top">
+                        <div class="form-group">
+                            <label for="medications" data-i18n="label_medications">Current Medications</label>
+                            <textarea id="medications" name="medications" rows="2" data-i18n-placeholder="ph_medications" placeholder="List medications separated by commas..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="family_history" data-i18n="label_family_history">Family History</label>
+                            <textarea id="family_history" name="family_history" rows="2" data-i18n-placeholder="ph_family_history" placeholder="Note chronic diseases in family..."></textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary" data-i18n="btn_submit">Analyze & Triage</button>
+                    <button type="reset" class="btn-secondary" data-i18n="btn_reset">Reset Form</button>
+                </div>
+            </form>
+
+            <!-- Results Overlay -->
+            <div id="results-overlay" class="results-overlay hidden">
+                <div class="results-card">
+                    <button class="close-results">&times;</button>
+                    <header class="results-header">
+                        <div class="urgency-indicator" id="result-urgency" data-i18n="res_urgency_placeholder">LOW</div>
+                        <h2 data-i18n="res_title">Triage Analysis Result</h2>
+                    </header>
+                    <div class="results-body">
+                        <div class="result-item">
+                            <h3 data-i18n="res_summary">Summary</h3>
+                            <p id="result-summary"></p>
+                        </div>
+                        <div class="result-item">
+                            <h3 data-i18n="res_specialty">Recommended Specialty</h3>
+                            <div class="specialty-badge" id="result-specialty">Generalist</div>
+                            <p id="result-route-text" class="route-text"></p>
+                        </div>
+                        <div class="result-item">
+                            <h3 data-i18n="res_next_steps">Next Steps</h3>
+                            <p id="result-next-step"></p>
+                        </div>
+                        <div class="disclaimer-box">
+                            <strong data-i18n="res_disclaimer_title">Medical Disclaimer:</strong>
+                            <p id="result-disclaimer"></p>
+                        </div>
+                        <div class="form-actions result-actions">
+                            <button id="btn-consult" class="btn-primary" data-i18n="btn_consult">Consult Specialist</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agentic Chat Section -->
+            <div id="chat-section" class="chat-section hidden">
+                <div class="chat-container">
+                    <header class="chat-header">
+                        <div class="agent-info">
+                            <div class="agent-avatar" id="agent-avatar">🩺</div>
+                            <div>
+                                <h3 id="agent-name">Medical Agent</h3>
+                                <span id="agent-status">Online</span>
+                            </div>
+                        </div>
+                        <button class="close-chat">&times;</button>
+                    </header>
+                    <div id="chat-messages" class="chat-messages">
+                        <!-- Messages appended here -->
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" data-i18n-placeholder="ph_chat_input" placeholder="Type your message...">
+                        <button id="btn-send-chat" class="btn-send">
+                            <svg viewBox="0 0 24 24" width="24" height="24">
+                                <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="bilan-upload-panel-chat" class="chat-bilan-upload is-hidden">
+                        <div class="upload-inline">
+                            <input type="file" id="bilan-file-chat" accept=".pdf,application/pdf">
+                            <button id="btn-upload-bilan-chat" class="btn-secondary">Upload Blood Test PDF</button>
+                        </div>
+                        <p id="bilan-upload-status-chat" class="upload-status"></p>
+                    </div>
+                    <div id="chat-actions" class="chat-actions hidden">
+                        <button id="btn-transfer" class="btn-secondary danger" data-i18n="btn_transfer">Transfer me to Specialist</button>
+                    </div>
+                    <div id="report-actions" class="chat-actions hidden">
+                        <button id="btn-download-final-report" class="btn-secondary">Download Final Report PDF</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="/static/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+[
+    {
+        "id": "CASE_001_POLLUTION_ASTHMA",
+        "description": "Severe asthma attack triggered by visible smoke at home.",
+        "intake_data": {
+            "patient_profile": {"name": "Test Child", "age": 8, "sex": "male", "height": 130, "weight": 30},
+            "environment": {
+                "neighborhood": "Chott El Ferik",
+                "proximity_to_industrial_zone": "visible_from_home_or_work",
+                "occupation": "Student",
+                "smoking_status": "non-smoker",
+                "pollution_observations": ["visible_smoke", "chemical_smells"]
+            },
+            "chief_complaint": {
+                "main_problem": "Cannot catch breath, wheezing started an hour ago",
+                "onset": "sudden",
+                "duration": "1 hour",
+                "severity": 9,
+                "progression": "worsening"
+            },
+            "respiratory": {"dyspnea": true, "wheezing": true, "chest_tightness": true},
+            "red_flags": {"severe_breathing_difficulty": true}
+        },
+        "expected_specialty": "pneumologist",
+        "expected_urgency": ["high", "emergency"]
+    },
+    {
+        "id": "CASE_002_CARDIAC_AMNI",
+        "description": "Elderly patient with crushing chest pain and hypertension.",
+        "intake_data": {
+            "patient_profile": {"name": "Test Senior", "age": 72, "sex": "female", "height": 160, "weight": 70},
+            "environment": {
+                "neighborhood": "Menzel",
+                "proximity_to_industrial_zone": "very_far",
+                "occupation": "Retired",
+                "smoking_status": "former",
+                "pollution_observations": []
+            },
+            "chief_complaint": {
+                "main_problem": "Extreme pressure in chest, radiating to arm",
+                "onset": "sudden",
+                "duration": "20 mins",
+                "severity": 10,
+                "progression": "stable"
+            },
+            "cardiac": {"chest_pain": true, "palpitations": true},
+            "medical_history": {"hypertension": true, "heart_disease": true},
+            "red_flags": {"crushing_chest_pain": true}
+        },
+        "expected_specialty": "cardiologist",
+        "expected_urgency": ["emergency"]
+    },
+    {
+        "id": "CASE_003_CHRONIC_POLLUTION_COUGH",
+        "description": "Worker with 6-month cough near chemical plants.",
+        "intake_data": {
+            "patient_profile": {"name": "Test Worker", "age": 38, "sex": "male", "height": 180, "weight": 85},
+            "environment": {
+                "neighborhood": "Industrial Zone",
+                "proximity_to_industrial_zone": "visible_from_home_or_work",
+                "occupation": "Chemical Plant Worker",
+                "smoking_status": "current",
+                "pollution_observations": ["chemical_smells", "dust_accumulation"]
+            },
+            "chief_complaint": {
+                "main_problem": "Persistent dry cough for months, feels heavy in dust",
+                "onset": "gradual",
+                "duration": "6 months",
+                "severity": 4,
+                "progression": "gradual worsening"
+            },
+            "respiratory": {"cough": true},
+            "medical_history": {"asthma": true}
+        },
+        "expected_specialty": "pneumologist",
+        "expected_urgency": ["moderate"]
+    },
+    {
+        "id": "CASE_004_SKIN_IRRITATION",
+        "description": "Itchy rash after exposure to industrial dust.",
+        "intake_data": {
+            "patient_profile": {"name": "Test Patient", "age": 25, "sex": "female", "height": 165, "weight": 55},
+            "environment": {
+                "neighborhood": "Ghanouch",
+                "proximity_to_industrial_zone": "frequent_chemical_smell",
+                "occupation": "Teacher",
+                "smoking_status": "non-smoker",
+                "pollution_observations": ["dust_accumulation"]
+            },
+            "chief_complaint": {
+                "main_problem": "Skin is itching and red since yesterday",
+                "onset": "sudden",
+                "duration": "24 hours",
+                "severity": 3,
+                "progression": "stable"
+            },
+            "dermatological": {"rash": true, "itching": true}
+        },
+        "expected_specialty": "dermatologist",
+        "expected_urgency": ["low"]
+    }
+]
