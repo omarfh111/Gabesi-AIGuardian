@@ -5,6 +5,8 @@ import Chat from './pages/Chat';
 import Pollution from './pages/Pollution';
 import Irrigation from './pages/Irrigation';
 import Emergency from './pages/Emergency';
+import Strategic from './pages/Strategic';
+import StrategicChat from './pages/StrategicChat';
 
 // Required for i18n
 import './i18n';
@@ -20,6 +22,8 @@ function App() {
             <Route path="/pollution" element={<Pollution />} />
             <Route path="/irrigation" element={<Irrigation />} />
             <Route path="/emergency" element={<Emergency />} />
+            <Route path="/strategic" element={<Strategic />} />
+            <Route path="/strategic-chat" element={<StrategicChat />} />
           </Routes>
         </main>
       </div>

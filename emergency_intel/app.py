@@ -37,9 +37,12 @@ from services.emissions_service import (
 from services.analysis_agent import analyze_zone
 from services.emergency_agent import process_assistant_message
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
+
+from strategic_routes import strategic_bp
 
 app = Flask(__name__, static_folder='frontend', static_url_path='')
+app.register_blueprint(strategic_bp, url_prefix='/api/strategic')
 
 
 # ─────────────────────────────────────────────

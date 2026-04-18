@@ -16,6 +16,8 @@ const NavBar = () => {
     { to: '/', label: t('nav.chat') },
     { to: '/pollution', label: t('nav.pollution') },
     { to: '/irrigation', label: t('nav.irrigation') },
+    { to: '/strategic', label: t('nav.strategic') },
+    { to: '/strategic-chat', label: t('nav.strategic_chat') },
     { to: '/emergency', label: t('nav.emergency'), isEmergency: true },
   ];
 

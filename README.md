@@ -1,299 +1,129 @@
-# Gabesi AIGuardian: Unified Environmental Intelligence
+# Gabesi-AIGuardian 🌍🤖
 
-![Python 3.12](https://img.shields.io/badge/Python-3.12-blue)
-![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-orange)
-![FastAPI](https://img.shields.io/badge/API-FastAPI_8000-green)
-![Flask](https://img.shields.io/badge/API-Flask_3.1.0_3000-green)
-![Qdrant](https://img.shields.io/badge/VectorDB-Qdrant-red)
-![DeepEval](https://img.shields.io/badge/Testing-DeepEval-blueviolet)
-![Tests](https://img.shields.io/badge/Tests-56_Passing-success)
-![Guardrails](https://img.shields.io/badge/Security-4--Layer_Guardrails-yellow)
-![React](https://img.shields.io/badge/Frontend-React_18-blue)
-![License](https://img.shields.io/badge/License-MIT-lightgrey)
+**Gabesi-AIGuardian** est une plateforme d'intelligence environnementale autonome conçue pour la région de Gabès. Elle offre une surveillance intelligente de la pollution industrielle, l'analyse prédictive de la pêche, l'impact sur le tourisme, et l'analyse météorologique marine via un Dashboard interactif et un Agent Conversationnel Expert.
 
-**Gabesi AIGuardian** is a unified environmental intelligence and emergency response platform designed specifically for the oasis farmers and residents of Gabès, Tunisia. By integrating real-time NASA satellite data, local industrial CO₂ monitoring, and a RAG-powered medical assistant, the system provides mission-critical advisory and life-saving triage in a region heavily impacted by industrial phosphate processing.
+---
 
-## 1. The Problem
-The Gabès region faces a multi-decadal environmental crisis centered on the **Groupe Chimique Tunisien (GCT)**.
-*   **Phosphogypsum Accumulation**: Over **150 million tonnes** of phosphogypsum have been discharged into the Gulf of Gabès.
-*   **Emission Impact**: Current industrial activity generates an estimated economic burden of **76M TD/year** in health and environmental degradation.
-*   **Agricultural Decline**: Soil acidification and air toxicity (SO₂, NO₂) have significantly reduced the yield of traditional Deglet Nour date palms and pomegranates.
+## 🏗️ Architecture Complète
 
-## 2. System Overview
-The platform operates as a unified React ecosystem served by a high-performance dual-backend architecture.
+Gabesi-AIGuardian repose sur une architecture découplée (Frontend/Backend) avec une chaîne logistique de traitement d'Intelligence Artificielle modulaire (Agentic Pipeline).
+
+### Technologies Utilisées
+*   **Frontend** : React (Vite), TailwindCSS, Recharts (Visualisation des données), Lucide-React (Icônes), React-Markdown (Rendu expert GFM).
+*   **Backend** : Flask / Werkzeug (Python).
+*   **Intelligence Artificielle** : OpenAI (GPT-4o, GPT-4o-mini, text-embedding-3-large).
+*   **Vector Database (RAG)** : Qdrant (pour l'ablation documentaire et la récupération).
+*   **Outils d'Agents** : Serper API (Recherche Web en temps réel), Pandas (Traitement CSV/Excel), PyMuPDF (Extraction PDF).
+
+---
+
+## 🗄️ Sources de Données
+
+1.  **Industrie (RAG)** : Documents PDF (ex: rapports d'audits, documents contradictoires) uploadés dynamiquement à travers l'interface graphique. Ces données sont converties en Embeddings dans Qdrant.
+2.  **Pêche** : Tableurs (Excel / CSV) multi-fichiers listant les flottes, les productions et les infrastructures.
+3.  **Météo Marine** : Fichiers JSON dynamiques provenant de l'API Open-Meteo.
+4.  **Tourisme** : Données extraites de scraping web et logs régionaux.
+
+---
+
+## 🧠 L'Architecture du Pipeline (Data Flow)
 
 ```mermaid
 graph TD
-    subgraph "Frontend (React + Vite)"
-        UI[Unified Dashboard]
-        Map[React-Leaflet Map]
-        Chat[Cyber Chat Console]
-    end
+    UI[Frontend Dashboard] -->|Upload PDF| INGEST[Ingestion / Qdrant DB]
+    UI -->|Upload Excel| CSV_MEM[Local Analysis Engine]
+    
+    API_ANALYZE(GET `/api/analysis`) --> PIPE[Analysis Pipeline]
+    
+    PIPE --> POLL_AGT[Pollution Agent]
+    PIPE --> FISH_AGT[Fishing Agent]
+    PIPE --> MAR_AGT[Marine Agent]
+    PIPE --> TOUR_AGT[Tourism Agent]
+    
+    INGEST --> POLL_AGT
+    CSV_MEM --> FISH_AGT
+    
+    POLL_AGT --> FUSION[Fusion Agent]
+    FISH_AGT --> FUSION
+    MAR_AGT --> FUSION
+    TOUR_AGT --> FUSION
 
-    subgraph "Module 1: Farmer Intel (FastAPI :8000)"
-        FA[FastAPI Server]
-        LG1[LangGraph: Farmer Agents]
-        Q1[(Qdrant: gabes_knowledge)]
-        NASA[NASA POWER API]
-    end
-
-    subgraph "Module 2: Emergency Intel (Flask :3000)"
-        FS[Flask Server]
-        LG2[LangGraph: Emergency States]
-        Q2[(Qdrant: medical_assistant_docs)]
-        Serp[SerpAPI / Google Maps]
-    end
-
-    UI --> FA
-    UI --> FS
-    FA --> LG1
-    FS --> LG2
-    LG1 --> Q1
-    LG2 --> Q2
-```
-
-### Farmer Agent Architecture
-```mermaid
-graph TD
-    A[Farmer — EN/FR/AR] -->|POST /api/v1/chat| B[FastAPI Backend]
-    B --> C{Intent Router\nGPT-4o-mini}
-    C -->|symptom| D[Diagnosis Agent]
-    C -->|irrigation| E[Irrigation Agent]
-    C -->|pollution question| F[Pollution QA Agent]
-    C -->|report request| G[Pollution Report Agent]
-
-    D --> D1[query_expansion]
-    D1 --> D2[retrieve]
-    D2 --> D3[diagnose]
-    D3 --> D4[verify faithfulness]
-    D4 -->|DiagnosisResponse| B
-
-    E --> E1[fetch_weather\nNASA POWER]
-    E1 --> E2[compute_ET₀\nPenman-Monteith]
-    E2 --> E3[lookup_Kc\nFAO-56]
-    E3 --> E4[format_advisory]
-    E4 -->|IrrigationResponse| B
-
-    F --> F1[retrieve RAG]
-    F1 --> F2[calibrate confidence]
-    F2 -->|PollutionQAResponse| B
-
-    G --> G1[fetch air quality\nOpen-Meteo CAMS]
-    G1 --> G2[compute thresholds\nP80/P95]
-    G2 --> G3[classify events]
-    G3 --> G4[annotate RAG]
-    G4 --> G5[generate PDF dossier]
-    G5 -->|PollutionReport + PDF| B
-
-    D2 -->|vector search| KB[(Qdrant\ngabes_knowledge\n1,718 chunks · 21 docs)]
-    F1 -->|vector search| KB
-    G4 -->|vector search| KB
+    FUSION -->|JSON Final| UI
+    
+    API_CHAT(POST `/api/chat`) --> CHAT_AGT[Agent Expert Chat]
+    CHAT_AGT --> INGEST
 ```
 
 ---
 
-## 3. Module 1: Gabesi AIGuardian (Farmer Intelligence)
-The primary intelligence module for agricultural resilience and pollution attribution.
+## 🤖 Description des Agents
 
-*   **Agents**: 4-agent LangGraph system (`diagnosis`, `irrigation`, `pollution`, `pollution_qa`).
-*   **LLM Engine**: `gpt-4o-mini` for all reasoning and tool orchestration.
-*   **Vector Search**: `text-embedding-3-large` (1536 dims).
-*   **RAG Infrastructure**:
-    *   **Collections**:
-        *   `gabes_knowledge`: 1718 chunks, 21 docs, 1536-dim (Core agricultural and environmental documents).
-        *   `farmer_context`: 3072-dim zero-vector placeholder, runtime pollution event log.
-        *   `satellite_timeseries`: Empty, reserved for future geospatial embeddings.
-    *   **Chunker**: Chonkie SemanticChunker (Hybrid: Dense + Sparse BM25/IDF).
-*   **Irrigation Engine**:
-    *   **Math**: FAO-56 Penman-Monteith methodology.
-    *   **Fallback**: Hargreaves-Samani estimation when `ALLSKY_SFC_SW_DWN` = -999.
-    *   **Lookback**: 14-day NASA POWER historical weather data (T2M_MAX/T2M_MIN/ALLSKY_SFC_SW_DWN/WS2M/RH2M).
-*   **Pollution Attribution**: 
-    *   **Reference Coords**: GCT Complex at 33.9089°N, 10.1256°E.
-    *   **Relative Thresholds**: Statistical P80/P95 bands based on Open-Meteo CAMS data.
-    *   **Exposure Bands**: `near_gct` (~2km), `mid_exposure` (~5km), `lower_exposure` (~10km), `ultra_remote` (>10km).
-*   **PDF Dossier Generation**:
-    *   **Engine**: `reportlab` (3 pages: Risk Summary, Event Breakdown, Confidence & Limitations).
-    *   **Features**: Risk badge (LOW/MODERATE/HIGH), legal disclaimer on every page.
+L'approche adoptée est **Multi-Agent**. Le backend délègue la logique à différents agents isolés.
+
+*   **Pollution Agent** : Son rôle est d'interroger la base Qdrant pour extraire les capacités de production industrielles et repérer les niveaux de pollution. *Particularité* : Il est doté d'une logique de gestion de conflit de données pour prioriser et équilibrer l'information en cas d'upload de PDF contradictoires (Système de confiance dynamique).
+*   **Fishing Agent** : Lit et analyse les données Excel locales et exécute des recherches web complémentaires via Serper API pour relier les données brutes à la réalité terrain (qualité des poissons de Gabès, interdictions).
+*   **Marine Agent** : Analyse algorithmique des flux météorologiques pour mesurer l'impact de la direction des vents (diffusion des contaminants) et la houle marine.
+*   **Tourism Agent** : Agnostique, interroge les données de réputation touristique et juge du statut structurel (Impact de l'infrastructure).
+*   **Fusion Agent** : Le Chef d'Orchestre. Il récupère les conclusions des 4 agents pour générer un **Global Risk Score** mathématiquement lié à la gravité et rédige des recommandations ciblées pour les pêcheurs et les autorités.
+*   **Agent Chat Expert** : En mode "conversation active" (dispose d'une mémoire de session), il analyse l'historique et génère des tableaux de synthèses chiffrées selon une grammaire stricte.
 
 ---
 
-## 4. Module 2: Emergency Intel (Triage & Monitoring)
-A rapid-response module for medical emergencies and industrial CO₂ tracking.
+## 🚀 Procédure d'Exécution (Installation)
 
-*   **LangGraph Lifecycle**: `GREETING` → `LOCATION` → `SYMPTOMS` → `FOLLOW_UP` → `ESCALATION` → `LLM_FORMATTER`.
-*   **Triage Logic**:
-    *   **Escalation Condition**: `emergency_score >= 80`.
-    *   **Score Formula**: `(symptom_weight × 0.60) + (pollution_risk × 0.25) + (duration_weight × 0.15)`.
-    *   **Symptom Weights**: Deterministic mapping (Chest Pain: 95, Unconscious: 100).
-    *   **Secondary Escalation**: `prolonged=True` when user responds "No/Worse" in `FOLLOW_UP`.
-    *   **Inactivity Alarm**: A 60-second inactivity alarm triggers automatic escalation to emergency services (190).
-*   **Analysis Agent Pipeline**:
-    *   **Agent 1 (Analyst)**: Produces structured JSON (trend, seasonalPattern, complianceStatus).
-    *   **Agent 2 (Strategist)**: Generates prioritized actions (`critique`, `important`, `souhaitable`).
-*   **External APIs**:
-    *   **SerpAPI**: Google Maps engine for geocoding text queries. *Note: SerpAPI is optional — system remains fully functional without it (location search degrades gracefully).*
-    *   **OpenAI**: API provider for LLM and Embeddings.
-*   **Monitoring Data**: Monthly CO₂ timeseries for 12 facilities.
-    *   **Data Files**: `locations.json`, `usine_A_acide.json` through `usine_E_fluor.json`, `saet_power.json`, `ghannouch_gas.json`, `zone_urban_gabes.json`, `zone_agriculture_chenini.json`.
-
----
-
-## 5. Unified Frontend & Design System
-A premium "Mission Control" interface built for high-stakes environmental monitoring.
-
-*   **Tech Stack**: React + Vite, Tailwind CSS, `react-leaflet`, `recharts`, `i18next`, `framer-motion`.
-*   **Visual Excellence**:
-    *   **Palette**: Deep Navy background (#0a0e1a), Neon Cyan accents, Purple highlights.
-    *   **Glassmorphism**: `.glass-card` utility with backdrop-blur.
-*   **Pages**: `/` (Chat), `/pollution`, `/irrigation`, `/emergency`.
-*   **Languages**: English, French, Arabic with RTL support.
-*   **Emergency Map**: Dynamic circles by risk level, timeline slider, session-based chat.
-*   **Proxy Configuration**: Vite proxies `/risk-map` and `/search-location` to Flask on port 3000. Both backends (FastAPI port 8000, Flask port 3000) run simultaneously.
-
----
-
-## 6. Security & Guardrails
-A 4-layer chain protecting the LLM pipeline with ~800ms total latency. LangSmith produces **one unified trace per request**.
-
-```mermaid
-graph TD
-    M[Incoming Message] --> G1
-
-    G1{1. Medical Emergency\nPattern Match}
-    G1 -->|Emergency detected| R1[Return 190 number\nEN/FR/AR · 0ms]
-    G1 -->|Clean| G2
-
-    G2{2. Prompt Injection\nPattern Match}
-    G2 -->|Injection detected| R2[Rejection message\nEN/FR/AR · 0ms]
-    G2 -->|Clean| G3
-
-    G3{3. Combined Guardrail\nGPT-4o-mini · ~400ms}
-    G3 -->|Toxic content| R3[Toxic rejection\nEN/FR/AR]
-    G3 -->|Out of scope| R4[Scope rejection\nEN/FR/AR]
-    G3 -->|Clean| G4
-
-    G4{4. Intent Classification\nGPT-4o-mini · ~400ms}
-    G4 --> A[Correct Agent]
+### 1. Cloner le Repository et Configuration
+```bash
+git clone https://github.com/omarfh111/Gabesi-AIGuardian.git
+cd Gabesi-AIGuardian
 ```
 
-| Layer | Type | Latency | Purpose |
-| :--- | :--- | :--- | :--- |
-| **1. Medical** | Regex/Pattern | 0ms | Detects medical emergencies (chest pain, can't breathe) and returns the 190 emergency number in the user's language. |
-| **2. Injection** | Pattern | 0ms | Detects prompt-injection attempts. |
-| **3. Safety** | LLM Classifier | ~400ms | Filters toxicity and out-of-scope requests. |
-| **4. Intent** | LLM Classifier | ~400ms | Routes query to correct LangGraph node. |
+### 2. Configuration du Backend
 
-**Cost per Call:**
-*   Blocked request: ~$0.0002
-*   Full pipeline: ~$0.0007
+```bash
+# Créer et activer l'environnement virtuel Python
+python -m venv venv
 
----
+# Sur Windows :
+.\venv\Scripts\activate
+# Sur Mac/Linux :
+source venv/bin/activate
 
-## 7. Evaluation Results
-Validated using **DeepEval** with 68 goldens and 56 mocked unit tests (0 real API calls).
-
-### RAG & Diagnosis Performance
-| Metric | Value | Success Rate | Notes |
-| :--- | :--- | :--- | :--- |
-| **Contextual Recall** | 0.9512 | 98.33% | 68 goldens |
-| **Contextual Relevancy** | 0.4395 | 41.67% | Known artifact: multi-topic chunks avg 841 chars |
-| **Faithfulness** | 0.9667 | 100% | 16 inputs |
-| **Answer Relevancy** | 0.9115 | 100% | |
-| **Pollution Link Accuracy**| 1.0000 | 100% | 16/16 |
-
-### Irrigation Engine Accuracy
-| Metric | Value | Success Rate |
-| :--- | :--- | :--- |
-| **Kc Lookup Accuracy** | 1.000 | 100% |
-| **ETc Math Accuracy** | 1.000 | 100% |
-| **GEval (Conversational)** | 0.883 | 100% |
-| **No Jargon Violation** | 1.000 | 100% |
-
-```mermaid
-graph LR
-    A[RAG Pipeline\n68 goldens] --> B[Recall 0.95\n98.33% pass ✅]
-    C[Diagnosis Agent\n16 inputs EN/FR/AR] --> D[Faithfulness 0.97\nRelevancy 0.91\nPollution 100% ✅]
-    E[Irrigation Agent\n12 FAO-56 cases] --> F[Kc 100%\nETc 100%\nGEval 0.88 ✅]
-```
-
----
-
-## 8. API Reference
-
-| Method | Endpoint | Request Shape | Response Shape |
-| :--- | :--- | :--- | :--- |
-| **POST** | `/api/v1/chat` | `{"message": "str (min 3, max 2000)", "farmer_id": "str|null", "plot_id": "str|null", "language": "en|fr|ar", "crop_type": "date_palm|pomegranate|fig|olive|vegetables", "growth_stage": "initial|mid|end"}` | `{"response": "str", "state": "str"}` |
-| **POST** | `/api/v1/diagnosis` | `{"symptom_description": "str (min 10, max 1000)", "language": "en|fr|ar", "farmer_id": "str|null", "plot_id": "str|null"}` | `{"diagnosis": "str", "confidence": float}` |
-| **POST** | `/api/v1/irrigation` | `{"crop_type": "date_palm|pomegranate|fig|olive|vegetables", "growth_stage": "initial|mid|end", "language": "en|fr|ar", "farmer_id": "str|null", "plot_id": "str|null"}` | `{"irrigation_depth_mm": float, "et0_mm_day": float, "kc": float, "weather": {...}}` |
-| **POST** | `/api/v1/pollution/report` | `{"farmer_id": "str", "plot_id": "str", "language": "en|fr|ar", "window_days": 30}` | `{"events": [...], "risk_level": "str"}` |
-| **POST** | `/api/v1/pollution/dossier` | same as /pollution/report, returns application/pdf | PDF binary stream |
-| **POST** | `/api/v1/pollution/qa` | `{"question": "str (min 10)", "language": "str"}` | `{"answer": "str", "sources": ["str"]}` |
-| **GET** | `/api/v1/health` | None | `{"status": "ok", "collection": "gabes_knowledge", "timestamp": "ISO8601"}` |
-
----
-
-## 9. Setup & Installation
-
-### Backend Services
-Both modules share one merged `requirements.txt` located at `backend/requirements.txt`.
-
-**Terminal 1: FastAPI (Module 1)**
-```cmd
-cd backend
-python -m venv .venv
-.venv\Scripts\activate
+# Installer les dépendances (en supposant un requirements.txt)
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
 ```
 
-**Terminal 2: Flask (Module 2)**
-```cmd
-cd emergency_intel
-.venv\Scripts\activate
-python app.py
+#### Variables d'environnement
+Créez un fichier `.env` à la racine contenant vos clés :
+```env
+OPENAI_API_KEY="sk-..."
+SERPER_API_KEY="..."
+QDRANT_URL="https://...cloud.qdrant.io:6333"
+QDRANT_API_KEY="..."
 ```
 
-Uses the same venv as Module 1. Ensure backend/.venv is activated before running.
+#### Démarrage du Serveur Backend Flask
+Assurez-vous d'être dans votre virtual environment.
+```bash
+python backend/app/chat_endpoint.py
+```
+*(Le serveur s'exécute sur `http://127.0.0.1:3000`)*
 
-### Frontend (React + Vite)
-**Terminal 3: React Dashboard**
-```cmd
+### 3. Configuration du Frontend (React / Vite)
+
+Ouvrez un nouveau terminal.
+```bash
 cd frontend
 npm install
 npm run dev
 ```
+*(L'interface sera disponible sur `http://localhost:5173` ou équivalent)*
 
 ---
 
-## 10. Project Structure
-```text
-.
-├── backend/                   # FastAPI Server (Module 1)
-│   ├── app/
-│   │   ├── agents/            # LangGraph Implementation
-│   │   ├── services/          # NASA/CAMS/Qdrant Connectors
-│   │   └── guardrails/        # 4-Layer Chain
-│   ├── tests/                 # DeepEval Test Suite
-│   └── requirements.txt       # Unified dependencies
-├── emergency_intel/           # Flask Server (Module 2)
-│   ├── services/              # Triage & Analysis Agents
-│   ├── data/                  # CO2 JSON Timeseries
-│   └── app.py                 # Port 3000 Entry
-├── frontend/                  # Unified React Frontend
-│   ├── src/
-│   │   ├── components/        # Glass-morphic UI components
-│   │   ├── pages/             # Dashboard, Emergency, Irrigation
-│   │   └── i18n/              # Lang files (EN/FR/AR)
-│   └── vite.config.js         # Port Proxying Config
-└── README.md
-```
+## 🛣️ Roadmap
 
-## 11. Roadmap
-- [x] Integrate LangGraph state machines for complex multi-agent flows
-- [x] Build and test 4-layer security guardrail chain
-- [x] Connect robust RAG pipeline via Qdrant with hybrid semantic chunking
-- [x] Develop precise FAO-56 math engine with NASA POWER historical weather data
-- [x] Deploy modular UI with Vite and React
-- [x] Merge legacy Emergency Intelligence Flask module
-- [ ] Run end-to-end pipeline GEval at scale
+- [ ] **Déploiement Cloud** : Conteneuriser le Frontend et le Backend avec Docker.
+- [ ] **Alerte Active** : Implémentation de hooks pour envoyer des emails/SMS si le `Global Risk Score` dépasse 85%.
+- [ ] **Imagerie Satellite** : Inclusion d'un modèle de vision (`Computer Vision Agent`) pour analyser des images satellites des zones de pêche de Gabès.
+- [ ] **Intégration d'ETL** : Connecteur direct aux flux d'Open-Meteo sans dépendre des JSON statiques de test. 
+- [ ] **Export PDF** : Offrir la capacité aux utilisateurs de générer le rapport du Fusion Agent en PDF depuis le dashboard public.

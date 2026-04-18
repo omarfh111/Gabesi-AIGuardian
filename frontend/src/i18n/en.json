@@ -1,10 +1,12 @@
 {
   "appName": "🌿 Gabesi AIGuardian",
   "nav": {
-    "chat": "Chat",
-    "pollution": "Pollution",
-    "irrigation": "Irrigation",
-    "emergency": "Emergency 🚨"
+    "chat": "Farmer Chat",
+    "pollution": "Pollution Analysis",
+    "irrigation": "Irrigation Advisor",
+    "emergency": "Emergency Response",
+    "strategic": "Strategic Dashboard",
+    "strategic_chat": "Strategic Chat"
   },
   "chat": {
     "title": "Chat with your AI assistant",

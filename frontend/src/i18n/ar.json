@@ -1,10 +1,12 @@
 {
   "appName": "🌿 جابسي حارس الواحة",
   "nav": {
-    "chat": "المحادثة",
-    "pollution": "التلوث",
-    "irrigation": "الري",
-    "emergency": "الطوارئ 🚨"
+    "chat": "مساعد الفلاح",
+    "pollution": "تحليل التلوث",
+    "irrigation": "خبير الري",
+    "emergency": "الإسعاف الاستعجالي",
+    "strategic": "لوحة القيادة",
+    "strategic_chat": "الحوار الاستراتيجي"
   },
   "chat": {
     "title": "تحدث مع مساعدك الذكي",

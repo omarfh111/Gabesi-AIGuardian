@@ -71,3 +71,17 @@ backend/tests/*.tmp
 # Large PDF data from legacy work
 emergency_intel/data/dataassistantmed/
 emergency_intel/data/datamed/
+
+# Gabesi Strategic Pipeline Data
+architecture_pipeline/
+data_an/
+
+# Allow essential data for dashboard functionality
+!emergency_intel/data_an/
+!emergency_intel/data_an/**/*.json
+!emergency_intel/data_an/**/*.xlsx
+!emergency_intel/data_an/**/*.csv
+
+# Still ignore large binary archives or system junk if any
+*.zip
+*.7z

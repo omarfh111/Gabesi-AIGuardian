@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @theme {
   /* Friend's Premium Dark Palette */
@@ -50,5 +51,25 @@
   .glass-card {
     /* Manually inlining to avoid Tailwind v4 build-time @apply issues with custom utilities */
     @apply bg-secondary/80 backdrop-blur-xl border border-border rounded-2xl shadow-2xl transition-all duration-300;
+  }
+
+  /* Premium Markdown Table Styling */
+  .prose table {
+    @apply w-full border-collapse my-4 rounded-lg overflow-hidden border border-border;
+  }
+  .prose thead {
+    @apply bg-white/5;
+  }
+  .prose th {
+    @apply px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-accent border-b border-border;
+  }
+  .prose td {
+    @apply px-4 py-2 text-sm text-text-primary border-b border-white/5;
+  }
+  .prose tr:last-child td {
+    @apply border-b-0;
+  }
+  .prose tr:hover {
+    @apply bg-white/5;
   }
 }
