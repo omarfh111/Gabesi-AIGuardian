@@ -1,0 +1,64 @@
+{
+  "facility_label": "Usine A - Acide phosphorique",
+  "public_anchor": "Complexe GCT de Ghannouch (Gabès)",
+  "exceedances": [
+    {
+      "month": "2026-05",
+      "co2": 1890,
+      "reason": "Montée en charge amont et tension utilités."
+    },
+    {
+      "month": "2026-06",
+      "co2": 2000,
+      "reason": "Canicule, forte charge utilités et dégazage anormal comparable aux épisodes d'émanations déjà documentés dans la zone."
+    }
+  ],
+  "notes": "Unité la plus sensible aux aléas amont/aval du complexe et aux incidents de procédé.",
+  "start_month_assumption": "2026-01",
+  "period_months": 6,
+  "unit": "tonnes_CO2/month",
+  "bounds": {
+    "min": 1200,
+    "max": 2000
+  },
+  "internal_exceedance_threshold": 1850,
+  "months": [
+    {
+      "month": "2026-01",
+      "co2": 1720,
+      "tags": ["hiver", "demande amont stable", "grève contenue"]
+    },
+    {
+      "month": "2026-02",
+      "co2": 1780,
+      "tags": ["pré-Ramadan", "constitution de stocks", "ventilation hivernale"]
+    },
+    {
+      "month": "2026-03",
+      "co2": 1490,
+      "tags": ["Ramadan", "maintenance planifiée", "rythme réduit"]
+    },
+    {
+      "month": "2026-04",
+      "co2": 1680,
+      "tags": ["reprise post-Aïd", "inspection réglementaire", "ramp-up progressif"]
+    },
+    {
+      "month": "2026-05",
+      "co2": 1890,
+      "tags": ["montée en charge", "campagne engrais", "chaleur précoce"]
+    },
+    {
+      "month": "2026-06",
+      "co2": 2000,
+      "tags": ["canicule", "surconsommation de refroidissement", "incident de traitement des gaz"]
+    }
+  ],
+  "statistics": {
+    "mean": 1760.0,
+    "variance_sample": 31160.0,
+    "lag1_autocorrelation": 0.33,
+    "min": 1490,
+    "max": 2000
+  }
+}

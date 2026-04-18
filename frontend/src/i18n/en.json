@@ -3,7 +3,8 @@
   "nav": {
     "chat": "Chat",
     "pollution": "Pollution",
-    "irrigation": "Irrigation"
+    "irrigation": "Irrigation",
+    "emergency": "Emergency 🚨"
   },
   "chat": {
     "title": "Chat with your AI assistant",

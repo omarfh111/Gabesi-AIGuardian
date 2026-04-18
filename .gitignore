@@ -67,3 +67,7 @@ backend/tests/test_results.md
 # Optional (if you generate more later)
 backend/tests/*.log
 backend/tests/*.tmp
+
+# Large PDF data from legacy work
+emergency_intel/data/dataassistantmed/
+emergency_intel/data/datamed/

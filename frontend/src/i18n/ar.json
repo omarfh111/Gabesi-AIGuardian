@@ -3,7 +3,8 @@
   "nav": {
     "chat": "المحادثة",
     "pollution": "التلوث",
-    "irrigation": "الري"
+    "irrigation": "الري",
+    "emergency": "الطوارئ 🚨"
   },
   "chat": {
     "title": "تحدث مع مساعدك الذكي",

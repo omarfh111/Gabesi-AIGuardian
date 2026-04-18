@@ -10,7 +10,7 @@ const MessageBubble = ({ message }) => {
 
   const renderContent = () => {
     if (!isAI) {
-      return <div>{message.content}</div>;
+      return <div className="text-sm font-medium leading-relaxed">{message.content}</div>;
     }
 
     const { intent, response } = message;
@@ -26,14 +26,17 @@ const MessageBubble = ({ message }) => {
         return <PollutionReportCard data={response} />;
       case 'unknown':
         return (
-          <div className="flex items-start gap-2">
-            <span className="text-xl">ℹ️</span>
-            <div>{response.message || response}</div>
+          <div className="flex items-start gap-3">
+            <span className="text-lg bg-accent/20 p-2 rounded-lg">🤖</span>
+            <div className="text-sm leading-relaxed">{response.message || response}</div>
           </div>
         );
       default:
-        // Default text content for unknown intent or basic strings
-        return <div>{message.content || response.message || JSON.stringify(response)}</div>;
+        return (
+          <div className="text-sm leading-relaxed">
+            {message.content || response.message || (typeof response === 'string' ? response : JSON.stringify(response))}
+          </div>
+        );
     }
   };
 
@@ -41,13 +44,13 @@ const MessageBubble = ({ message }) => {
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      className={`flex w-full mb-4 ${isAI ? 'justify-start' : 'justify-end'}`}
+      className={`flex w-full ${isAI ? 'justify-start' : 'justify-end'}`}
     >
       <div
-        className={`max-w-[85%] md:max-w-[70%] px-4 py-3 shadow-sm ${
+        className={`max-w-[85%] md:max-w-[70%] px-4 py-3 shadow-2xl ${
           isAI
-            ? 'bg-white text-text rounded-2xl rounded-bl-none border'
-            : 'bg-primary text-white rounded-2xl rounded-br-none'
+            ? 'glass-card text-text-primary rounded-bl-none'
+            : 'bg-accent text-primary font-bold rounded-2xl rounded-br-none shadow-accent/20'
         }`}
       >
         {renderContent()}

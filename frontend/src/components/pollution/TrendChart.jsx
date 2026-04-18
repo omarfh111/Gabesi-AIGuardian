@@ -3,12 +3,11 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 const TrendChart = ({ events }) => {
   if (!events || events.length === 0) return (
-    <div className="h-64 flex items-center justify-center text-gray-400 text-sm italic">
+    <div className="h-64 flex items-center justify-center text-text-muted text-[10px] font-black uppercase tracking-widest italic">
       No trend data available for the selected period.
     </div>
   );
 
-  // Filter for SO2 events, map to chart format, and sort chronologically
   const chartData = events
     .filter(e => e.pollutant === 'SO2')
     .map(e => ({
@@ -19,7 +18,7 @@ const TrendChart = ({ events }) => {
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   if (chartData.length === 0) return (
-    <div className="h-64 flex items-center justify-center text-gray-400 text-sm italic">
+    <div className="h-64 flex items-center justify-center text-text-muted text-[10px] font-black uppercase tracking-widest italic">
       No SO₂ events in this period.
     </div>
   );
@@ -27,11 +26,12 @@ const TrendChart = ({ events }) => {
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-gray-900 text-white p-3 rounded-lg shadow-xl border border-gray-800">
-          <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">{label}</p>
-          <p className="text-sm font-black">
-            {payload[0].value} <span className="text-[10px] font-normal text-gray-400">µg/m³</span>
-          </p>
+        <div className="glass-card bg-primary/95 p-3 shadow-2xl border-accent/20">
+          <p className="text-[9px] uppercase font-black text-text-muted mb-2 tracking-widest">{label}</p>
+          <div className="flex items-baseline gap-1">
+             <span className="text-lg font-black text-accent">{payload[0].value}</span>
+             <span className="text-[10px] font-bold text-text-muted uppercase">µg/m³</span>
+          </div>
         </div>
       );
     }
@@ -44,33 +44,34 @@ const TrendChart = ({ events }) => {
         <AreaChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
           <defs>
             <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#f4a261" stopOpacity={0.3}/>
-              <stop offset="95%" stopColor="#f4a261" stopOpacity={0}/>
+              <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4}/>
+              <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
           <XAxis 
             dataKey="displayDate" 
-            tick={{ fontSize: 10, fill: '#9ca3af', fontWeight: 600 }} 
+            tick={{ fontSize: 9, fill: '#4d567a', fontWeight: 800, letterSpacing: '0.05em' }} 
             axisLine={false} 
             tickLine={false} 
             dy={10}
           />
           <YAxis 
-            tick={{ fontSize: 10, fill: '#9ca3af', fontWeight: 600 }} 
+            tick={{ fontSize: 9, fill: '#4d567a', fontWeight: 800 }} 
             axisLine={false} 
             tickLine={false} 
             dx={-10}
           />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(6,182,212,0.2)', strokeWidth: 2 }} />
           <Area 
             type="monotone" 
             dataKey="value" 
-            stroke="#f4a261" 
+            stroke="#06b6d4" 
             strokeWidth={3} 
             fillOpacity={1} 
             fill="url(#colorValue)" 
-            activeDot={{ r: 6, strokeWidth: 0, fill: '#e63946' }}
+            activeDot={{ r: 6, strokeWidth: 0, fill: '#06b6d4', shadow: '0 0 10px #06b6d4' }}
+            animationDuration={1500}
           />
         </AreaChart>
       </ResponsiveContainer>
