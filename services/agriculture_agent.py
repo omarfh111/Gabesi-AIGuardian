@@ -7,6 +7,7 @@ from langgraph.graph import StateGraph, START, END
 
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from services.emissions_service import get_risk_map_data
 from qdrant_client import QdrantClient
 from qdrant_client.models import ScoredPoint
 
@@ -105,6 +106,7 @@ def detect_crop(user_input: str) -> str:
             if c in ["tomate", "tomates"]: return "tomatoes"
             if c in ["grenade", "grenades", "pomegranate"]: return "pomegranates"
             if c in ["pomme", "apples"]: return "apples"
+            if c in ["date", "dates", "dattes", "datte"]: return "date palms"
             return c
     return "general"
 
@@ -261,33 +263,90 @@ These areas benefit from traditional oasis irrigation, proven soil conditions, a
 
 def node_analysis(state: AgentState) -> AgentState:
     msg = state.get("message", "")
+    msg_lower = msg.lower()
     crop = detect_crop(msg)
     state["crop"] = crop
-
-    # Handle greetings or off-topic directly if no crop detected
-    if not crop and len(msg) < 30:
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5)
-        response = llm.invoke([
-            SystemMessage(content="You are a friendly Gabes Agriculture Assistant. The user just greeted you. Welcome them and ask what they want to plant in Gabes."),
-            HumanMessage(content=msg)
-        ]).content
-        state["response"] = response
-        return state
-
-    pollution_risk = state.get("pollution_risk", 0.0)
+    
     lat = state.get("lat")
     lng = state.get("lng")
+    pollution_risk = state.get("pollution_risk", 0.0)
     
-    # --- Discovery Mode: No specific location selected ---
+    # --- SCENARIO CLASSIFICATION ---
     is_discovery_mode = lat is None or lng is None
-    environmental_context = ""
+    has_specific_crop = bool(crop and crop != "general")
+
+    if is_discovery_mode:
+        scenario = "DISCOVERY" # Asking for best places for a crop
+        research_crop = crop if has_specific_crop else "vegetables and fruits"
+    else:
+        if has_specific_crop:
+            scenario = "ASSESSMENT" # Asking about a specific crop at a pinned location
+            research_crop = crop
+        else:
+            scenario = "AUDIT" # Asking what to plant at a pinned location
+            research_crop = "best crops to plant"
+            
+    # --- GEOGRAPHIC SAFETY BARRIER (Water & River Check) ---
+    if lat is not None and lng is not None:
+        # 1. Gulf of Gabes / Mediterranean Sea
+        #    Anything east of the coastline is sea.
+        is_in_sea = (33.0 < lat < 34.5) and (lng > 10.08)
+        
+        # 2. Oued Gabes (River Bed) — narrow channel ~33.88°N
+        is_in_river = (abs(lat - 33.88) < 0.0015) and (10.00 < lng < 10.12)
+        
+        # 3. Sebkhat El Hamma (سبخة الحامة) — Multi-point Polygon Guard
+        # Using Ray Casting algorithm for the 4 precise corners provided by user
+        def is_in_sebkha_polygon(py, px):
+            # Corners: Top Left, Top Right, Bottom Right, Bottom Left
+            nodes = [
+                (33.9063, 9.3020), (34.0413, 9.8032), 
+                (33.9405, 9.8746), (33.8157, 9.3082)
+            ]
+            j = len(nodes) - 1
+            oddNodes = False
+            for i in range(len(nodes)):
+                if (nodes[i][0] < py <= nodes[j][0] or nodes[j][0] < py <= nodes[i][0]):
+                    if (nodes[i][1] + (py - nodes[i][0]) / (nodes[j][0] - nodes[i][0]) * (nodes[j][1] - nodes[i][1]) < px):
+                        oddNodes = not oddNodes
+                j = i
+            return oddNodes
+
+        is_in_sebkha = is_in_sebkha_polygon(lat, lng)
+
+        if is_in_sea:
+            state["response"] = "📍 **Location Warning**: You have selected a spot in the Gulf of Gabès (Mediterranean Sea)! 🌊 Farming is impossible in the water. Please pick a location on land in Gabès."
+            return state
+        if is_in_river:
+            state["response"] = "📍 **Location Warning**: You are in the river bed (Oued Gabès)! 🚣 Planting inside the watercourse is impossible. Please select a spot on the fertile banks nearby."
+            return state
+        if is_in_sebkha:
+            state["response"] = "📍 **Location Warning**: You are in Sebkhat El Hamma (سبخة الحامة)! 🌊 This is a salt lake — farming is impossible here. Please select a spot on the surrounding farmland."
+            return state
+
+    nearest_zone = "Gabes"
+    if not is_discovery_mode:
+        zones = get_risk_map_data()
+        min_dist = float('inf')
+        for z in zones:
+            dist = ((z['lat'] - lat)**2 + (z['lng'] - lng)**2)**0.5
+            if dist < min_dist:
+                min_dist = dist
+                nearest_zone = z['label']
+
+    rag_context = ""
     # --- PARALLEL EXECUTION: RAG + ENVIRONMENTAL ---
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        # Start both tasks at the same time
-        future_rag = executor.submit(search_qdrant, f"{crop} Gabes", 3)
+        if scenario == "DISCOVERY":
+            search_term = f"best zones for {research_crop} cultivation in Gabes"
+        elif scenario == "ASSESSMENT":
+            search_term = f"growing {research_crop} in {nearest_zone} Gabes soil pollution"
+        else:
+            search_term = f"best vegetables and fruits to grow in {nearest_zone} Gabes"
+            
+        future_rag = executor.submit(search_qdrant, search_term, 6)
         future_env = executor.submit(get_risk_map_data) if is_discovery_mode else None
         
-        # Wait for RAG (Critical)
         try:
             results = future_rag.result(timeout=10)
             if results:
@@ -295,48 +354,73 @@ def node_analysis(state: AgentState) -> AgentState:
         except Exception as e:
             print(f"[RAG ERROR]: {e}")
 
-        # Wait for ENV
-        if future_env:
-            try:
-                all_zones = future_env.result(timeout=5)
-                environmental_context = "### Gabes Zones\n" + "\n".join([f"- {z['label']}: {int(z['riskScore'])}/100" for z in all_zones])
-            except:
-                environmental_context = "Environmental data unavailable."
+    # --- LATE-STAGE OFF-TOPIC CHECK ---
+    AGRI_KEYWORDS = {"plant", "grow", "farm", "soil", "agri", "gabes", "planter", "cultiver", "ferme", "sol", "terre", "oas", "tomat", "grenade", "olive", "datt", "pomm"}
+    msg_clean = msg_lower.replace("?", "").strip()
+    is_safe_agri = any(k in msg_clean for k in AGRI_KEYWORDS)
+    
+    if not is_safe_agri and len(msg_clean) > 5 and scenario == "AUDIT":
+        # Quick fallback check for weird non-agri garbage strings
+        try:
+            llm_check = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
+            off_topic_check = llm_check.invoke([
+                SystemMessage(content="Respond YES if this is about agriculture/farming/plants, NO if it is totally unrelated."),
+                HumanMessage(content=msg)
+            ]).content.strip().upper()
+            if "NO" in off_topic_check:
+                state["response"] = "You are asking something outside of farming."
+                state["current_state"] = "CROP_SELECTION"
+                return state
+        except Exception:
+            pass
 
-    location_info = f"Farmer's coordinates: {lat:.4f}°N, {lng:.4f}°E." if lat and lng else "User is in 'Discovery Mode' (searching for best location in Gabès)."
+    # --- DYNAMIC PROMPT BUILDER ---
+    location_info = f"Farmer's pinned coords: {lat:.4f}°N, {lng:.4f}°E (Nearest Zone: {nearest_zone})" if not is_discovery_mode else "No coords provided. Searching region-wide."
+    risk_info = f"Local Pollution Risk: {int(pollution_risk)}/100" if not is_discovery_mode else "Region-wide analysis."
 
-    system_prompt = f"""You are a professional Gabès Agricultural Assistant.
-Provide a clear, friendly crop analysis in the user's language.
+    if scenario == "DISCOVERY":
+        output_instruction = f"FIND PLACES: Recommend the 3 BEST ZONES in Gabes for planting {research_crop}. Format: '1/ [Zone Name]: [1-sentence reason]'."
+    elif scenario == "ASSESSMENT":
+        output_instruction = f"EVALUATE CROP: Tell the farmer if {research_crop} is viable at their pinned location. Give a quick 'YES/NO/WITH CAUTION' and suggest 2 alternative companion crops. Be extremely brief."
+    else:
+        output_instruction = f"PLOT AUDIT: Suggest the TOP 5 CROPS for this pinned location. Format: '1/ [Crop]: [1-sentence reason]'."
+
+    system_prompt = f"""You are a strict Gabès Agricultural Analyst.
+**CRITICAL**: You MUST respond in the EXACT SAME LANGUAGE the user wrote their message in (e.g. French for French). Be extremely consistent and precise.
 
 ## CONTEXT
 {location_info}
-{environmental_context}
+{risk_info}
 
-## DATA (Citations required)
-{rag_context if rag_context else 'No local documents found.'}
+## RAG DATA
+{rag_context if rag_context else 'No documents.'}
 
-## OUTPUT
-1. If 'Discovery Mode', rank top 3 spots based on Pollution vs Fertility.
-2. Be specific/encouraging 🌿.
-3. Use bold text/bullets for mobile readability.
-4. Include 'Sources' section at the end with doc names.
+## OUTPUT RULES
+1. {output_instruction}
+2. **RISK MANAGEMENT**:
+   - If Risk < 40: Safe for all crops.
+   - If Risk 40-75: Warn about pollution; suggest Resilient crops (Barley, Olives).
+   - If Risk > 75: Suggest non-edibles (Henna) or Bio-remediation (Sunflowers).
+   - NEVER say farming is 'Impossible' unless in the SEA.
+3. NO long paragraphs. NO sources section. Keep it short and actionable.
 """
 
     try:
-        # Configuration for LangSmith tracing
-        config = {"tags": ["agriculture_agent", "discovery_mode" if is_discovery_mode else "pinned_location"]}
-        
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
-        # Single pass: Analysis + Formatting in one call
-        response = llm.invoke([SystemMessage(content=system_prompt)], config=config).content.strip()
+        config = {"tags": ["agriculture_agent", scenario.lower()]}
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=msg if msg else f"What are the {output_instruction.split(':')[0].lower()} options here?")
+        ]
+        response = llm.invoke(messages, config=config).content.strip()
         state["response"] = response
     except Exception as e:
         print(f"[LLM Analysis Error]: {traceback.format_exc()}")
         state["response"] = _fallback_analysis(crop, pollution_risk, lat, lng)
 
-    # Stay in conversational loop
     state["current_state"] = "CROP_SELECTION"
     return state
+
 
 
 def node_llm_formatter(state: AgentState) -> AgentState:
@@ -383,7 +467,7 @@ Respond ONLY with the translated/formatted report."""
         if user_message:
             msgs.append(HumanMessage(content=user_message))
 
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
         formatted = llm.invoke(msgs).content.strip()
         state["response"] = formatted
     except Exception as e:
@@ -430,6 +514,57 @@ def process_agriculture_message(
 
     # Reset session on greeting keywords
     if session_id in _SESSIONS and msg_lower in {"reset", "hello", "hi", "start", "bonjour", "مرحبا"}:
+        del _SESSIONS[session_id]
+
+    # --- ABSOLUTE ZERO COST BYPASS: Greetings & Map Clicks ---
+    GREETINGS = {"hello", "hi", "bonjour", "salut", "مرحبا", "hey", "start", "", "location selected", "location cleared"}
+    if msg_lower in GREETINGS:
+        if msg_lower == "location selected":
+            if session_id not in _SESSIONS:
+                # Initialize session if first interaction is a map click
+                _SESSIONS[session_id] = AgentState(
+                    session_id=session_id, message="", history=[],
+                    lat=lat, lng=lng, current_state="AGRICULTURE_ASSISTANT",
+                    pollution_risk=0.0, crop="", response=""
+                )
+            else:
+                _SESSIONS[session_id]["lat"] = lat
+                _SESSIONS[session_id]["lng"] = lng
+            
+            return {
+                "response": "Location saved. 📍",
+                "state": "AGRICULTURE_ASSISTANT",
+                "pollution_risk": 0.0,
+                "crop": "",
+            }
+
+        # Clear session location
+        if msg_lower == "location cleared":
+            if session_id in _SESSIONS:
+                _SESSIONS[session_id]["lat"] = None
+                _SESSIONS[session_id]["lng"] = None
+            
+            return {
+                "response": "Selection removed. You are now in Discovery Mode. 🌍",
+                "state": "AGRICULTURE_ASSISTANT",
+                "pollution_risk": 0.0,
+                "crop": "",
+            }
+            
+        # Reset session if it's a fresh greeting
+        if session_id in _SESSIONS and msg_lower != "location selected":
+            del _SESSIONS[session_id]
+            
+        return {
+            "response": "Hello! Welcome to Gabes Agriculture! 🌱 What would you like to plant today? "
+                        "Feel free to click on the map to analyze a specific location!",
+            "state": "GREETING",
+            "pollution_risk": 0.0,
+            "crop": "",
+        }
+
+    # Reset session on reset command
+    if session_id in _SESSIONS and msg_lower == "reset":
         del _SESSIONS[session_id]
 
     # Initialize new session

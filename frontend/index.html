@@ -2138,9 +2138,9 @@
         initApp();
 
         // ══════════════════════════════════════════
-        // EMERGENCY ASSISTANT LOGIC
+        // AGRICULTURE ASSISTANT LOGIC
         // ══════════════════════════════════════════
-        const sessionId = 'emg_' + Math.random().toString(36).substr(2, 9);
+        const sessionId = 'agr_' + Math.random().toString(36).substr(2, 9);
         let assistantLat = null;
         let assistantLng = null;
 
@@ -2154,9 +2154,8 @@
                 }
 
             } else {
-
-                w.classList.remove('critical-alarm');
-                document.getElementById('assistantRing').classList.remove('critical-alarm-ring');
+                w.classList.remove('risk-alert');
+                document.getElementById('assistantRing').classList.remove('risk-alert-ring');
             }
         }
 
@@ -2194,6 +2193,16 @@
             }
         }
 
+        function clearMapSelection() {
+            if (window.tempMarker) {
+                map.removeLayer(window.tempMarker);
+                window.tempMarker = null;
+            }
+            assistantLat = null;
+            assistantLng = null;
+            sendToAssistant("location cleared");
+        }
+
         function triggerMapSelect() {
             addMessage("I will click on the map.", "user");
             addMessage("Please click anywhere on the map within Gabès region...", "ai");
@@ -2210,7 +2219,13 @@
                     if (window.tempMarker) map.removeLayer(window.tempMarker);
                     
                     window.tempMarker = L.marker([assistantLat, assistantLng]).addTo(map)
-                        .bindPopup("<b>Agricultural Analysis</b><br>Assistant is analyzing point: " + lat.toFixed(4) + ", " + lng.toFixed(4))
+                        .bindPopup(`
+                            <div style="text-align: center; font-family: Inter, sans-serif;">
+                                <b style="color: #16a34a; font-size: 14px;">🌱 Agriculture Point</b><br>
+                                <span style="font-size: 11px; color: #8b95b8;">${lat.toFixed(4)}, ${lng.toFixed(4)}</span><br><br>
+                                <button onclick="clearMapSelection()" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600; width:100%; transition: all 0.2s;" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1">❌ Clear Selection</button>
+                            </div>
+                        `)
                         .openPopup();
                         
                     sendToAssistant("Location selected", assistantLat, assistantLng);
@@ -2268,17 +2283,17 @@
                 
                 addMessage(data.response, "ai");
                 
-                // Update Pulse
-                const score = data.emergency_score;
+                // Update Pulse based on pollution risk
+                const score = data.pollution_risk || 0;
                 const ring = document.getElementById('assistantRing');
                 if (score >= 80) ring.style.boxShadow = "0 0 35px #ef4444";
                 else if (score >= 40) ring.style.boxShadow = "0 0 15px #f59e0b";
-                else ring.style.boxShadow = "0 0 15px rgba(239, 68, 68, 0.5)";
+                else ring.style.boxShadow = "0 0 15px rgba(22, 163, 74, 0.5)";
                 
             } catch(err) {
                  console.error(err);
                  document.getElementById('chatTyping').style.display = 'none';
-                 addMessage("Failed to reach emergency server.", "ai");
+                 addMessage("Failed to reach agriculture server.", "ai");
             }
         }
 
@@ -2303,7 +2318,7 @@
         <div class="chat-messages" id="chatMessages"></div>
         <div class="chat-typing" id="chatTyping">Assistant is analyzing...</div>
         <div class="quick-replies" id="quickReplies">
-
+            <button class="qr-btn" onclick="triggerMapSelect()">📍 Select on Map</button>
             <button class="qr-btn" onclick="processQuickReply('Apples')">Apples</button>
             <button class="qr-btn" onclick="processQuickReply('Pomegranates')">Pomegranates</button>
             <button class="qr-btn" onclick="processQuickReply('Dates')">Dates</button>

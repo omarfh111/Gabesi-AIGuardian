@@ -41,7 +41,6 @@ from services.emissions_service import (
     compute_risk_score, get_risk_level, get_risk_map_data, get_overview_data
 )
 from services.analysis_agent import analyze_zone
-from services.emergency_agent import process_assistant_message
 from services.agriculture_agent import process_agriculture_message
 
 app = FastAPI(title="Gabesi AIGuardian API")
@@ -364,14 +363,6 @@ async def get_overview():
         print(f'[ERROR] /overview: {e}')
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/assistant/chat")
-async def assistant_chat(request: ChatRequest):
-    try:
-        result = process_assistant_message(request.session_id, request.message, request.lat, request.lng)
-        return result
-    except Exception as e:
-        print(f'[ERROR] /api/assistant/chat: {e}')
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/agriculture/chat")
 async def agriculture_chat(request: ChatRequest):
