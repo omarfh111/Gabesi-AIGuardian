@@ -2,6 +2,7 @@ import os
 import math
 import traceback
 from typing import TypedDict, Dict, Any, List, Optional
+import concurrent.futures
 from langgraph.graph import StateGraph, START, END
 
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
@@ -10,13 +11,15 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import ScoredPoint
 
 from services.emissions_service import get_risk_map_data
+from dotenv import load_dotenv
+load_dotenv()
 
 # =====================================================================
 # QDRANT SETUP
 # =====================================================================
 qdrant_url = os.getenv("QDRANT_URL")
 qdrant_api_key = os.getenv("QDRANT_API_KEY")
-collection_name = "gabes knowledge"
+collection_name = "gabes_knowledge"
 
 _qdrant_client = None
 
@@ -26,7 +29,7 @@ def get_qdrant() -> Optional[QdrantClient]:
         return _qdrant_client
     if qdrant_url and qdrant_api_key:
         try:
-            _qdrant_client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key, timeout=60.0)
+            _qdrant_client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key, timeout=60.0, check_compatibility=False)
             # Verify connection
             _qdrant_client.get_collections()
             print("[Qdrant] Connected successfully.")
@@ -48,7 +51,7 @@ def search_qdrant(query: str, limit: int = 4) -> List[str]:
         raise RuntimeError("Qdrant client is not available.")
 
     try:
-        embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+        embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
         vector = embeddings.embed_query(query)
     except Exception as e:
         raise RuntimeError(f"Embedding failed: {e}")
@@ -59,27 +62,33 @@ def search_qdrant(query: str, limit: int = 4) -> List[str]:
             collection_name=collection_name,
             query_vector=vector,
             limit=limit,
-            with_payload=True,
         )
+        print(f"[Qdrant] Searching '{collection_name}' for '{query}'...", flush=True)
+        if not results:
+            print("[Qdrant] 0 results found.", flush=True)
+            return []
+        print(f"[Qdrant] Found {len(results)} relevant documents.", flush=True)
     except Exception as e:
         raise RuntimeError(f"Qdrant search failed: {e}")
 
     if not results:
         return []
 
-    texts = []
+    results_data = []
     for hit in results:
         payload = hit.payload or {}
-        # Support multiple common payload key names
         text = (
-            payload.get("page_content")
-            or payload.get("text")
+            payload.get("text")
+            or payload.get("page_content")
             or payload.get("content")
             or str(payload)
         )
-        texts.append(text)
+        # Extract source filename - check 'doc_name' (specific to gabes_knowledge) or 'source'
+        metadata = payload.get("metadata", {})
+        source = payload.get("doc_name") or metadata.get("source") or "Unknown Document"
+        results_data.append({"text": text, "source": source})
 
-    return texts
+    return results_data
 
 
 # =====================================================================
@@ -87,20 +96,17 @@ def search_qdrant(query: str, limit: int = 4) -> List[str]:
 # =====================================================================
 
 def detect_crop(user_input: str) -> str:
-    try:
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-        prompt = (
-            "You are an agricultural expert system.\n"
-            "Given the user's input, identify the main crop or plant they are asking about.\n"
-            "If no specific crop is mentioned, output 'general'.\n"
-            "Output ONLY the crop name in lowercase English (e.g., 'apples', 'dates', 'olives'). Nothing else.\n"
-            f"Input: {user_input}"
-        )
-        response = llm.invoke([SystemMessage(content=prompt)]).content.strip().lower()
-        return response if response else "general"
-    except Exception as e:
-        print(f"[Crop Detection Error] {e}")
-        return "general"
+    """Instantly detects crops using keyword matching for speed."""
+    text = user_input.lower()
+    crops = ["tomate", "pomegranate", "grenade", "date", "olive", "apple", "pomme", "citron", "henna"]
+    for c in crops:
+        if c in text:
+            # Normalize to English names favored by the database
+            if c in ["tomate", "tomates"]: return "tomatoes"
+            if c in ["grenade", "grenades", "pomegranate"]: return "pomegranates"
+            if c in ["pomme", "apples"]: return "apples"
+            return c
+    return "general"
 
 
 def get_nearest_pollution(lat: float, lng: float) -> float:
@@ -139,50 +145,37 @@ class AgentState(TypedDict):
 def node_greeting(state: AgentState) -> AgentState:
     state["response"] = (
         "Hello! 🌿 I am your Gabes Agriculture Assistant.\n\n"
-        "I can help you:\n"
-        "• Assess if a location is suitable for farming\n"
-        "• Recommend the best crops for your area\n"
-        "• Explain **why** certain crops thrive based on soil, water, and pollution data\n"
-        "• Suggest companion plants and alternatives\n\n"
-        "To get started, please share your location (click 'Use my location' or select a point on the map)."
+        "I can help you find the **perfect spot** to start your farm or garden in Gabès.\n\n"
+        "**You can just ask me:**\n"
+        "• \"I want to plant **pomegranates**, where is the best place?\"\n"
+        "• \"What crops are safest to grow near the city center?\"\n"
+        "• \"Where in Gabès should I plant **date palms**?\"\n\n"
+        "Tell me what you'd like to plant, or share your location to analyze a specific field!"
     )
     state["current_state"] = "LOCATION"
     return state
 
 
 def node_location(state: AgentState) -> AgentState:
+    # If coordinates are provided, we calculate risk and move to analysis
     if state.get("lat") and state.get("lng"):
         risk = get_nearest_pollution(state["lat"], state["lng"])
         state["pollution_risk"] = risk
-
-        if risk > 60:
-            risk_msg = (
-                f"⚠️ **High industrial pollution detected** (Risk Score: {int(risk)}/100).\n"
-                "This level of contamination can affect soil chemistry and water quality, "
-                "making sensitive crops risky. I'll factor this into my recommendations."
-            )
-        elif risk > 30:
-            risk_msg = (
-                f"🟡 **Moderate industrial activity nearby** (Risk Score: {int(risk)}/100).\n"
-                "Many hardy crops can still thrive here with proper soil management."
-            )
-        else:
-            risk_msg = (
-                f"✅ **Low pollution levels** (Risk Score: {int(risk)}/100).\n"
-                "This area looks promising for high-quality agriculture!"
-            )
-
-        state["response"] = (
-            f"{risk_msg}\n\n"
-            "**What crop or plant would you like to grow here?**\n"
-            "_(e.g., apples, dates, pomegranates, olives, tomatoes — or just ask 'what can I plant here?')_"
-        )
         state["current_state"] = "CROP_SELECTION"
-    else:
-        state["response"] = (
-            "📍 Please click **'Use my location'** or select a point on the map "
-            "so I can analyze the agricultural potential of your area."
-        )
+        return state
+        
+    # If no coordinates, but user mentioned a crop, jump to analysis (Discovery Mode)
+    msg = state.get("message", "").lower()
+    if any(k in msg for k in ["plant", "grow", "cultiv", "best", "where", "lieu", "endroit", "how", "comment"]):
+        state["current_state"] = "CROP_SELECTION"
+        return node_analysis(state) # Process immediately in the same turn
+
+    # Otherwise, stay in location state
+    state["response"] = (
+        "📍 To start, you can either:\n"
+        "1. Tell me **what you want to plant** (e.g., 'I want to grow olives').\n"
+        "2. **Select a location** on the map to analyze a specific area."
+    )
     return state
 
 
@@ -271,108 +264,77 @@ def node_analysis(state: AgentState) -> AgentState:
     crop = detect_crop(msg)
     state["crop"] = crop
 
+    # Handle greetings or off-topic directly if no crop detected
+    if not crop and len(msg) < 30:
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5)
+        response = llm.invoke([
+            SystemMessage(content="You are a friendly Gabes Agriculture Assistant. The user just greeted you. Welcome them and ask what they want to plant in Gabes."),
+            HumanMessage(content=msg)
+        ]).content
+        state["response"] = response
+        return state
+
     pollution_risk = state.get("pollution_risk", 0.0)
     lat = state.get("lat")
     lng = state.get("lng")
+    
+    # --- Discovery Mode: No specific location selected ---
+    is_discovery_mode = lat is None or lng is None
+    environmental_context = ""
+    # --- PARALLEL EXECUTION: RAG + ENVIRONMENTAL ---
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        # Start both tasks at the same time
+        future_rag = executor.submit(search_qdrant, f"{crop} Gabes", 3)
+        future_env = executor.submit(get_risk_map_data) if is_discovery_mode else None
+        
+        # Wait for RAG (Critical)
+        try:
+            results = future_rag.result(timeout=10)
+            if results:
+                rag_context = "".join([f"[{r['source']}]\n{r['text']}\n" for r in results])
+        except Exception as e:
+            print(f"[RAG ERROR]: {e}")
 
-    # --- Build RAG context ---
-    rag_context = ""
-    rag_error = None
+        # Wait for ENV
+        if future_env:
+            try:
+                all_zones = future_env.result(timeout=5)
+                environmental_context = "### Gabes Zones\n" + "\n".join([f"- {z['label']}: {int(z['riskScore'])}/100" for z in all_zones])
+            except:
+                environmental_context = "Environmental data unavailable."
 
-    query = (
-        f"best areas for growing {crop} in Gabes Tunisia, "
-        f"soil requirements, water needs, companion plants, pollution tolerance"
-    )
+    location_info = f"Farmer's coordinates: {lat:.4f}°N, {lng:.4f}°E." if lat and lng else "User is in 'Discovery Mode' (searching for best location in Gabès)."
 
-    try:
-        chunks = search_qdrant(query, limit=4)
-        if chunks:
-            rag_context = "\n\n---\n\n".join(chunks)
-            print(f"[RAG] Retrieved {len(chunks)} chunks for crop='{crop}'")
-        else:
-            rag_error = "No relevant documents found in the knowledge base for this query."
-            print(f"[RAG] {rag_error}")
-    except Exception as e:
-        rag_error = str(e)
-        print(f"[RAG Error] {traceback.format_exc()}")
+    system_prompt = f"""You are a professional Gabès Agricultural Assistant.
+Provide a clear, friendly crop analysis in the user's language.
 
-    # --- Build LLM prompt ---
-    location_info = ""
-    if lat and lng:
-        location_info = f"Farmer's coordinates: {lat:.4f}°N, {lng:.4f}°E (Gabes region, Tunisia)."
-
-    pollution_context = (
-        f"Industrial risk score at this location: **{int(pollution_risk)}/100**.\n"
-        + (
-            "This is HIGH — heavy metals and chemical runoff are a concern."
-            if pollution_risk > 60
-            else "This is MODERATE — manageable with good practices."
-            if pollution_risk > 30
-            else "This is LOW — suitable for most crops."
-        )
-    )
-
-    if rag_context:
-        knowledge_section = f"""
-## Knowledge Base Context
-The following documents from the Gabes agricultural knowledge base are relevant:
-
-{rag_context}
-"""
-    else:
-        knowledge_section = (
-            f"\n## Knowledge Base\nNote: {rag_error or 'No documents retrieved.'} "
-            "Rely on your expert knowledge of the Gabes region.\n"
-        )
-
-    system_prompt = f"""You are an expert agricultural advisor specializing in the Gabes governorate of Tunisia.
-Your role is to give **explainable, location-specific farming recommendations**.
-
+## CONTEXT
 {location_info}
-{pollution_context}
-{knowledge_section}
+{environmental_context}
 
-## Your Task
-The farmer is asking about growing **{crop}** (or what to plant if 'general').
+## DATA (Citations required)
+{rag_context if rag_context else 'No local documents found.'}
 
-Provide a structured response with these sections:
-
-### 🌍 Location Assessment
-Explain what the pollution risk score means for this specific location and crop.
-
-### 🌱 Can You Plant {crop.title()} Here?
-Give a clear YES / PARTIAL / NO answer with reasoning.
-- What are the soil, water, and climate requirements for {crop}?
-- Does this location meet those requirements given the risk score?
-- What are the main risks or advantages?
-
-### 📍 Best Areas in Gabes for {crop.title()}
-Name specific zones/delegations in Gabes (e.g., Chenini, Mareth, El Hamma, Matmata, Nouvelle Matmata, Ghannouche, Oued Laachèche oasis) and explain WHY each is suitable or not.
-
-### 🌿 Companion & Alternative Plants
-- List 3-5 plants that grow well alongside {crop} and explain the synergy.
-- If the location is risky (score > 60), suggest 3 more pollution-tolerant alternatives.
-
-### ✅ Practical Recommendations
-- Soil preparation steps specific to this risk level.
-- Irrigation advice for the Gabes climate.
-- Any certifications or precautions if pollution is high.
-
-Be specific. Use the knowledge base documents when relevant. Always explain your reasoning."""
+## OUTPUT
+1. If 'Discovery Mode', rank top 3 spots based on Pollution vs Fertility.
+2. Be specific/encouraging 🌿.
+3. Use bold text/bullets for mobile readability.
+4. Include 'Sources' section at the end with doc names.
+"""
 
     try:
-        # Note: request_timeout is NOT a valid ChatOpenAI param in newer LangChain.
-        # Use timeout= inside the client or set OPENAI_REQUEST_TIMEOUT env var instead.
+        # Configuration for LangSmith tracing
+        config = {"tags": ["agriculture_agent", "discovery_mode" if is_discovery_mode else "pinned_location"]}
+        
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
-        response = llm.invoke([SystemMessage(content=system_prompt)]).content.strip()
+        # Single pass: Analysis + Formatting in one call
+        response = llm.invoke([SystemMessage(content=system_prompt)], config=config).content.strip()
         state["response"] = response
     except Exception as e:
-        # Print full traceback so you can see the real error in your server logs
-        print(f"[LLM Analysis Error — FULL TRACEBACK]:\n{traceback.format_exc()}")
-        # Build a rich fallback using only built-in knowledge (no LLM needed)
+        print(f"[LLM Analysis Error]: {traceback.format_exc()}")
         state["response"] = _fallback_analysis(crop, pollution_risk, lat, lng)
 
-    # Stay in conversational loop — allow follow-up questions
+    # Stay in conversational loop
     state["current_state"] = "CROP_SELECTION"
     return state
 
@@ -432,40 +394,16 @@ Respond ONLY with the translated/formatted report."""
 
 
 # =====================================================================
-# ROUTING
-# =====================================================================
-
-def route_state(state: AgentState) -> str:
-    s = state.get("current_state", "GREETING")
-    if s not in ("GREETING", "LOCATION", "CROP_SELECTION"):
-        return "GREETING"
-    return s
-
-
-# =====================================================================
 # GRAPH ASSEMBLY
 # =====================================================================
 
 builder = StateGraph(AgentState)
 
-builder.add_node("GREETING", node_greeting)
-builder.add_node("LOCATION", node_location)
-builder.add_node("CROP_SELECTION", node_analysis)
-builder.add_node("LLM_FORMATTER", node_llm_formatter)
+# Single-node architecture for speed and simplicity
+builder.add_node("AGRICULTURE_ASSISTANT", node_analysis)
 
-builder.set_conditional_entry_point(
-    route_state,
-    {
-        "GREETING": "GREETING",
-        "LOCATION": "LOCATION",
-        "CROP_SELECTION": "CROP_SELECTION",
-    },
-)
-
-builder.add_edge("GREETING", "LLM_FORMATTER")
-builder.add_edge("LOCATION", "LLM_FORMATTER")
-builder.add_edge("CROP_SELECTION", "LLM_FORMATTER")
-builder.add_edge("LLM_FORMATTER", END)
+builder.add_edge(START, "AGRICULTURE_ASSISTANT")
+builder.add_edge("AGRICULTURE_ASSISTANT", END)
 
 agriculture_graph = builder.compile()
 
@@ -477,7 +415,7 @@ _SESSIONS: Dict[str, AgentState] = {}
 
 DISCLAIMER = (
     "\n\n---\n"
-    "*🌾 This assistant provides guidance based on available environmental data "
+    "🌾 **[GABES-AGRI-v2]** *This assistant provides guidance based on available environmental data "
     "and does not replace professional agronomic or soil testing advice.*"
 )
 
@@ -502,7 +440,7 @@ def process_agriculture_message(
             history=[],
             lat=lat,
             lng=lng,
-            current_state="GREETING",
+            current_state="AGRICULTURE_ASSISTANT",
             pollution_risk=0.0,
             crop="",
             response="",

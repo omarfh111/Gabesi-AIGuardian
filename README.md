@@ -16,11 +16,11 @@ This platform performs two critical pipelines:
 5. **Displays** all filtered zones dynamically on a custom Leaflet map dashboard.
 
 ### 2. Agriculture Decision Pipeline (The Assistant)
-1. **User Interaction**: Farmer accesses a glassmorphism floating chat widget.
-2. **Location Risk Contexting**: Widget auto-detects or allows map-clicking to cross-reference the farm location with the nearest industrial pollution facilities and calculates a soil/air risk score. The assistant updates dynamically whenever a new location is selected.
-3. **Intent Detection**: The Chatbot uses a lightweight LLM router to strictly classify the agricultural intent (e.g., target crop suitability, companion planting).
-4. **RAG Extraction**: The Agent queries a high-speed vector database (**Qdrant** - `gabes knowledge` collection) containing embedded agricultural protocols to extract exact planting, soil, and water procedures without hallucination.
-5. **Smart Scoring & Fallbacks**: Calculates an industrial risk score (out of 100). If the RAG/LLM connection fails, it falls back to a robust built-in library of Gabesi agricultural rules tailored to the pollution score.
+1. **User Interaction**: Farmer interacts via a floating glassmorphism chat widget.
+2. **Fast Discovery Mode**: Users can skip location input and ask: *"Where can I plant [Crop]?"*. The assistant performs a global scan of the 23 Gabès industrial/agricultural zones.
+3. **Multi-Source Decision Matrix**: The assistant cross-references real-time **Pollution Risk Scores** with historical **Soil Fertility** extracted from the Knowledge Base to rank the top 3 optimal planting sites.
+4. **Single-Pass RAG Engine**: Optimized for performance (3x faster). A single AI turn performs semantic retrieval from **Qdrant** (`gabes_knowledge` collection), environmental analysis, and localized response formatting.
+5. **Traceable Intelligence**: Every recommendation includes a **Source Citation** section, proving which documents (via `doc_name`) were used for the advice, preventing AI "bluffing."
 
 ---
 
@@ -43,9 +43,8 @@ This platform performs two critical pipelines:
 - **Agent 2 (Verification)**: Validates bounds against the Gabès governorate.
 
 ### Agriculture Decision Agents (LangGraph)
-- **Node: Detection**: Translates natural phrases ("Where can I grow apples?") into standard target crops.
-- **Node: RAG Query / Analysis**: `search_qdrant` interface to extract soil/water protocols based on crop choice, merging physical location distance from toxic sites.
-- **Node: LLM Formatter**: Wraps static steps and risk alerts into multi-lingual, accessible messages keeping technical guidelines intact and translating them to the user's spoken language.
+- **Node: Detection (LOCATION)**: Identifies if the user is providing a location or asking a discovery question. Intelligently routes bypasses to ensure zero-turn answering.
+- **Node: Single-Pass RAG (CROP_SELECTION)**: The core engine. Performs semantic retrieval from `gabes_knowledge`, analyzes pollution/fertility tradeoffs, and generates a formatted, cited response in the user's native language.
 
 ---
 
@@ -110,9 +109,9 @@ cp .env.example .env
 ## 🚀 Execution
 
 ### 1. Vector DB Ingestion (One-time)
-If this is a fresh setup, you must ingest the agricultural PDFs/documents into Qdrant first.
+If this is a fresh setup, drop your PDFs into `data/agriculture_docs/` and run:
 ```bash
-python scriptinjection/inject_data.py
+python data_injector.py
 ```
 
 ### 2. Start the Server

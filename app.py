@@ -1,5 +1,5 @@
 """
-Gabes Map Backend Server
+Gabes Map Backend Server — FastAPI Version
 
 A backend service that:
 1. Takes a search query for locations in Gabes, Tunisia
@@ -14,15 +14,20 @@ import os
 import sys
 import time
 from datetime import datetime
+from typing import Optional, List
 
 # Fix Windows console encoding
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
+from fastapi import FastAPI, Request, HTTPException, status
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from dotenv import load_dotenv
+load_dotenv()
 
 from services.serpapi_service import search_location
 from services.openai_service import classify_location
@@ -39,35 +44,40 @@ from services.analysis_agent import analyze_zone
 from services.emergency_agent import process_assistant_message
 from services.agriculture_agent import process_agriculture_message
 
-load_dotenv()
+app = FastAPI(title="Gabesi AIGuardian API")
 
-app = Flask(__name__, static_folder='frontend', static_url_path='')
-CORS(app)
+# Setup CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
+# ── Models ──
+class SearchQuery(BaseModel):
+    query: str
 
-# ─────────────────────────────────────────────
-# Serve Frontend
-# ─────────────────────────────────────────────
-@app.route('/')
-def serve_frontend():
-    return send_from_directory('frontend', 'index.html')
+class AnalyzeRequest(BaseModel):
+    facility: str
+    zoneType: str = "industrial"
 
+class ChatRequest(BaseModel):
+    session_id: str = "default_session"
+    message: str = ""
+    lat: Optional[float] = None
+    lng: Optional[float] = None
 
-# ─────────────────────────────────────────────
-# POST /search-location
-# ─────────────────────────────────────────────
-@app.route('/search-location', methods=['POST'])
-def search_location_endpoint():
+# ── Endpoints ──
+
+@app.post("/search-location")
+async def search_location_endpoint(request: SearchQuery):
     try:
-        data = request.get_json()
+        trimmed_query = request.query.strip().lower()
+        if not trimmed_query:
+            raise HTTPException(status_code=400, detail='Missing or invalid "query"')
 
-        if not data or 'query' not in data or not data['query'].strip():
-            return jsonify({
-                'valid': False,
-                'error': 'Missing or invalid "query" in request body.'
-            }), 400
-
-        trimmed_query = data['query'].strip().lower()
         start_time = time.time()
 
         # ── Step 1: Check SerpAPI cache first ──
@@ -85,10 +95,7 @@ def search_location_endpoint():
 
             if not location_result:
                 add_log('search', trimmed_query, 'failed', 'No results found on SerpAPI')
-                return jsonify({
-                    'valid': False,
-                    'error': 'No results found on SerpAPI for this query.'
-                }), 404
+                raise HTTPException(status_code=404, detail='No results found for this query.')
 
             # Cache the SerpAPI result
             cache[trimmed_query] = location_result
@@ -106,15 +113,15 @@ def search_location_endpoint():
             print(f'[DUPLICATE] Location ({lat}, {lng}) already exists.')
             add_log('duplicate', trimmed_query, 'rejected',
                      f'Coordinates ({lat}, {lng}) too close to existing location')
-            return jsonify({
+            return JSONResponse(status_code=409, content={
                 'valid': False,
                 'error': 'Duplicate location - coordinates already stored.',
                 'name': name,
                 'lat': lat,
                 'lng': lng
-            }), 409
+            })
 
-        # ── Step 3: AI classification + zone + verification ──
+        # ── Step 3: AI classification ──
         print(f'[OPENAI] Classifying "{name}"...')
         classification = classify_location(name, trimmed_query)
         category = classification['category']
@@ -122,18 +129,17 @@ def search_location_endpoint():
         verified = classification.get('verified', True)
         corrected_name = classification.get('correctedName', name)
 
-        # Reject if AI says location is not in Gabes
         if not verified:
             print(f'[REJECTED] "{name}" - not verified as Gabes location')
             add_log('verification', trimmed_query, 'rejected',
                      f'{name} - not verified as Gabes location')
-            return jsonify({
+            return JSONResponse(status_code=422, content={
                 'valid': False,
                 'error': f'Location "{name}" could not be verified as being in Gabes region.',
                 'name': name,
                 'lat': lat,
                 'lng': lng
-            }), 422
+            })
 
         elapsed = round(time.time() - start_time, 2)
 
@@ -160,7 +166,7 @@ def search_location_endpoint():
                 f'{name} -> {category} / {zone}',
                 elapsed=elapsed, cache_hit=cache_hit)
 
-        return jsonify({
+        return {
             'valid': True,
             'category': category,
             'zone': zone,
@@ -168,86 +174,64 @@ def search_location_endpoint():
             'lat': lat,
             'lng': lng,
             'elapsed': elapsed
-        }), 201
+        }
 
+    except HTTPException as he:
+        raise he
     except Exception as e:
         print(f'[ERROR] /search-location: {e}')
-        add_log('search', data.get('query', '?') if data else '?', 'error', str(e))
-        return jsonify({
-            'valid': False,
-            'error': str(e)
-        }), 500
+        add_log('search', request.query, 'error', str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-# ─────────────────────────────────────────────
-# GET /locations
-# ─────────────────────────────────────────────
-@app.route('/locations', methods=['GET'])
-def get_locations():
+@app.get("/locations")
+async def get_locations(category: Optional[str] = None, zone: Optional[str] = None):
     try:
         locations = load_locations()
-
-        # Optional filters
-        category = request.args.get('category')
-        zone = request.args.get('zone')
-
         if category:
             locations = [l for l in locations if l.get('category') == category.lower()]
         if zone:
             locations = [l for l in locations if l.get('zone') == zone.lower()]
 
-        return jsonify({
+        return {
             'count': len(locations),
             'locations': locations
-        })
-
+        }
     except Exception as e:
         print(f'[ERROR] /locations: {e}')
-        return jsonify({'error': 'Failed to load locations.'}), 500
+        raise HTTPException(status_code=500, detail='Failed to load locations.')
 
-
-# ─────────────────────────────────────────────
-# DELETE /locations/<id>
-# ─────────────────────────────────────────────
-@app.route('/locations/<int:loc_id>', methods=['DELETE'])
-def delete_location(loc_id):
+@app.delete("/locations/{loc_id}")
+async def delete_location(loc_id: int):
     try:
         locations = load_locations()
         original_count = len(locations)
         locations = [loc for loc in locations if loc.get('id') != loc_id]
 
         if len(locations) == original_count:
-            return jsonify({'error': 'Location not found.'}), 404
+            raise HTTPException(status_code=404, detail='Location not found.')
 
         save_locations(locations)
         add_log('delete', str(loc_id), 'success', 'Location deleted')
-        return jsonify({
+        return {
             'message': 'Location deleted.',
             'remaining': len(locations)
-        })
-
+        }
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        print(f'[ERROR] /locations/<id>: {e}')
-        return jsonify({'error': 'Failed to delete location.'}), 500
+        print(f'[ERROR] /locations/{loc_id}: {e}')
+        raise HTTPException(status_code=500, detail='Failed to delete location.')
 
-
-# ─────────────────────────────────────────────
-# GET /logs
-# ─────────────────────────────────────────────
-@app.route('/logs', methods=['GET'])
-def get_logs():
+@app.get("/logs")
+async def get_logs_endpoint():
     try:
         logs = load_logs()
-        return jsonify({'count': len(logs), 'logs': logs})
+        return {'count': len(logs), 'logs': logs}
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-# ─────────────────────────────────────────────
-# GET /stats
-# ─────────────────────────────────────────────
-@app.route('/stats', methods=['GET'])
-def get_stats():
+@app.get("/stats")
+async def get_stats():
     try:
         locations = load_locations()
         categories = {}
@@ -258,51 +242,34 @@ def get_stats():
             categories[cat] = categories.get(cat, 0) + 1
             zones[z] = zones.get(z, 0) + 1
 
-        return jsonify({
+        return {
             'total': len(locations),
             'categories': categories,
             'zones': zones
-        })
+        }
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-# ─────────────────────────────────────────────
-# DELETE /locations (reset all)
-# ─────────────────────────────────────────────
-@app.route('/locations/reset', methods=['POST'])
-def reset_locations():
+@app.post("/locations/reset")
+async def reset_locations():
     try:
         save_locations([])
         add_log('reset', 'all', 'success', 'All locations cleared')
-        return jsonify({'message': 'All locations cleared.'})
+        return {'message': 'All locations cleared.'}
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-# ─────────────────────────────────────────────
-# GET /health
-# ─────────────────────────────────────────────
-@app.route('/health', methods=['GET'])
-def health_check():
-    return jsonify({
+@app.get("/health")
+async def health_check():
+    return {
         'status': 'ok',
         'serpapi': bool(os.getenv('SERPAPI_KEY')),
         'openai': bool(os.getenv('OPENAI_API_KEY')),
         'timestamp': datetime.now().isoformat()
-    })
+    }
 
-
-# ══════════════════════════════════════════════
-# NEW: Environmental Intelligence Endpoints
-# ══════════════════════════════════════════════
-
-
-# ─────────────────────────────────────────────
-# GET /emissions — All facilities emission data
-# ─────────────────────────────────────────────
-@app.route('/emissions', methods=['GET'])
-def get_emissions():
+@app.get("/emissions")
+async def get_emissions():
     try:
         facilities = load_all_facilities()
         results = []
@@ -325,24 +292,20 @@ def get_emissions():
                 'riskLabel': risk_info['label'],
                 'riskColor': risk_info['color']
             })
-        return jsonify({
+        return {
             'count': len(results),
             'facilities': results
-        })
+        }
     except Exception as e:
         print(f'[ERROR] /emissions: {e}')
-        return jsonify({'error': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-# ─────────────────────────────────────────────
-# GET /emissions/<facility_key> — Single facility
-# ─────────────────────────────────────────────
-@app.route('/emissions/<facility_key>', methods=['GET'])
-def get_facility_emissions(facility_key):
+@app.get("/emissions/{facility_key}")
+async def get_facility_emissions(facility_key: str):
     try:
         data = load_facility_data(facility_key)
         if not data:
-            return jsonify({'error': f'Facility "{facility_key}" not found.'}), 404
+            raise HTTPException(status_code=404, detail=f'Facility "{facility_key}" not found.')
 
         risk_score = compute_risk_score(data)
         risk_info = get_risk_level(risk_score)
@@ -351,143 +314,79 @@ def get_facility_emissions(facility_key):
         data['riskLabel'] = risk_info['label']
         data['riskColor'] = risk_info['color']
 
-        return jsonify(data)
+        return data
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        print(f'[ERROR] /emissions/<key>: {e}')
-        return jsonify({'error': str(e)}), 500
+        print(f'[ERROR] /emissions/{facility_key}: {e}')
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-# ─────────────────────────────────────────────
-# GET /risk-map — Data for pollution map circles
-# ─────────────────────────────────────────────
-@app.route('/risk-map', methods=['GET'])
-def get_risk_map():
+@app.get("/risk-map")
+async def get_risk_map():
     try:
         circles = get_risk_map_data()
-        return jsonify({
+        return {
             'count': len(circles),
             'circles': circles
-        })
+        }
     except Exception as e:
         print(f'[ERROR] /risk-map: {e}')
-        return jsonify({'error': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-# ─────────────────────────────────────────────
-# POST /analyze-zone — AI analysis of a zone
-# ─────────────────────────────────────────────
-@app.route('/analyze-zone', methods=['POST'])
-def analyze_zone_endpoint():
+@app.post("/analyze-zone")
+async def analyze_zone_endpoint(request: AnalyzeRequest):
     try:
-        data = request.get_json()
-
-        if not data or 'facility' not in data:
-            return jsonify({'error': 'Missing "facility" key in request body.'}), 400
-
-        facility_key = data['facility']
-        zone_type = data.get('zoneType', 'industrial')
-
-        facility_data = load_facility_data(facility_key)
+        facility_data = load_facility_data(request.facility)
         if not facility_data:
-            return jsonify({'error': f'Facility "{facility_key}" not found.'}), 404
+            raise HTTPException(status_code=404, detail=f'Facility "{request.facility}" not found.')
 
         start_time = time.time()
-        result = analyze_zone(facility_data, zone_type)
+        result = analyze_zone(facility_data, request.zoneType)
         elapsed = round(time.time() - start_time, 2)
 
         result['elapsed'] = elapsed
-        add_log('ai_analysis', facility_key, 'success',
+        add_log('ai_analysis', request.facility, 'success',
                 f'AI analysis completed in {elapsed}s', elapsed=elapsed)
 
-        return jsonify(result)
-
+        return result
+    except HTTPException as he:
+        raise he
     except Exception as e:
         print(f'[ERROR] /analyze-zone: {e}')
-        return jsonify({'error': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-# ─────────────────────────────────────────────
-# GET /overview — Dashboard overview data
-# ─────────────────────────────────────────────
-@app.route('/overview', methods=['GET'])
-def get_overview():
+@app.get("/overview")
+async def get_overview():
     try:
         overview = get_overview_data()
-        return jsonify(overview)
+        return overview
     except Exception as e:
         print(f'[ERROR] /overview: {e}')
-        return jsonify({'error': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-# ─────────────────────────────────────────────
-# POST /api/assistant/chat — Emergency Assistant
-# ─────────────────────────────────────────────
-@app.route('/api/assistant/chat', methods=['POST'])
-def assistant_chat():
+@app.post("/api/assistant/chat")
+async def assistant_chat(request: ChatRequest):
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'Missing payload'}), 400
-            
-        session_id = data.get('session_id', 'default_session')
-        message = data.get('message', '')
-        lat = data.get('lat')
-        lng = data.get('lng')
-        
-        result = process_assistant_message(session_id, message, lat, lng)
-        return jsonify(result)
+        result = process_assistant_message(request.session_id, request.message, request.lat, request.lng)
+        return result
     except Exception as e:
         print(f'[ERROR] /api/assistant/chat: {e}')
-        return jsonify({'error': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-# ─────────────────────────────────────────────
-# POST /api/agriculture/chat — Agriculture Assistant
-# ─────────────────────────────────────────────
-@app.route('/api/agriculture/chat', methods=['POST'])
-def agriculture_chat():
+@app.post("/api/agriculture/chat")
+async def agriculture_chat(request: ChatRequest):
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'Missing payload'}), 400
-            
-        session_id = data.get('session_id', 'agri_session')
-        message = data.get('message', '')
-        lat = data.get('lat')
-        lng = data.get('lng')
-        
-        result = process_agriculture_message(session_id, message, lat, lng)
-        return jsonify(result)
+        result = process_agriculture_message(request.session_id, request.message, request.lat, request.lng)
+        return result
     except Exception as e:
         print(f'[ERROR] /api/agriculture/chat: {e}')
-        return jsonify({'error': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-# ─────────────────────────────────────────────
-# Start server
-# ─────────────────────────────────────────────
+# Mount static files at the end to serve frontend or other assets
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
+
 if __name__ == '__main__':
+    import uvicorn
     port = int(os.getenv('PORT', 3000))
-
-    print(f'\n[*] Gabesi AIGuardian running on http://localhost:{port}')
-    print(f'    ── Existing Endpoints ──')
-    print(f'    POST /search-location  - Search & classify a location')
-    print(f'    GET  /locations         - List all stored locations')
-    print(f'    GET  /logs              - View execution logs')
-    print(f'    GET  /stats             - View statistics')
-    print(f'    GET  /health            - Health check')
-    print(f'    ── Environmental Intelligence ──')
-    print(f'    GET  /emissions         - All facilities CO2 data')
-    print(f'    GET  /emissions/<key>   - Single facility data')
-    print(f'    GET  /risk-map          - Pollution map circles')
-    print(f'    POST /analyze-zone      - AI zone analysis')
-    print(f'    GET  /overview          - Dashboard overview')
-    print(f'    ── AI Assistants ──')
-    print(f'    POST /api/assistant/chat   - Emergency AI Assistant')
-    print(f'    POST /api/agriculture/chat - Agriculture AI Assistant')
-    print(f'    ── Frontend ──')
-    print(f'    GET  /                  - http://localhost:{port}/\n')
-
-    if not os.getenv('SERPAPI_KEY'):
-        print('[!] WARNING: SERPAPI_KEY is not set in .env')
-    if not os.getenv('OPENAI_API_KEY'):
-        print('[!] WARNING: OPENAI_API_KEY is not set in .env')
-
-    app.run(host='0.0.0.0', port=port, debug=True)
+    print(f'\n[*] Gabesi AIGuardian (FastAPI) running on http://localhost:{port}')
+    uvicorn.run(app, host='0.0.0.0', port=port)

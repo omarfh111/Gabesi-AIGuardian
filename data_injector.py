@@ -18,13 +18,14 @@ if not all([QDRANT_URL, QDRANT_API_KEY, OPENAI_API_KEY]):
     print("Error: Missing environment variables (QDRANT_URL, QDRANT_API_KEY, or OPENAI_API_KEY)")
     exit(1)
 
-COLLECTION_NAME = "gabesi_medical_assistant"
-DATA_DIR = r"c:\Users\Omar\Desktop\Gabsi\Gabesi-AIGuardian\data\dataassistantmed"
+COLLECTION_NAME = "gabes_knowledge"
+# We now use a project-relative path for better portability
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "agriculture_docs")
 
 def inject_data():
     # 1. Initialize Qdrant Client
     print(f"Connecting to Qdrant at {QDRANT_URL}...")
-    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY, check_compatibility=False)
 
     # 2. Check/Create Collection
     collections = client.get_collections().collections
@@ -34,7 +35,7 @@ def inject_data():
         print(f"Creating collection '{COLLECTION_NAME}'...")
         client.create_collection(
             collection_name=COLLECTION_NAME,
-            vectors_config=models.VectorParams(size=1536, distance=models.Distance.COSINE),
+            vectors_config=models.VectorParams(size=3072, distance=models.Distance.COSINE),
         )
     else:
         print(f"Collection '{COLLECTION_NAME}' already exists.")
@@ -47,7 +48,7 @@ def inject_data():
 
     print(f"Found {len(pdf_files)} PDF files. Processing...")
 
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
 
     all_chunks = []

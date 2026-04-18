@@ -9,6 +9,8 @@ from langchain_community.vectorstores import Qdrant
 from qdrant_client import QdrantClient
 
 from services.emissions_service import get_risk_map_data
+from dotenv import load_dotenv
+load_dotenv()
 
 # =====================================================================
 # QDRANT SETUP

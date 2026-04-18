@@ -17,6 +17,8 @@ IMPORTANT: No hallucination — agents analyze only the data provided.
 import os
 import json
 from openai import OpenAI
+from dotenv import load_dotenv
+load_dotenv()
 
 # ── Analysis Agent System Prompt ──
 ANALYSIS_PROMPT = """Tu es un expert en analyse environnementale spécialisé dans la zone industrielle de Gabès, Tunisie.

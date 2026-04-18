@@ -1391,6 +1391,26 @@
             maxZoom: 19
         }).addTo(map);
 
+        // ── Gabes Boundary Overlay ──
+        const gabesBounds = [[33.30, 9.30], [34.15, 10.60]];
+        L.rectangle(gabesBounds, {
+            color: "#10b981",
+            weight: 1,
+            fillOpacity: 0.03,
+            dashArray: '5, 10',
+            interactive: false
+        }).addTo(map);
+
+        // Label for the boundary
+        L.marker([34.15, 9.30], {
+            icon: L.divIcon({
+                className: 'bounds-label',
+                html: '<div style="color: #10b981; font-size: 10px; font-weight: 700; background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(16,185,129,0.3); white-space: nowrap;">GABÈS GOVERNORATE LIMITS</div>',
+                iconSize: [200, 20],
+                iconAnchor: [-5, -5]
+            })
+        }).addTo(map);
+
         // ══════════════════════════════════════════
         // CUSTOM MARKER
         // ══════════════════════════════════════════
@@ -2123,16 +2143,7 @@
         const sessionId = 'emg_' + Math.random().toString(36).substr(2, 9);
         let assistantLat = null;
         let assistantLng = null;
-        let emergencyTimer = null;
 
-        function resetEmergencyTimer() {
-            clearTimeout(emergencyTimer);
-            emergencyTimer = setTimeout(triggerAutoAlarm, 60000); // 1 minute
-        }
-
-        function triggerAutoAlarm() {
-            addMessage("🚨 ALERT: High risk detected. Assessing agricultural viability...", "ai");
-        }
 
         function toggleAssistant() {
             const w = document.getElementById('assistantWidget');
@@ -2141,21 +2152,42 @@
                 if (document.getElementById('chatMessages').children.length === 0) {
                     sendToAssistant(""); // Trigger GREETING
                 }
-                resetEmergencyTimer();
+
             } else {
-                clearTimeout(emergencyTimer);
+
                 w.classList.remove('critical-alarm');
                 document.getElementById('assistantRing').classList.remove('critical-alarm-ring');
             }
+        }
+
+        function isInsideGabes(lat, lng) {
+            // Geographic boundaries for Gabes governorate region
+            const GABES_BOUNDS = {
+                minLat: 33.30,
+                maxLat: 34.15,
+                minLng: 9.30,
+                maxLng: 10.60
+            };
+            return lat >= GABES_BOUNDS.minLat && 
+                   lat <= GABES_BOUNDS.maxLat && 
+                   lng >= GABES_BOUNDS.minLng && 
+                   lng <= GABES_BOUNDS.maxLng;
         }
 
         function triggerAutoLocate() {
             addMessage("Getting location...", "user");
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition((pos) => {
-                    assistantLat = pos.coords.latitude;
-                    assistantLng = pos.coords.longitude;
-                    sendToAssistant("Location selected", assistantLat, assistantLng);
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    
+                    if (isInsideGabes(lat, lng)) {
+                        assistantLat = lat;
+                        assistantLng = lng;
+                        sendToAssistant("Location selected", assistantLat, assistantLng);
+                    } else {
+                        addMessage("📡 Your auto-located position (" + lat.toFixed(2) + ", " + lng.toFixed(2) + ") is outside of Gabès. Please use '📍 Select on Map' to pick a point inside the region.", "ai");
+                    }
                 }, (err) => {
                     alert("Location access denied. Please click '📍 Select on Map'.");
                 });
@@ -2164,13 +2196,32 @@
 
         function triggerMapSelect() {
             addMessage("I will click on the map.", "user");
-            addMessage("Please click anywhere on the map...", "ai");
-            map.once('click', function(e) {
-                assistantLat = e.latlng.lat;
-                assistantLng = e.latlng.lng;
-                L.marker([assistantLat, assistantLng]).addTo(map).bindPopup("<b>Agricultural Analysis</b><br>Assistant is analyzing...").openPopup();
-                sendToAssistant("Location selected", assistantLat, assistantLng);
-            });
+            addMessage("Please click anywhere on the map within Gabès region...", "ai");
+            
+            const handleMapClick = (e) => {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+                
+                if (isInsideGabes(lat, lng)) {
+                    assistantLat = lat;
+                    assistantLng = lng;
+                    
+                    // Remove old temporary markers if any
+                    if (window.tempMarker) map.removeLayer(window.tempMarker);
+                    
+                    window.tempMarker = L.marker([assistantLat, assistantLng]).addTo(map)
+                        .bindPopup("<b>Agricultural Analysis</b><br>Assistant is analyzing point: " + lat.toFixed(4) + ", " + lng.toFixed(4))
+                        .openPopup();
+                        
+                    sendToAssistant("Location selected", assistantLat, assistantLng);
+                } else {
+                    addMessage("📍 That point (" + lat.toFixed(2) + ", " + lng.toFixed(2) + ") is outside of Gabès governorate. Please pick a point inside Gabès to continue analysis.", "ai");
+                    // Wait for another click
+                    map.once('click', handleMapClick);
+                }
+            };
+            
+            map.once('click', handleMapClick);
         }
 
         function processQuickReply(text) {
@@ -2186,7 +2237,7 @@
         }
 
         async function sendToAssistant(message, lat=null, lng=null) {
-            resetEmergencyTimer();
+
             if (message && message !== "Location selected") {
                 addMessage(message, "user");
             }
@@ -2252,8 +2303,7 @@
         <div class="chat-messages" id="chatMessages"></div>
         <div class="chat-typing" id="chatTyping">Assistant is analyzing...</div>
         <div class="quick-replies" id="quickReplies">
-            <button class="qr-btn qr-btn-loc" onclick="triggerAutoLocate()">📡 Use my location</button>
-            <button class="qr-btn qr-btn-loc" onclick="triggerMapSelect()">📍 Select on Map</button>
+
             <button class="qr-btn" onclick="processQuickReply('Apples')">Apples</button>
             <button class="qr-btn" onclick="processQuickReply('Pomegranates')">Pomegranates</button>
             <button class="qr-btn" onclick="processQuickReply('Dates')">Dates</button>
