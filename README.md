@@ -1,596 +1,233 @@
-<div align="center">
+# Gabesi AIGuardian: Unified Environmental Intelligence
 
-# 🌿 Gabesi AIGuardian
+![Python 3.12](https://img.shields.io/badge/Python-3.12-blue)
+![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-orange)
+![FastAPI](https://img.shields.io/badge/API-FastAPI_8000-green)
+![Flask](https://img.shields.io/badge/API-Flask_3.1.0_3000-green)
+![Qdrant](https://img.shields.io/badge/VectorDB-Qdrant-red)
+![DeepEval](https://img.shields.io/badge/Testing-DeepEval-blueviolet)
+![Tests](https://img.shields.io/badge/Tests-56_Passing-success)
+![Guardrails](https://img.shields.io/badge/Security-4--Layer_Guardrails-yellow)
+![React](https://img.shields.io/badge/Frontend-React_18-blue)
+![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
-**An agentic AI system that gives Gabès oasis farmers real-time environmental
-intelligence — crop diagnostics, irrigation guidance, and pollution exposure
-tracking — powered by RAG, LangGraph agents, and a grounded scientific
-knowledge base.**
+**Gabesi AIGuardian** is a unified environmental intelligence and emergency response platform designed specifically for the oasis farmers and residents of Gabès, Tunisia. By integrating real-time NASA satellite data, local industrial CO₂ monitoring, and a RAG-powered medical assistant, the system provides mission-critical advisory and life-saving triage in a region heavily impacted by industrial phosphate processing.
 
-[![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)](https://python.org)
-[![LangGraph](https://img.shields.io/badge/LangGraph-agentic-purple)](https://github.com/langchain-ai/langgraph)
-[![FastAPI](https://img.shields.io/badge/FastAPI-backend-green?logo=fastapi)](https://fastapi.tiangolo.com)
-[![Qdrant](https://img.shields.io/badge/Qdrant-vector_db-red)](https://qdrant.tech)
-[![DeepEval](https://img.shields.io/badge/DeepEval-evaluation-orange)](https://deepeval.com)
-[![Tests](https://img.shields.io/badge/tests-56%20passing-brightgreen)](https://github.com/omarfh111/Gabesi-AIGuardian)
-[![Guardrails](https://img.shields.io/badge/Guardrails-4%20layers-red)](https://github.com/omarfh111/Gabesi-AIGuardian)
-[![React](https://img.shields.io/badge/React-frontend-61dafb?logo=react)](https://github.com/omarfh111/Gabesi-AIGuardian/tree/main/frontend)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+## 1. The Problem
+The Gabès region faces a multi-decadal environmental crisis centered on the **Groupe Chimique Tunisien (GCT)**.
+*   **Phosphogypsum Accumulation**: Over **150 million tonnes** of phosphogypsum have been discharged into the Gulf of Gabès.
+*   **Emission Impact**: Current industrial activity generates an estimated economic burden of **76M TD/year** in health and environmental degradation.
+*   **Agricultural Decline**: Soil acidification and air toxicity (SO₂, NO₂) have significantly reduced the yield of traditional Deglet Nour date palms and pomegranates.
 
-</div>
-
----
-
-## 🌍 The Problem
-
-Gabès, Tunisia is home to the **only coastal oasis in the Mediterranean** — and
-it is being destroyed. The Tunisian Chemical Group (GCT) has discharged over
-150 million tonnes of phosphogypsum into the Gulf since 1972. SO₂, fluoride,
-and heavy metals blanket the oasis zones. Soil salinity rises every year.
-
-The environmental cost: **76 million Tunisian dinars per year**.
-The farmers who bear this cost have **zero access to the data that documents it**.
-
----
-
-## 💡 What Gabesi AIGuardian Does
-
-A farmer opens the app and types: *"Why are my palm trees yellowing?"*
-
-The system automatically:
-1. Classifies the intent — diagnosis, irrigation, pollution question, or report request
-2. Routes to the correct specialized agent
-3. Retrieves grounded evidence from scientific papers, municipal audits, and EU reports
-4. Returns a plain-language response in the farmer's language (Arabic, French, or English)
-5. For pollution events — generates a timestamped PDF dossier the farmer can use as evidence
-
-No other system does this for Gabès.
-
----
-
-## 🏗️ Architecture
+## 2. System Overview
+The platform operates as a unified React ecosystem served by a high-performance dual-backend architecture.
 
 ```mermaid
 graph TD
-    A[Farmer — EN/FR/AR] -->|POST /api/v1/chat| B[FastAPI Backend]
-    B --> C{Intent Router\nGPT-4o-mini}
-    C -->|symptom| D[Diagnosis Agent]
-    C -->|irrigation| E[Irrigation Agent]
-    C -->|pollution question| F[Pollution QA Agent]
-    C -->|report request| G[Pollution Report Agent]
+    subgraph "Frontend (React + Vite)"
+        UI[Unified Dashboard]
+        Map[React-Leaflet Map]
+        Chat[Cyber Chat Console]
+    end
 
-    D --> D1[query_expansion]
-    D1 --> D2[retrieve]
-    D2 --> D3[diagnose]
-    D3 --> D4[verify faithfulness]
-    D4 -->|DiagnosisResponse| B
+    subgraph "Module 1: Farmer Intel (FastAPI :8000)"
+        FA[FastAPI Server]
+        LG1[LangGraph: Farmer Agents]
+        Q1[(Qdrant: gabes_knowledge)]
+        NASA[NASA POWER API]
+    end
 
-    E --> E1[fetch_weather\nNASA POWER]
-    E1 --> E2[compute_ET₀\nPenman-Monteith]
-    E2 --> E3[lookup_Kc\nFAO-56]
-    E3 --> E4[format_advisory]
-    E4 -->|IrrigationResponse| B
+    subgraph "Module 2: Emergency Intel (Flask :3000)"
+        FS[Flask Server]
+        LG2[LangGraph: Emergency States]
+        Q2[(Qdrant: medical_assistant_docs)]
+        Serp[SerpAPI / Google Maps]
+    end
 
-    F --> F1[retrieve RAG]
-    F1 --> F2[calibrate confidence]
-    F2 -->|PollutionQAResponse| B
-
-    G --> G1[fetch air quality\nOpen-Meteo CAMS]
-    G1 --> G2[compute thresholds\nP80/P95]
-    G2 --> G3[classify events]
-    G3 --> G4[annotate RAG]
-    G4 --> G5[generate PDF dossier]
-    G5 -->|PollutionReport + PDF| B
-
-    D2 -->|vector search| KB[(Qdrant\ngabes_knowledge\n1,718 chunks · 21 docs)]
-    F1 -->|vector search| KB
-    G4 -->|vector search| KB
-```
-
-## 🖥️ Demo
-
-| View | What it shows |
-|---|---|
-| **Chat** | Farmer types a symptom → DiagnosisCard with pollution link badge, confidence score, and cited sources |
-| **Chat** | Farmer asks about irrigation → IrrigationCard with daily depth in mm and weather data |
-| **Chat** | Farmer asks about pollution → PollutionQACard with RAG-grounded answer |
-| **Chat** | Farmer requests report → PollutionReportCard with Download PDF button |
-| **Pollution** | Leaflet map centered on GCT (33.9089°N, 10.1256°E) with concentric exposure zone overlays, 30-day event log, SO₂ trend chart |
-| **Irrigation** | Crop selector → real-time FAO-56 ET₀ calculation using NASA POWER weather data |
-
----
-
-## ⚡ Key Capabilities
-
-| Agent | Trigger | Output |
-|---|---|---|
-| **Diagnosis** | Crop symptom description | Grounded diagnosis, pollution link, cited sources |
-| **Irrigation** | Watering question | FAO-56 ET₀ calculation, daily irrigation depth in mm |
-| **Pollution QA** | General pollution question | RAG-grounded answer with confidence calibration |
-| **Pollution Report** | Report/dossier request | Full PDF dossier with event timeline, risk badge, recommendations |
-
-**All agents support Arabic, French, and English.**
-
----
-
-## 🌫️ Pollution Intelligence
-
-The pollution agent transforms regional atmospheric data into farm-level evidence dossiers.
-
-- **Deterministic modeling** — no LLM hallucinations in the risk calculation
-- **Exposure band classification** — near_gct → mid_exposure → lower_exposure → ultra_remote
-- **Rolling percentile thresholds** — P80/P95 over 30-day window (relative background, not WHO absolute)
-- **RAG-grounded annotations** — each pollution event cites peer-reviewed evidence
-- **PDF export** — professional dossier with risk badge, event breakdown, and legal disclaimer
-
----
-
-## 🧠 Why This Is Different
-
-| Property | This system | Generic AI assistant |
-|---|---|---|
-| Pollution attribution | Conditional — only when symptom signals warrant it | Always mentions pollution |
-| Faithfulness | Hard-verified — response rejected if < 50% claims grounded | No check |
-| Pollution modeling | Deterministic P80/P95 thresholds | LLM estimation |
-| Narrative generation | Template-based for legal-sensitive outputs | LLM free-form |
-| Confidence | Explicitly calibrated and communicated | Rarely stated |
-| Domain specificity | Gabès oasis, GCT complex, Deglet Nour palms | Generic agriculture |
-
----
-
-## 🛡️ Security & Guardrails
-
-Every message sent to `/api/v1/chat` passes through a four-layer
-guardrail chain before reaching any agent. The chain executes in
-strict priority order — earlier layers take precedence over later ones.
-
-```mermaid
-graph TD
-    M[Incoming Message] --> G1
-
-    G1{1. Medical Emergency\nPattern Match}
-    G1 -->|Emergency detected| R1[Return 190 number\nEN/FR/AR · 0ms]
-    G1 -->|Clean| G2
-
-    G2{2. Prompt Injection\nPattern Match}
-    G2 -->|Injection detected| R2[Rejection message\nEN/FR/AR · 0ms]
-    G2 -->|Clean| G3
-
-    G3{3. Combined Guardrail\nGPT-4o-mini · ~400ms}
-    G3 -->|Toxic content| R3[Toxic rejection\nEN/FR/AR]
-    G3 -->|Out of scope| R4[Scope rejection\nEN/FR/AR]
-    G3 -->|Clean| G4
-
-    G4{4. Intent Classification\nGPT-4o-mini · ~400ms}
-    G4 --> A[Correct Agent]
-```
-
-### Guardrail Layers
-
-| Layer | Method | Latency | What it catches |
-|---|---|---|---|
-| **Medical Emergency** | Pattern matching EN/FR/AR | 0ms | Chest pain, can't breathe, unconscious — returns 190 |
-| **Prompt Injection** | Pattern matching EN/FR/AR | 0ms | "ignore instructions", "jailbreak", multilingual variants |
-| **Toxicity** | GPT-4o-mini combined call | ~400ms | Harmful requests, weapons, poisoning, dangerous intent |
-| **Scope** | GPT-4o-mini combined call | ~400ms | Questions unrelated to Gabès oasis farming or pollution |
-
-Toxicity and scope are evaluated in a **single LLM call** —
-not two sequential calls — keeping guardrail overhead to ~400ms total.
-
-### Design Decisions
-
-**Fail-open on guardrail errors** — if the LLM guardrail call fails
-for any reason (timeout, API error), the message passes through to
-the intent classifier. A farmer's legitimate question is never
-silently blocked due to a technical failure.
-
-**Medical emergency fires first** — a farmer describing a health
-emergency (dizziness near the factory, chest pain) receives the 190
-emergency number immediately, before any other check runs. This is
-non-negotiable given the industrial context of Gabès.
-
-**Inclusive scope definition** — the scope classifier is tuned to
-allow any question touching farming, soil, water, chemicals, or
-environmental health in an agricultural context. "What does fluoride
-do to my crops?" passes. "Who won the World Cup?" does not.
-
-**Toxicity vs agricultural chemistry** — the toxicity classifier
-explicitly distinguishes harmful intent from legitimate questions
-about dangerous substances. "How do I poison my neighbor's crops?"
-is blocked. "What toxic effects does fluoride have on date palm roots?"
-passes through to the Pollution QA agent.
-
-### Multilingual Coverage
-
-All rejection messages are provided in English, French, and Arabic.
-The system detects the request language and responds in kind.
-
-```json
-{
-  "intent": "unknown",
-  "agent_used": "guardrail",
-  "response": {
-    "message": "If you are experiencing a medical emergency, please
-                contact local emergency services immediately by
-                dialing 190.",
-    "reason": "medical_emergency_detected"
-  }
-}
-```
-
-Possible `reason` values:
-- `medical_emergency_detected` — caller directed to 190
-- `prompt_injection_detected` — injection attempt blocked
-- `toxic_content` — harmful request blocked
-- `out_of_scope` — unrelated question rejected
-
-### LangSmith Observability
-
-Every request produces a single unified trace in LangSmith showing
-the full execution path from guardrails through to agent completion:
-
-```
-route_message (root)
-├── guardrail_medical_check     0ms   pattern match
-├── guardrail_injection_check   0ms   pattern match
-├── guardrail_combined          ~400ms  scope + toxicity
-│   └── ChatOpenAI gpt-4o-mini
-├── intent_classification       ~400ms
-│   └── ChatOpenAI gpt-4o-mini
-└── agent_execution
-    └── [Diagnosis / Irrigation / Pollution agent spans]
-```
-
-When a guardrail fires, the trace ends at that layer — no agent
-is called, no compute is wasted. A blocked request costs ~$0.0002
-vs ~$0.0007 for a full pipeline call.
-
----
-
-## 📂 Project Structure
-
-```
-Gabesi-AIGuardian/
-├── backend/
-│   ├── app/
-│   │   ├── main.py                    # FastAPI, lifespan, CORS
-│   │   ├── config.py                  # Pydantic BaseSettings
-│   │   ├── agents/
-│   │   │   ├── intent_router.py       # GPT-4o-mini classifier → agent dispatch
-│   │   │   ├── diagnosis_agent.py     # query_expansion → retrieve → diagnose → verify
-│   │   │   ├── irrigation_agent.py    # NASA POWER → ET₀ → Kc → advisory
-│   │   │   ├── pollution_agent.py     # Open-Meteo → thresholds → classify → RAG → PDF
-│   │   │   └── pollution_qa_agent.py  # RAG → confidence calibration → answer
-│   │   ├── api/routes.py              # All endpoints
-│   │   ├── models/
-│   │   │   ├── chat.py
-│   │   │   ├── diagnosis.py
-│   │   │   ├── irrigation.py
-│   │   │   ├── pollution.py
-│   │   │   └── pollution_qa.py
-│   │   ├── services/
-│   │   │   └── pdf_generator.py       # Pollution dossier PDF
-│   │   └── rag/retriever.py
-│   ├── tests/                         # 56 tests, 0 failures
-│   └── requirements.txt
-├── frontend/                          # React + Vite farmer-facing UI
-│   ├── src/
-│   │   ├── pages/
-│   │   │   ├── Chat.jsx               # Unified chat — intent-aware response cards
-│   │   │   ├── Pollution.jsx          # Leaflet map + exposure dashboard + PDF download
-│   │   │   └── Irrigation.jsx         # Crop form + FAO-56 advisory result
-│   │   ├── components/
-│   │   │   ├── chat/                  # DiagnosisCard, IrrigationCard,
-│   │   │   │                          # PollutionQACard, PollutionReportCard
-│   │   │   ├── pollution/             # PollutionMap, TrendChart, EventsTable
-│   │   │   └── irrigation/            # CropForm, AdvisoryCard
-│   │   ├── i18n/                      # en.json, fr.json, ar.json
-│   │   └── hooks/                     # useChat, usePollution, useIrrigation
-│   └── package.json
-├── data/                              # Gitignored — large corpus files
-│   └── structured/                    # JSON files (committed)
-├── eval_data/                         # Gitignored
-├── eval_results/                      # Gitignored
-├── scripts/
-│   ├── preprocess_docx.py
-│   ├── ingest.py
-│   ├── smoke_test.py
-│   ├── evaluate_retrieval.py
-│   ├── evaluate_diagnosis.py
-│   └── evaluate_irrigation.py
-├── .env.example
-└── README.md
+    UI --> FA
+    UI --> FS
+    FA --> LG1
+    FS --> LG2
+    LG1 --> Q1
+    LG2 --> Q2
 ```
 
 ---
 
-## 🚀 Setup
+## 3. Module 1: Gabesi AIGuardian (Farmer Intelligence)
+The primary intelligence module for agricultural resilience and pollution attribution.
 
-### Prerequisites
+*   **Agents**: 4-agent LangGraph system (`diagnosis`, `irrigation`, `pollution`, `pollution_qa`).
+*   **LLM Engine**: `gpt-4o-mini` for all reasoning and tool orchestration.
+*   **Vector Search**: `text-embedding-3-large` (1536 dims).
+*   **RAG Infrastructure**:
+    *   **Collections**:
+        *   `gabes_knowledge`: 1718 chunks, 21 docs, 1536-dim (Core agricultural and environmental documents).
+        *   `farmer_context`: 3072-dim zero-vector placeholder, runtime pollution event log.
+        *   `satellite_timeseries`: Empty, reserved for future geospatial embeddings.
+    *   **Chunker**: Chonkie SemanticChunker (Hybrid: Dense + Sparse BM25/IDF).
+*   **Irrigation Engine**:
+    *   **Math**: FAO-56 Penman-Monteith methodology.
+    *   **Fallback**: Hargreaves-Samani estimation when `ALLSKY_SFC_SW_DWN` = -999.
+    *   **Lookback**: 14-day NASA POWER historical weather data (T2M_MAX/T2M_MIN/ALLSKY_SFC_SW_DWN/WS2M/RH2M).
+*   **Pollution Attribution**: 
+    *   **Reference Coords**: GCT Complex at 33.9089°N, 10.1256°E.
+    *   **Relative Thresholds**: Statistical P80/P95 bands based on Open-Meteo CAMS data.
+    *   **Exposure Bands**: `near_gct` (~2km), `mid_exposure` (~5km), `lower_exposure` (~10km), `ultra_remote` (>10km).
+*   **PDF Dossier Generation**:
+    *   **Engine**: `reportlab` (3 pages: Risk Summary, Event Breakdown, Confidence & Limitations).
+    *   **Features**: Risk badge (LOW/MODERATE/HIGH), legal disclaimer on every page.
 
-- Python 3.12
-- [Qdrant Cloud](https://cloud.qdrant.io) account (free tier works)
-- OpenAI API key
+---
 
-### Installation
+## 4. Module 2: Emergency Intel (Triage & Monitoring)
+A rapid-response module for medical emergencies and industrial CO₂ tracking.
 
-```bash
-git clone https://github.com/omarfh111/Gabesi-AIGuardian.git
-cd Gabesi-AIGuardian
+*   **LangGraph Lifecycle**: `GREETING` → `LOCATION` → `SYMPTOMS` → `FOLLOW_UP` → `ESCALATION` → `LLM_FORMATTER`.
+*   **Triage Logic**:
+    *   **Escalation Condition**: `emergency_score >= 80`.
+    *   **Score Formula**: `(symptom_weight × 0.60) + (pollution_risk × 0.25) + (duration_weight × 0.15)`.
+    *   **Symptom Weights**: Deterministic mapping (Chest Pain: 95, Unconscious: 100).
+    *   **Secondary Escalation**: `prolonged=True` when user responds "No/Worse" in `FOLLOW_UP`.
+    *   **Inactivity Alarm**: A 60-second inactivity alarm triggers automatic escalation to emergency services (190).
+*   **Analysis Agent Pipeline**:
+    *   **Agent 1 (Analyst)**: Produces structured JSON (trend, seasonalPattern, complianceStatus).
+    *   **Agent 2 (Strategist)**: Generates prioritized actions (`critique`, `important`, `souhaitable`).
+*   **External APIs**:
+    *   **SerpAPI**: Google Maps engine for geocoding text queries. *Note: SerpAPI is optional — system remains fully functional without it (location search degrades gracefully).*
+    *   **OpenAI**: API provider for LLM and Embeddings.
+*   **Monitoring Data**: Monthly CO₂ timeseries for 12 facilities.
+    *   **Data Files**: `locations.json`, `usine_A_acide.json` through `usine_E_fluor.json`, `saet_power.json`, `ghannouch_gas.json`, `zone_urban_gabes.json`, `zone_agriculture_chenini.json`.
 
-python -m venv .venv
-.venv\Scripts\activate      # Windows
-# source .venv/bin/activate  # Mac/Linux
+---
 
-pip install -r backend/requirements.txt
-```
+## 5. Unified Frontend & Design System
+A premium "Mission Control" interface built for high-stakes environmental monitoring.
 
-### Environment
+*   **Tech Stack**: React + Vite, Tailwind CSS, `react-leaflet`, `recharts`, `i18next`, `framer-motion`.
+*   **Visual Excellence**:
+    *   **Palette**: Deep Navy background (#0a0e1a), Neon Cyan accents, Purple highlights.
+    *   **Glassmorphism**: `.glass-card` utility with backdrop-blur.
+*   **Pages**: `/` (Chat), `/pollution`, `/irrigation`, `/emergency`.
+*   **Languages**: English, French, Arabic with RTL support.
+*   **Emergency Map**: Dynamic circles by risk level, timeline slider, session-based chat.
+*   **Proxy Configuration**: Vite proxies `/risk-map` and `/search-location` to Flask on port 3000. Both backends (FastAPI port 8000, Flask port 3000) run simultaneously.
 
-```bash
-cp .env.example .env
-# Fill in: QDRANT_URL, QDRANT_API_KEY, OPENAI_API_KEY,
-#          LANGCHAIN_API_KEY, LANGCHAIN_PROJECT=Gabes
-```
+---
 
-### Run the Backend
+## 6. Security & Guardrails
+A 4-layer chain protecting the LLM pipeline with ~800ms total latency. LangSmith produces **one unified trace per request**.
 
-```bash
+| Layer | Type | Latency | Purpose |
+| :--- | :--- | :--- | :--- |
+| **1. Medical** | Regex/Pattern | 0ms | Detects medical emergencies (chest pain, can't breathe) and returns the 190 emergency number in the user's language. |
+| **2. Injection** | Pattern | 0ms | Detects prompt-injection attempts. |
+| **3. Safety** | LLM Classifier | ~400ms | Filters toxicity and out-of-scope requests. |
+| **4. Intent** | LLM Classifier | ~400ms | Routes query to correct LangGraph node. |
+
+**Cost per Call:**
+*   Blocked request: ~$0.0002
+*   Full pipeline: ~$0.0007
+
+---
+
+## 7. Evaluation Results
+Validated using **DeepEval** with 68 goldens and 56 mocked unit tests (0 real API calls).
+
+### RAG & Diagnosis Performance
+| Metric | Value | Success Rate | Notes |
+| :--- | :--- | :--- | :--- |
+| **Contextual Recall** | 0.9512 | 98.33% | 68 goldens |
+| **Contextual Relevancy** | 0.4395 | 41.67% | Known artifact: multi-topic chunks avg 841 chars |
+| **Faithfulness** | 0.9667 | 100% | 16 inputs |
+| **Answer Relevancy** | 0.9115 | 100% | |
+| **Pollution Link Accuracy**| 1.0000 | 100% | 16/16 |
+
+### Irrigation Engine Accuracy
+| Metric | Value | Success Rate |
+| :--- | :--- | :--- |
+| **Kc Lookup Accuracy** | 1.000 | 100% |
+| **ETc Math Accuracy** | 1.000 | 100% |
+| **GEval (Conversational)** | 0.883 | 100% |
+| **No Jargon Violation** | 1.000 | 100% |
+
+---
+
+## 8. API Reference
+
+| Method | Endpoint | Request Shape | Response Shape |
+| :--- | :--- | :--- | :--- |
+| **POST** | `/api/v1/chat` | `{"message": "str (min 3, max 2000)", "farmer_id": "str|null", "plot_id": "str|null", "language": "en|fr|ar", "crop_type": "date_palm|pomegranate|fig|olive|vegetables", "growth_stage": "initial|mid|end"}` | `{"response": "str", "state": "str"}` |
+| **POST** | `/api/v1/diagnosis` | `{"symptom_description": "str (min 10, max 1000)", "language": "en|fr|ar", "farmer_id": "str|null", "plot_id": "str|null"}` | `{"diagnosis": "str", "confidence": float}` |
+| **POST** | `/api/v1/irrigation` | `{"crop_type": "date_palm|pomegranate|fig|olive|vegetables", "growth_stage": "initial|mid|end", "language": "en|fr|ar", "farmer_id": "str|null", "plot_id": "str|null"}` | `{"irrigation_depth_mm": float, "et0_mm_day": float, "kc": float, "weather": {...}}` |
+| **POST** | `/api/v1/pollution/report` | `{"farmer_id": "str", "plot_id": "str", "language": "en|fr|ar", "window_days": 30}` | `{"events": [...], "risk_level": "str"}` |
+| **POST** | `/api/v1/pollution/dossier` | same as /pollution/report, returns application/pdf | PDF binary stream |
+| **POST** | `/api/v1/pollution/qa` | `{"question": "str (min 10)", "language": "str"}` | `{"answer": "str", "sources": ["str"]}` |
+| **GET** | `/api/v1/health` | None | `{"status": "ok", "collection": "gabes_knowledge", "timestamp": "ISO8601"}` |
+
+---
+
+## 9. Setup & Installation
+
+### Backend Services
+Both modules share one merged `requirements.txt` located at `backend/requirements.txt`.
+
+**Terminal 1: FastAPI (Module 1)**
+```cmd
 cd backend
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
-# Swagger UI: http://localhost:8000/docs
 ```
 
-### Run the Frontend
+**Terminal 2: Flask (Module 2)**
+```cmd
+cd emergency_intel
+.venv\Scripts\activate
+python app.py
+```
 
-```bash
+Uses the same venv as Module 1. Ensure backend/.venv is activated before running.
+
+### Frontend (React + Vite)
+**Terminal 3: React Dashboard**
+```cmd
 cd frontend
 npm install
 npm run dev
-# UI: http://localhost:5173
-```
-
-The frontend connects to the backend at http://localhost:8000 by default.
-To change this, set `VITE_API_URL` in `frontend/.env`.
-
-**Pages:**
-- `/` — Chat interface: type any question in EN/FR/AR, get an intent-aware response
-- `/pollution` — Pollution dashboard: Leaflet map with GCT exposure zones,
-  30-day event log, SO₂ trend chart, PDF dossier download
-- `/irrigation` — Irrigation advisory: select crop and growth stage,
-  get a FAO-56 calculated daily water recommendation
-
-### Reproduce the Knowledge Base
-
-```bash
-python scripts/preprocess_docx.py   # PDL Gabès docx → markdown, 41 tables
-python scripts/ingest.py            # chunk + embed + upsert to Qdrant
-python scripts/smoke_test.py        # verify retrieval works
 ```
 
 ---
 
-## 📊 Knowledge Base
-
-| Collection | Documents | Chunks | Purpose |
-|---|---|---|---|
-| `gabes_knowledge` | 21 | 1,718 | Static domain RAG |
-| `satellite_timeseries` | — | 0* | Weekly oasis snapshots |
-| `farmer_context` | — | runtime | Per-farmer pollution event log |
-
-**Ingestion specs:** `text-embedding-3-large` · Chonkie SemanticChunker ·
-dense + sparse (BM25/IDF) vectors · payload indexes on `source_type`,
-`language`, `doc_name`
-
-**Corpus includes:**
-- PDL Gabès 2023 — full municipal audit (French, 41 tables preserved)
-- 6 peer-reviewed papers — fluoride damage, heavy metals, phosphate pollution,
-  date palm diseases, soil salinity, remote sensing
-- 9 EU environmental project reports — ADMIRE, CIGEN, OASIS AQUATIQUE
-- FAO-56 Allen 1998 — irrigation reference
-- Arabic strategic study 2015-2035
-- 3 structured JSON files — oasis zones, GCT coordinates, FAO-56 crop coefficients
-
----
-
-## 📈 Evaluation Results
-
-### Retrieval Pipeline
-
-68 synthetic goldens · GPT-4o-mini judge · stratified by source type
-
-| Metric | Score | Pass Rate | Status |
-|---|---|---|---|
-| Contextual Recall | **0.9512** | **98.33%** | ✅ Target met |
-| Contextual Relevancy | 0.4395 | 41.67% | ⚠️ Known limitation* |
-
-*Multi-topic chunks (avg 841 chars) are penalised by ContextualRelevancyMetric.
-Recall is the operationally meaningful metric — it confirms the right information
-is retrieved for 98% of queries.
-
-### Diagnosis Agent
-
-16 synthetic inputs (EN/FR/AR) · GPT-4o-mini judge
-
-| Metric | Score | Pass Rate | Status |
-|---|---|---|---|
-| Faithfulness | **0.9667** | **100%** | ✅ |
-| Answer Relevancy | **0.9115** | **100%** | ✅ |
-| Pollution Link Accuracy | **100%** | **16/16** | ✅ |
-
-Key design: conditional pollution queries — only generated when symptom contains
-proximity signals (factory smell, white crust, multiple plots affected).
-
-### Irrigation Agent
-
-12 hardcoded FAO-56 test cases · GPT-4o-mini GEval
-
-| Metric | Score | Pass Rate | Status |
-|---|---|---|---|
-| Kc Accuracy | **1.000** | **100%** | ✅ |
-| ETc Math Consistency | **1.000** | **100%** | ✅ |
-| No Technical Jargon | **1.000** | **100%** | ✅ |
-| Advisory Quality (GEval) | **0.883** | **100%** | ✅ |
-
-```mermaid
-graph LR
-    A[RAG Pipeline\n68 goldens] --> B[Recall 0.95\n98.33% pass ✅]
-    C[Diagnosis Agent\n16 inputs EN/FR/AR] --> D[Faithfulness 0.97\nRelevancy 0.91\nPollution 100% ✅]
-    E[Irrigation Agent\n12 FAO-56 cases] --> F[Kc 100%\nETc 100%\nGEval 0.88 ✅]
+## 10. Project Structure
+```text
+.
+├── backend/                   # FastAPI Server (Module 1)
+│   ├── app/
+│   │   ├── agents/            # LangGraph Implementation
+│   │   ├── services/          # NASA/CAMS/Qdrant Connectors
+│   │   └── guardrails/        # 4-Layer Chain
+│   ├── tests/                 # DeepEval Test Suite
+│   └── requirements.txt       # Unified dependencies
+├── emergency_intel/           # Flask Server (Module 2)
+│   ├── services/              # Triage & Analysis Agents
+│   ├── data/                  # CO2 JSON Timeseries
+│   └── app.py                 # Port 3000 Entry
+├── frontend/                  # Unified React Frontend
+│   ├── src/
+│   │   ├── components/        # Glass-morphic UI components
+│   │   ├── pages/             # Dashboard, Emergency, Irrigation
+│   │   └── i18n/              # Lang files (EN/FR/AR)
+│   └── vite.config.js         # Port Proxying Config
+└── README.md
 ```
 
----
-
-## 🛠️ API Reference
-
-### `POST /api/v1/chat` — Unified Chat Endpoint
-
-The primary endpoint. Takes any free-text message, classifies intent,
-routes to the correct agent, and returns a structured response.
-
-**Request:**
-```json
-{
-  "message": "My date palm leaves are turning yellow and there is white powder on the soil",
-  "farmer_id": "farmer_001",
-  "plot_id": "bahria_plot_a",
-  "language": "en",
-  "crop_type": "date_palm",
-  "growth_stage": "mid"
-}
-```
-
-**Response:**
-```json
-{
-  "intent": "diagnosis",
-  "agent_used": "diagnosis_agent",
-  "response": { ... },
-  "processing_time_ms": 9192,
-  "timestamp": "2026-04-17T22:32:42Z"
-}
-```
-
-Possible `intent` values: `diagnosis` · `irrigation` · `pollution_qa` ·
-`pollution_report` · `unknown`
-
----
-
-### `POST /api/v1/diagnosis`
-
-```json
-{
-  "symptom_description": "Leaves yellowing at tips, white crust on soil",
-  "language": "en",
-  "farmer_id": "farmer_001",
-  "plot_id": "bahria_plot_a"
-}
-```
-
-Returns `DiagnosisResponse` with `probable_cause`, `confidence`, `severity`,
-`pollution_link`, `sources`, `faithfulness_verified`.
-
----
-
-### `POST /api/v1/irrigation`
-
-```json
-{
-  "crop_type": "date_palm",
-  "growth_stage": "mid",
-  "language": "en"
-}
-```
-
-Returns `IrrigationResponse` with `et0_mm_day`, `kc`, `etc_mm_day`,
-`irrigation_depth_mm`, `advisory_text`, `rs_estimated`.
-
----
-
-### `POST /api/v1/pollution/report`
-
-```json
-{
-  "farmer_id": "farmer_001",
-  "plot_id": "bahria_plot_a",
-  "language": "en",
-  "window_days": 30
-}
-```
-
-Returns `PollutionReport` with events, insights, recommendations, narrative,
-disclaimer. Events are also logged to Qdrant `farmer_context` collection.
-
----
-
-### `POST /api/v1/pollution/dossier`
-
-Same request as `/pollution/report`. Returns `application/pdf` — a
-professionally formatted 3-page dossier with risk badge, event timeline,
-confidence assessment, and legal disclaimer.
-
----
-
-### `POST /api/v1/pollution/qa`
-
-```json
-{
-  "question": "How does SO2 from the GCT factory affect date palm trees?",
-  "language": "en"
-}
-```
-
-Returns `PollutionQAResponse` with `answer`, `confidence`, `sources`,
-`limitations`.
-
----
-
-### `GET /api/v1/health`
-
-```json
-{"status": "ok", "collection": "gabes_knowledge", "timestamp": "..."}
-```
-
----
-
-## 🗺️ Roadmap
-
-- [x] Knowledge base — 1,718 chunks, 21 docs, dense + sparse vectors
-- [x] Retrieval evaluation — Recall 0.95, 98.33% pass rate
-- [x] Feature 2: Symptom Diagnosis — LangGraph, RAG, faithfulness verification
-- [x] Feature 2 evaluation — Faithfulness 0.97, Relevancy 0.91, PollutionLink 100%
-- [x] Feature 3: Irrigation Advisory — NASA POWER + FAO-56 Penman-Monteith
-- [x] Feature 3 evaluation — Kc 100%, ETc 100%, GEval 0.88
-- [x] Feature 5: Pollution Exposure Logger — P80/P95 thresholds, RAG annotations, Qdrant logging
-- [x] Feature 5b: Pollution QA Agent — RAG-grounded Q&A, confidence calibration
-- [x] Feature 5c: PDF Dossier Generator — professional evidence document
-- [x] LangSmith tracing — full pipeline observability, ~$0.0004/call
-- [x] Intent Router — unified /api/v1/chat, 56 tests passing
-- [x] Guardrails — 4-layer security chain (medical, injection, toxicity, scope)
-- [x] Unified LangSmith tracing — single trace per request, guardrails to agent
-- [x] React frontend — chat interface (EN/FR/AR), pollution map with exposure zones,
-  irrigation advisory, PDF dossier download
-- [ ] End-to-end evaluation — full pipeline GEval at scale
-
----
-
-## 🌱 Why This Matters
-
-Gabès farmers have watched their oasis disappear for 50 years with no data,
-no evidence, and no recourse. Gabesi AIGuardian gives them both: a daily
-intelligence feed about their own land, and an automatically generated
-pollution dossier they can bring to a meeting, a journalist, or a court.
-
-The invisible becomes visible. The anecdotal becomes documented.
-
----
-
-## 📄 License
-
-MIT License — see [LICENSE](LICENSE) for details.
-
----
-
-<div align="center">
-Built for the farmers of Gabès, Tunisia 🌴
-</div>
+## 11. Roadmap
+- [x] Integrate LangGraph state machines for complex multi-agent flows
+- [x] Build and test 4-layer security guardrail chain
+- [x] Connect robust RAG pipeline via Qdrant with hybrid semantic chunking
+- [x] Develop precise FAO-56 math engine with NASA POWER historical weather data
+- [x] Deploy modular UI with Vite and React
+- [x] Merge legacy Emergency Intelligence Flask module
+- [ ] Run end-to-end pipeline GEval at scale
