@@ -12,7 +12,8 @@ knowledge base.**
 [![FastAPI](https://img.shields.io/badge/FastAPI-backend-green?logo=fastapi)](https://fastapi.tiangolo.com)
 [![Qdrant](https://img.shields.io/badge/Qdrant-vector_db-red)](https://qdrant.tech)
 [![DeepEval](https://img.shields.io/badge/DeepEval-evaluation-orange)](https://deepeval.com)
-[![Tests](https://img.shields.io/badge/tests-51%20passing-brightgreen)](https://github.com/omarfh111/Gabesi-AIGuardian)
+[![Tests](https://img.shields.io/badge/tests-56%20passing-brightgreen)](https://github.com/omarfh111/Gabesi-AIGuardian)
+[![Guardrails](https://img.shields.io/badge/Guardrails-4%20layers-red)](https://github.com/omarfh111/Gabesi-AIGuardian)
 [![React](https://img.shields.io/badge/React-frontend-61dafb?logo=react)](https://github.com/omarfh111/Gabesi-AIGuardian/tree/main/frontend)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
@@ -137,6 +138,115 @@ The pollution agent transforms regional atmospheric data into farm-level evidenc
 
 ---
 
+## 🛡️ Security & Guardrails
+
+Every message sent to `/api/v1/chat` passes through a four-layer
+guardrail chain before reaching any agent. The chain executes in
+strict priority order — earlier layers take precedence over later ones.
+
+```mermaid
+graph TD
+    M[Incoming Message] --> G1
+
+    G1{1. Medical Emergency\nPattern Match}
+    G1 -->|Emergency detected| R1[Return 190 number\nEN/FR/AR · 0ms]
+    G1 -->|Clean| G2
+
+    G2{2. Prompt Injection\nPattern Match}
+    G2 -->|Injection detected| R2[Rejection message\nEN/FR/AR · 0ms]
+    G2 -->|Clean| G3
+
+    G3{3. Combined Guardrail\nGPT-4o-mini · ~400ms}
+    G3 -->|Toxic content| R3[Toxic rejection\nEN/FR/AR]
+    G3 -->|Out of scope| R4[Scope rejection\nEN/FR/AR]
+    G3 -->|Clean| G4
+
+    G4{4. Intent Classification\nGPT-4o-mini · ~400ms}
+    G4 --> A[Correct Agent]
+```
+
+### Guardrail Layers
+
+| Layer | Method | Latency | What it catches |
+|---|---|---|---|
+| **Medical Emergency** | Pattern matching EN/FR/AR | 0ms | Chest pain, can't breathe, unconscious — returns 190 |
+| **Prompt Injection** | Pattern matching EN/FR/AR | 0ms | "ignore instructions", "jailbreak", multilingual variants |
+| **Toxicity** | GPT-4o-mini combined call | ~400ms | Harmful requests, weapons, poisoning, dangerous intent |
+| **Scope** | GPT-4o-mini combined call | ~400ms | Questions unrelated to Gabès oasis farming or pollution |
+
+Toxicity and scope are evaluated in a **single LLM call** —
+not two sequential calls — keeping guardrail overhead to ~400ms total.
+
+### Design Decisions
+
+**Fail-open on guardrail errors** — if the LLM guardrail call fails
+for any reason (timeout, API error), the message passes through to
+the intent classifier. A farmer's legitimate question is never
+silently blocked due to a technical failure.
+
+**Medical emergency fires first** — a farmer describing a health
+emergency (dizziness near the factory, chest pain) receives the 190
+emergency number immediately, before any other check runs. This is
+non-negotiable given the industrial context of Gabès.
+
+**Inclusive scope definition** — the scope classifier is tuned to
+allow any question touching farming, soil, water, chemicals, or
+environmental health in an agricultural context. "What does fluoride
+do to my crops?" passes. "Who won the World Cup?" does not.
+
+**Toxicity vs agricultural chemistry** — the toxicity classifier
+explicitly distinguishes harmful intent from legitimate questions
+about dangerous substances. "How do I poison my neighbor's crops?"
+is blocked. "What toxic effects does fluoride have on date palm roots?"
+passes through to the Pollution QA agent.
+
+### Multilingual Coverage
+
+All rejection messages are provided in English, French, and Arabic.
+The system detects the request language and responds in kind.
+
+```json
+{
+  "intent": "unknown",
+  "agent_used": "guardrail",
+  "response": {
+    "message": "If you are experiencing a medical emergency, please
+                contact local emergency services immediately by
+                dialing 190.",
+    "reason": "medical_emergency_detected"
+  }
+}
+```
+
+Possible `reason` values:
+- `medical_emergency_detected` — caller directed to 190
+- `prompt_injection_detected` — injection attempt blocked
+- `toxic_content` — harmful request blocked
+- `out_of_scope` — unrelated question rejected
+
+### LangSmith Observability
+
+Every request produces a single unified trace in LangSmith showing
+the full execution path from guardrails through to agent completion:
+
+```
+route_message (root)
+├── guardrail_medical_check     0ms   pattern match
+├── guardrail_injection_check   0ms   pattern match
+├── guardrail_combined          ~400ms  scope + toxicity
+│   └── ChatOpenAI gpt-4o-mini
+├── intent_classification       ~400ms
+│   └── ChatOpenAI gpt-4o-mini
+└── agent_execution
+    └── [Diagnosis / Irrigation / Pollution agent spans]
+```
+
+When a guardrail fires, the trace ends at that layer — no agent
+is called, no compute is wasted. A blocked request costs ~$0.0002
+vs ~$0.0007 for a full pipeline call.
+
+---
+
 ## 📂 Project Structure
 
 ```
@@ -161,7 +271,7 @@ Gabesi-AIGuardian/
 │   │   ├── services/
 │   │   │   └── pdf_generator.py       # Pollution dossier PDF
 │   │   └── rag/retriever.py
-│   ├── tests/                         # 51 tests, 0 failures
+│   ├── tests/                         # 56 tests, 0 failures
 │   └── requirements.txt
 ├── frontend/                          # React + Vite farmer-facing UI
 │   ├── src/
@@ -455,7 +565,9 @@ Returns `PollutionQAResponse` with `answer`, `confidence`, `sources`,
 - [x] Feature 5b: Pollution QA Agent — RAG-grounded Q&A, confidence calibration
 - [x] Feature 5c: PDF Dossier Generator — professional evidence document
 - [x] LangSmith tracing — full pipeline observability, ~$0.0004/call
-- [x] Intent Router — unified /api/v1/chat, 51 tests passing
+- [x] Intent Router — unified /api/v1/chat, 56 tests passing
+- [x] Guardrails — 4-layer security chain (medical, injection, toxicity, scope)
+- [x] Unified LangSmith tracing — single trace per request, guardrails to agent
 - [x] React frontend — chat interface (EN/FR/AR), pollution map with exposure zones,
   irrigation advisory, PDF dossier download
 - [ ] End-to-end evaluation — full pipeline GEval at scale
