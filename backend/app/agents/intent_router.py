@@ -6,6 +6,8 @@ from typing import Dict, Any
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.tracers.langchain import wait_for_all_tracers
+from langsmith import traceable
+from langsmith.run_helpers import get_current_run_tree
 
 from app.config import settings
 from app.models.chat import ChatRequest, ChatResponse
@@ -53,6 +55,7 @@ REJECTION_MESSAGES = {
     },
 }
 
+@traceable(name="guardrail_injection_check", run_type="tool")
 def _detect_prompt_injection(message: str) -> bool:
     """
     Returns True if the message appears to be a prompt injection attempt.
@@ -100,6 +103,7 @@ def _detect_prompt_injection(message: str) -> bool:
 
     return any(pattern in message_lower for pattern in injection_patterns)
 
+@traceable(name="guardrail_medical_check", run_type="tool")
 def _detect_medical_emergency(message: str) -> bool:
     """
     Returns True if the message contains signals of a medical emergency.
@@ -118,6 +122,7 @@ def _detect_medical_emergency(message: str) -> bool:
     ]
     return any(pattern in message_lower for pattern in emergency_patterns)
 
+@traceable(name="guardrail_combined", run_type="tool")
 def _run_combined_guardrail(message: str, language: str = "en") -> dict:
     """
     Single GPT-4o-mini call that checks BOTH toxicity and scope.
@@ -224,7 +229,116 @@ Return ONLY valid JSON, no markdown, no explanation, no other text:
         # Fail open — never block on guardrail failure
         return {"is_toxic": False, "is_out_of_scope": False, "reason": "clean"}
 
-def run_intent_router(request: ChatRequest) -> ChatResponse:
+@traceable(name="intent_classification", run_type="llm")
+def _classify_intent(message: str, language: str) -> dict:
+    """Calls GPT-4o-mini to classify intent. Returns dict with
+    intent, detected_language, crop_type, confidence."""
+    system_prompt = (
+        "You are an intent classifier for a farmer assistant in Gabès, Tunisia.\n"
+        "Classify the farmer's message into exactly one of these intents:\n"
+        "- diagnosis: farmer describes a crop symptom, disease, or plant health issue\n"
+        "- irrigation: farmer asks about watering, daily irrigation, or water management\n"
+        "- pollution_qa: farmer asks a general question about pollution, GCT, phosphogypsum, "
+        "soil quality, contaminants, or environmental conditions in Gabès\n"
+        "- pollution_report: farmer explicitly requests their pollution dossier, report, or evidence document\n"
+        "- unknown: cannot classify\n\n"
+        "Also extract:\n"
+        "- detected_language: en | fr | ar\n"
+        "- crop_type: date_palm | pomegranate | fig | olive | vegetables | null\n"
+        "- confidence: high | medium | low\n\n"
+        "Return JSON:\n"
+        "{\n"
+        "  'intent': '...',\n"
+        "  'detected_language': '...',\n"
+        "  'crop_type': '...' or null,\n"
+        "  'confidence': '...'\n"
+        "}"
+    )
+    try:
+        llm = ChatOpenAI(
+            model="gpt-4o-mini",
+            api_key=settings.openai_api_key,
+            model_kwargs={"response_format": {"type": "json_object"}},
+        )
+        msg = llm.invoke(
+            [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=f"Farmer message: {message}")
+            ],
+            config={"run_name": "Intent Router LLM"}
+        )
+        return json.loads(msg.content)
+    except Exception as e:
+        print(f"Classification failure: {e}")
+        return {
+            "intent": "unknown",
+            "detected_language": language,
+            "crop_type": None,
+            "confidence": "low"
+        }
+
+@traceable(name="agent_execution", run_type="chain")
+def _execute_agent(intent: str, request: ChatRequest, detected_lang: str, extracted_crop: str | None) -> tuple[Any, str]:
+    """Routes to the correct agent and returns (response_dict, agent_name)."""
+    result = None
+    agent_used = "none"
+
+    if intent == "diagnosis":
+        diag_req = DiagnosisRequest(
+            symptom_description=request.message,
+            language=detected_lang,
+            farmer_id=request.farmer_id,
+            plot_id=request.plot_id
+        )
+        result = run_diagnosis(diag_req)
+        agent_used = "diagnosis_agent"
+
+    elif intent == "irrigation":
+        crop = extracted_crop if extracted_crop in ["date_palm", "pomegranate", "fig", "olive", "vegetables"] else request.crop_type
+        irr_req = IrrigationRequest(
+            crop_type=crop,
+            growth_stage=request.growth_stage,
+            language=detected_lang
+        )
+        result = run_irrigation(irr_req)
+        agent_used = "irrigation_agent"
+
+    elif intent == "pollution_qa":
+        qa_req = PollutionQARequest(
+            question=request.message,
+            language=detected_lang
+        )
+        result = run_pollution_qa(qa_req)
+        agent_used = "pollution_qa_agent"
+
+    elif intent == "pollution_report":
+        if not request.farmer_id:
+            return {"error": "farmer_id is required to generate a pollution report"}, "none"
+        
+        pol_req = PollutionReportRequest(
+            farmer_id=request.farmer_id,
+            plot_id=request.plot_id,
+            language=detected_lang,
+            window_days=30
+        )
+        result = run_pollution_agent(pol_req)
+        agent_used = "pollution_agent"
+
+    else:  # unknown
+        clarifications = {
+            "en": "I can help you with: crop diagnosis, irrigation advice, pollution questions, or your pollution report. What would you like to know?",
+            "fr": "Je peux vous aider avec: diagnostic des cultures, conseils d'irrigation, questions sur la pollution, ou votre rapport de pollution. Que souhaitez-vous savoir?",
+            "ar": "يمكنني مساعدتك في: تشخيص المحاصيل، نصائح الري، أسئلة التلوث، أو تقرير التلوث الخاص بك. ماذا تريد أن تعرف؟"
+        }
+        response_text = clarifications.get(detected_lang, clarifications["en"])
+        return {"message": response_text}, "none"
+
+    if hasattr(result, "model_dump"):
+        return result.model_dump(), agent_used
+    return result, agent_used
+
+@traceable(name="route_message", run_type="chain")
+def route_message(request: ChatRequest) -> ChatResponse:
     """
     Classifies the user message and routes it to the correct specialized agent.
     """
@@ -283,137 +397,18 @@ def run_intent_router(request: ChatRequest) -> ChatResponse:
             timestamp=datetime.now(UTC),
         )
     
-    # 1. Intent Classification via LLM
-    system_prompt = (
-        "You are an intent classifier for a farmer assistant in Gabès, Tunisia.\n"
-        "Classify the farmer's message into exactly one of these intents:\n"
-        "- diagnosis: farmer describes a crop symptom, disease, or plant health issue\n"
-        "- irrigation: farmer asks about watering, daily irrigation, or water management\n"
-        "- pollution_qa: farmer asks a general question about pollution, GCT, phosphogypsum, "
-        "soil quality, contaminants, or environmental conditions in Gabès\n"
-        "- pollution_report: farmer explicitly requests their pollution dossier, report, or evidence document\n"
-        "- unknown: cannot classify\n\n"
-        "Also extract:\n"
-        "- detected_language: en | fr | ar\n"
-        "- crop_type: date_palm | pomegranate | fig | olive | vegetables | null\n"
-        "- confidence: high | medium | low\n\n"
-        "Return JSON:\n"
-        "{\n"
-        "  'intent': '...',\n"
-        "  'detected_language': '...',\n"
-        "  'crop_type': '...' or null,\n"
-        "  'confidence': '...'\n"
-        "}"
-    )
+    # 1. Intent Classification
+    classification = _classify_intent(request.message, request.language or "en")
     
-    try:
-        llm = ChatOpenAI(
-            model="gpt-4o-mini",
-            api_key=settings.openai_api_key,
-            model_kwargs={"response_format": {"type": "json_object"}},
-        )
-        msg = llm.invoke(
-            [
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=f"Farmer message: {request.message}")
-            ],
-            config={"run_name": "Intent Router"}
-        )
-        classification = json.loads(msg.content)
-    except Exception as e:
-        print(f"Classification failure: {e}")
-        # Fallback for classification failure
-        classification = {
-            "intent": "unknown",
-            "detected_language": request.language,
-            "crop_type": None,
-            "confidence": "low"
-        }
-
     intent = classification.get("intent", "unknown")
     detected_lang = classification.get("detected_language") or request.language
     extracted_crop = classification.get("crop_type")
     
-    # Ensure detected_lang is valid
     if detected_lang not in ["en", "fr", "ar"]:
         detected_lang = request.language
 
-    result: Any = None
-    agent_used = "none"
-
-    # 2. Routing Logic
-    if intent == "diagnosis":
-        diag_req = DiagnosisRequest(
-            symptom_description=request.message,
-            language=detected_lang,
-            farmer_id=request.farmer_id,
-            plot_id=request.plot_id
-        )
-        result = run_diagnosis(diag_req)
-        agent_used = "diagnosis_agent"
-
-    elif intent == "irrigation":
-        # Use extracted crop or fallback to request/default
-        crop = extracted_crop if extracted_crop in ["date_palm", "pomegranate", "fig", "olive", "vegetables"] else request.crop_type
-        irr_req = IrrigationRequest(
-            crop_type=crop,
-            growth_stage=request.growth_stage,
-            language=detected_lang
-        )
-        result = run_irrigation(irr_req)
-        agent_used = "irrigation_agent"
-
-    elif intent == "pollution_qa":
-        qa_req = PollutionQARequest(
-            question=request.message,
-            language=detected_lang
-        )
-        result = run_pollution_qa(qa_req)
-        agent_used = "pollution_qa_agent"
-
-    elif intent == "pollution_report":
-        if not request.farmer_id:
-            elapsed_ms = int((time.time() - start_time) * 1000)
-            return ChatResponse(
-                intent="pollution_report",
-                response={"error": "farmer_id is required to generate a pollution report"},
-                agent_used="none",
-                processing_time_ms=elapsed_ms,
-                timestamp=datetime.now(UTC)
-            )
-        
-        pol_req = PollutionReportRequest(
-            farmer_id=request.farmer_id,
-            plot_id=request.plot_id,
-            language=detected_lang,
-            window_days=30  # As per requirements
-        )
-        result = run_pollution_agent(pol_req)
-        agent_used = "pollution_agent"
-
-    else:  # unknown
-        intent = "unknown"
-        clarifications = {
-            "en": "I can help you with: crop diagnosis, irrigation advice, pollution questions, or your pollution report. What would you like to know?",
-            "fr": "Je peux vous aider avec: diagnostic des cultures, conseils d'irrigation, questions sur la pollution, ou votre rapport de pollution. Que souhaitez-vous savoir?",
-            "ar": "يمكنني مساعدتك في: تشخيص المحاصيل، نصائح الري، أسئلة التلوث، أو تقرير التلوث الخاص بك. ماذا تريد أن تعرف؟"
-        }
-        response_text = clarifications.get(detected_lang, clarifications["en"])
-        elapsed_ms = int((time.time() - start_time) * 1000)
-        return ChatResponse(
-            intent="unknown",
-            response={"message": response_text},
-            agent_used="none",
-            processing_time_ms=elapsed_ms,
-            timestamp=datetime.now(UTC)
-        )
-
-    # 3. Serialization (using model_dump for Pydantic v2 models)
-    if hasattr(result, "model_dump"):
-        response_dict = result.model_dump()
-    else:
-        # Fallback for non-pydantic responses (unlikely)
-        response_dict = result
+    # 2. Agent Execution
+    response_dict, agent_used = _execute_agent(intent, request, detected_lang, extracted_crop)
 
     wait_for_all_tracers()
     elapsed_ms = int((time.time() - start_time) * 1000)
