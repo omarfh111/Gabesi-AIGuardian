@@ -9,6 +9,7 @@ import Strategic from './pages/Strategic';
 import StrategicChat from './pages/StrategicChat';
 import CommunityMap from './pages/CommunityMap';
 import Medical from './pages/Medical';
+import Energy from './pages/Energy';
 
 // Required for i18n
 import './i18n';
@@ -28,6 +29,7 @@ function App() {
             <Route path="/strategic-chat" element={<StrategicChat />} />
             <Route path="/community-map" element={<CommunityMap />} />
             <Route path="/medical" element={<Medical />} />
+            <Route path="/energy" element={<Energy />} />
           </Routes>
         </main>
       </div>

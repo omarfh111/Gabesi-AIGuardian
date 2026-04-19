@@ -21,6 +21,7 @@ const NavBar = () => {
     { to: '/community-map', label: t('nav.community_map', 'Community Map') },
     { to: '/emergency', label: t('nav.emergency'), isEmergency: true },
     { to: '/medical', label: t('nav.medical', 'Medical Triage') },
+    { to: '/energy', label: t('nav.energy', 'Energy Advisor') },
   ];
 
   return (

@@ -94,6 +94,7 @@ data_an/
 warningsMarks/
 ai-assistant-agriculture/
 feature-medical-report-updates/
+feature-multi-agent-energy-advisor/
 
 # FastEmbed model cache
 backend/.cache/

@@ -11,6 +11,8 @@
 ![React](https://img.shields.io/badge/Frontend-React_18-blue)
 ![Supabase](https://img.shields.io/badge/Database-Supabase-3ECF8E)
 ![Agriculture](https://img.shields.io/badge/Agent-Agriculture_RAG-green)
+![Energy](https://img.shields.io/badge/Module-Energy_Advisor-yellow)
+![Medical](https://img.shields.io/badge/Module-Medical_Triage-red)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
 **Gabesi AIGuardian** is a unified environmental intelligence and emergency response platform designed specifically for the oasis farmers and residents of Gabès, Tunisia. By integrating real-time NASA satellite data, local industrial CO₂ monitoring, and a RAG-powered medical assistant, the system provides mission-critical advisory and life-saving triage in a region heavily impacted by industrial phosphate processing.
@@ -68,11 +70,26 @@ graph TD
         AgriRAG[(Qdrant: gabes_knowledge)]
     end
 
+    subgraph "Module 6: Energy Advisor (FastAPI :8000)"
+        EnergyAPI[FastAPI energy backend]
+        AgriPipeline[4-Agent LangGraph Pipeline]
+        Orchestrator[orchestrator.py — zero LLM]
+    end
+
+    subgraph "Module 7: Medical Triage (FastAPI :8000)"
+        MedAPI[FastAPI triage backend]
+        TriageRouter[triage + router service]
+        MedAgents[8 RAG Specialist Agents]
+        MedQdrant[(Qdrant: 9 collections)]
+    end
+
     UI --> FA
     UI --> FS
     UI --> StrategicBlueprint
     UI --> CommunityRouter
     UI --> AgriAgent
+    UI --> EnergyAPI
+    UI --> MedAPI
     CommunityRouter --> Supabase
     CommunityRouter --> Haversine
     StrategicBlueprint --> LG3
@@ -83,6 +100,11 @@ graph TD
     LG2 --> Q2
     AgriAgent --> GeoVerify
     AgriAgent --> AgriRAG
+    EnergyAPI --> AgriPipeline
+    AgriPipeline --> Orchestrator
+    MedAPI --> TriageRouter
+    TriageRouter --> MedAgents
+    MedAgents --> MedQdrant
 ```
 
 ---
@@ -124,6 +146,8 @@ graph TD
 | Faithfulness verification | Keyword overlap between claims and retrieved chunks, pure Python | LLM-as-judge — 0ms latency, no additional cost, deterministic |
 | Pollution query expansion | Conditional — only when symptom contains proximity signals | Always — unconditional pollution queries before fix returned only generic palm disease docs (scores 0.36-0.45), post-fix scores 0.57-0.63 with 3-6 documents |
 | Agriculture agent placement | Ported into emergency_intel Flask server (port 3000) | Separate backend — emergency_intel already owns CO2 pollution risk scores needed by the agriculture decision matrix, colocation avoids cross-service API calls |
+| Energy pipeline parallelism | asyncio.gather() for Finance parallel with ENV→Énergie | Full sequential — adds ~15-25s wall clock time with identical output quality |
+| Medical triage routing | Confidence gate defaults ambiguous to Generalist | Direct specialist routing — premature specialist assignment on vague symptoms wastes consultation turns and risks missed generalist clarification |
 
 ---
 
@@ -269,7 +293,73 @@ graph TD
 
 ---
 
-## 9. Security & Guardrails
+## 9. Module 6: GabèsEnergy AI — Renewable Energy Advisor
+**Purpose**: guides Gabès residents through renewable energy transition — 3000-3200 sun hours/year (top 10% globally), Mediterranean coastal winds ~5 m/s
+**Pipeline architecture**: hybrid parallel/sequential via asyncio.gather() — Phase 1: agent_env → agent_energie (sequential) runs parallel with agent_finance; Phase 2: agent_expert (sequential, receives both); Phase 3: orchestrator.py (pure Python, zero LLM, <0.1s). Total: ~25-45s vs ~50-70s without parallelism
+**Agent ENV** (agent_env.py): 3 tools — analyse_solar_potential (solar score 0-100: maison type 5-30pts + orientation Sud=25/Est-Ouest=15/Nord=5pts + sun hours ≥3000h=25pts + no existing panels=10pts, max 90pts), calculate_co2_footprint (0.48 kg/kWh ANME Tunisia 2022 + transport by vehicle type), evaluate_energy_efficiency (A→D rating)
+**Agent Énergie** (agent_energie.py): 3 tools — match_renewable_sources (scores 5 technologies: PV/Thermique/Éolien/Biogaz/Géothermie using score_pv = 0.44×score_soleil + 0.33×score_orientation + 0.23×score_logement, threshold ≥40/100), size_installations (kWp = kWh_annuel/(heures_soleil × 0.80), market price 3200 TND/kWp, PROSOL subsidy 30%), create_transition_plan (3 phases: <3 months / 3-12 months / 1-3 years)
+**Agent Finance** (agent_finance.py): 3 tools — analyse_budget_capacity (income/expenses/savings/debt ratio), calculate_solar_roi (economie_mensuelle = facture_steg × 0.80, payback_mois = cout_net/economie_mensuelle, gains_25_ans = Σ(economie_annuelle × 1.02^year) with +5%/yr STEG historical inflation), evaluate_energy_savings_plan (quick wins vs heavy investments). Subsidies: PROSOL Élec 30%, PROSOL Thermique 30%, Crédit BFPME
+**Agent Expert** (agent_expert.py): 4 tools — web_search_prices (DuckDuckGo, real 2024 Tunisian market prices), calculate_personalized_gains (5/10/25yr projections with -0.5%/yr PV degradation and +5%/yr STEG inflation), generate_installation_map (spatial placement per zone: rooftop/balcony/garden), build_final_report (★★★★★ scored solution table)
+**Orchestrator** (orchestrator.py): pure Python, zero LLM calls, <100ms — 6 modules: _financial_projections (25 data points, 1/year), _co2_projections (kg CO₂ avoided with degradation), _energy_mix (current 100% STEG vs target % renewable), _solution_comparison (score/cost/payback/CO₂ per technology), _compute_kpis (12 KPIs for dashboard cards), _build_xai (variable weights, decision trees, confidence scores per agent)
+**XAI Section**: variable importance (sun hours 28%, STEG bill 22%, housing type 18%, solar orientation 15%, renovation budget 10%, ownership 7%), decision trees per agent, confidence scores (ENV 91%, Finance 85%, Énergie 92%, Expert 89%), identified biases and model limits
+**Frontend**: React 18 + Vite, Recharts 6 charts (AreaChart 25yr financial projections, BarChart annual savings, AreaChart CO₂ reduction, PieChart×2 current vs target energy mix, horizontal BarChart solution comparison, RadarChart multi-criteria score/ROI/budget/CO₂), Leaflet GPS selection limited to Gabès region, Open-Meteo auto-fetch (temperature + sun hours), Nominatim OSM reverse geocoding, JSON profile export
+**External APIs**: Open-Meteo (free, auto weather), Nominatim OSM (free, GPS→address), DuckDuckGo Instant API (free, real market prices), OpenAI GPT-4o-mini, LangSmith tracing
+**Models**: gpt-4o-mini for all 4 agents, no embeddings (no vector DB — pure LLM + deterministic orchestration)
+
+```mermaid
+graph TD
+    User[User profile form] --> Gather[asyncio.gather]
+    Gather --> Track1[Track 1: agent_env --> agent_energie]
+    Gather --> Track2[Track 2: agent_finance]
+    Track1 --> Merge[Merge tracks]
+    Track2 --> Merge
+    Merge --> Expert[agent_expert]
+    Expert --> Orch[orchestrator.py]
+    Orch --> Dash[Dashboard: 6 Recharts + XAI]
+```
+
+---
+
+## 10. Module 7: Gabes Medical Triage
+**Purpose**: clinical triage and consultation for Gabès industrial exposure risk profiles — structured intake with 20+ clinical/environmental signals, specialist routing with confidence gating, longitudinal patient dossier by CIN, blood-test analysis, downloadable PDF clinical reports
+**Pipeline**: PatientIntake → triage_service (LLM analysis, domain ranking, urgency) → router_service (confidence gate — defaults to Generalist when unclear) → specialist agent consultation loop → optional handoff via [SUGGEST_TRANSFER: ...] → ToxicologueAgent synthesis → BilanExpertAgent blood test interpretation → Step 3 orchestrator → final PDF report
+**8 RAG Agents** (all inherit BaseAgent, CIN-linked dossier, Qdrant-backed):
+*   GeneralistAgent: first-line when confidence low or symptoms vague, one question/turn, can transfer, collection: generaliste_collection
+*   PneumologueAgent: respiratory/pulmonary irritation, mandatory clarification before toxicology transfer unless life-threatening, collection: pneumologue_collection
+*   CardiologueAgent: chest pain/palpitations/hemodynamic, mandatory clarification before transfer unless red flag, collection: cardiologue_collection
+*   NeurologueAgent: neurological/cognitive/neuromotor, mandatory clarification before transfer unless red flag, collection: neurologue_collection
+*   OncologueAgent: oncologic suspicion and workup, mandatory clarification before transfer unless red flag, collection: oncologue_collection
+*   DermatologueAgent: chemical/industrial dermatologic manifestations, mandatory clarification before transfer unless red flag, collection: dermatologue_collection
+*   ToxicologueAgent: exposure-specific synthesis, treatment pathway, urgency decision, can request blood tests via [REQUEST_BILAN_SANGUIN], collection: toxicologue_collection
+*   BilanExpertAgent: blood-test PDF interpretation (markers, toxicology signals, confidence), hands off to toxicologist finalization, collection: bilan_expert_collection
+
+**Embeddings**: text-embedding-3-large, 3072 dims. Sparse retrieval fallback: FastEmbed SPLADE (prithivida/Splade_PP_en_v1)
+**Qdrant collections** (9 total): historical_cases (dossier + chat history + blood test docs + indexed case payloads), gabes_knowledge, generaliste_collection, pneumologue_collection, cardiologue_collection, neurologue_collection, oncologue_collection, dermatologue_collection, toxicologue_collection, bilan_expert_collection
+**Blood test pipeline**: PDF upload → pypdf extraction → Qdrant indexing → BilanExpertAgent interpretation → ToxicologueAgent integrated synthesis
+**Step 3 orchestrator**: BilanExpertAgent + ToxicologueAgent finalization → structured physician PDF (ReportLab) → downloadable report_pdf_url
+**Medical History**: GET /api/patient/history by CIN returns all previous records, per-record PDF download
+**Optional**: Supabase metadata sink
+**Models**: gpt-4o-mini (all agents), text-embedding-3-large 3072 dims, LangSmith tracing on all agents
+**Safety design**: router confidence gate defaults ambiguous to Generalist; mandatory clarification before toxicology escalation; final report includes urgency statement for clinician handoff; system is clinical decision-support, not autonomous care
+
+```mermaid
+graph TD
+    Intake[PatientIntake] --> Triage[triage_service]
+    Triage --> Router[router_service]
+    Router --> Spec[specialist agent loop with Qdrant]
+    Spec --> Transfer[SUGGEST_TRANSFER]
+    Transfer --> Toxic[ToxicologueAgent]
+    Toxic --> Blood[REQUEST_BILAN_SANGUIN optional]
+    Blood --> Upload[PDF upload]
+    Upload --> Bilan[BilanExpertAgent]
+    Bilan --> Step3[Step3 orchestrator]
+    Step3 --> Report[final PDF report]
+    Report --> Download[download]
+```
+
+---
+
+## 11. Security & Guardrails
 A 4-layer chain protecting the LLM pipeline with ~800ms total latency. LangSmith produces **one unified trace per request**.
 
 ```mermaid
@@ -298,7 +388,7 @@ graph TD
 
 ---
 
-## 10. Evaluation Results
+## 12. Evaluation Results
 Validated using **DeepEval** with 68 goldens and 56 mocked unit tests.
 
 ### RAG & Diagnosis Performance
@@ -327,7 +417,7 @@ graph LR
 
 ---
 
-## 11. API Reference
+## 13. API Reference
 
 | Method | Endpoint | Request Shape | Response Shape |
 | :--- | :--- | :--- | :--- |
@@ -342,10 +432,20 @@ graph LR
 | **GET** | `/api/v1/community/reports` | optional query params issue_type and severity | array |
 | **GET** | `/api/v1/community/reports/{id}` | None | single report with AI analysis |
 | **POST** | `/api/agriculture/chat` | `{"message": "str", "session_id": "str", "location": {"lat": float, "lng": float} | null}` | `{"response": "str", "sources": ["doc_name strings"], "zones_scanned": int | null, "recommended_sites": [...] | null}` |
+| **POST** | `/analyse` | Energy module main pipeline (4 agents + orchestrator + dashboard) | {"identite": {...}, "logement": {...}, "consommation": {...}} | {"dashboard": {"kpis": {...}, "financial_projections": [...], "co2_projections": [...], "energy_mix": {...}, "xai": {...}}, "total_time_seconds": float} |
+| **POST** | `/analyse/env` | Energy ENV agent only | same profile shape | env_result |
+| **POST** | `/analyse/finance` | Energy Finance agent only | same profile shape | finance_result |
+| **POST** | `/triage` | Medical intake analysis + router decision | PatientIntake (20+ fields) | RouterDecision (specialty, urgency) |
+| **POST** | `/api/chat` | Medical multi-agent consultation turn | {"cin": "str", "message": "str", "agent": "str"} | {"response": "str", "transfer": "str|null", "bilan_request": bool} |
+| **POST** | `/api/bilan/upload` | Upload and index blood test PDF | multipart (cin + file) | {"status": "str", "next_agent": "str"} |
+| **POST** | `/api/step3/finalize` | BilanExpert + Toxicologist finalization | {"cin": "str"} | {"bilan_analysis": "str", "toxicology_final": "str", "report_pdf_url": "str"} |
+| **GET** | `/api/step3/report/pdf?cin=` | Download final clinical PDF | None | PDF binary stream |
+| **GET** | `/api/patient/history?cin=` | All previous dossier records for CIN | None | records array |
+| **GET** | `/api/patient/history/report/pdf?cin=&case_id=` | Download historical case PDF | None | PDF binary stream |
 
 ---
 
-## 12. Setup & Installation
+## 14. Setup & Installation
 
 ### Backend Services
 Both modules share one merged `requirements.txt` located at `backend/requirements.txt`.
@@ -378,7 +478,7 @@ npm run dev
 
 ---
 
-## 13. Project Structure
+## 15. Project Structure
 ```text
 .
 ├── backend/                   # FastAPI Server (Module 1)
@@ -398,6 +498,29 @@ npm run dev
 │   │   └── agriculture_agent.py    # LangGraph agriculture RAG agent.
 │   ├── data/                  # CO2 JSON Timeseries
 │   └── app.py                 # Port 3000 Entry
+├── energierenouv/             # FastAPI Energy Advisor (Module 6)
+│   ├── backend/
+│   │   ├── main.py            # FastAPI + pipeline orchestration
+│   │   ├── orchestrator.py    # Pure Python stats + XAI (zero LLM)
+│   │   └── services/
+│   │       ├── agent_env.py       # Environmental agent (3 tools)
+│   │       ├── agent_finance.py   # Finance agent (3 tools)
+│   │       ├── agent_energie.py   # Energy agent (3 tools)
+│   │       └── agent_expert.py    # Expert synthesis agent (4 tools)
+│   └── frontend/              # React + Recharts dashboard
+├── med/                       # FastAPI Medical Triage (Module 7)
+│   ├── main.py                # FastAPI app + step3 orchestrator
+│   ├── agents/                # 8 RAG specialist agents
+│   │   ├── base.py
+│   │   ├── generalist_agent.py
+│   │   ├── pneumologue_agent.py
+│   │   ├── cardiologue_agent.py
+│   │   ├── neurologue_agent.py
+│   │   ├── oncologue_agent.py
+│   │   ├── dermatologue_agent.py
+│   │   ├── toxicologue_agent.py
+│   │   └── bilan_expert_agent.py
+│   └── services/              # triage, router, RAG, persistence
 ├── frontend/                  # Unified React Frontend
 │   ├── src/
 │   │   ├── components/        # Glass-morphic UI components
@@ -411,7 +534,7 @@ npm run dev
 
 ---
 
-## 14. Roadmap
+## 16. Roadmap
 - [x] Integrate LangGraph state machines for complex multi-agent flows
 - [x] Build and test 4-layer security guardrail chain
 - [x] Connect robust RAG pipeline via Qdrant with hybrid semantic chunking
@@ -423,4 +546,6 @@ npm run dev
 - [x] Firecrawl + Serper hybrid web intelligence
 - [x] Community Warnings Map — anonymous citizen reporting, Supabase, Qdrant similarity, gpt-4o-mini summaries.
 - [x] Agriculture Assistant — LangGraph RAG agent, single-pass retrieval, 23-zone pollution/fertility decision matrix, source citation
+- [x] GabèsEnergy AI — 4-agent parallel LangGraph pipeline, 25yr financial projections, XAI explainability, PROSOL subsidy modeling
+- [x] Medical Triage — 8 RAG specialist agents, CIN dossier, blood test pipeline, clinical PDF reports, confidence-gated routing
 - [ ] Run end-to-end pipeline GEval at scale

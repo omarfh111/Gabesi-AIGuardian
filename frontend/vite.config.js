@@ -10,6 +10,7 @@ export default defineConfig({
   ],
   server: {
     proxy: {
+      '/api/v1/energy': { target: 'http://localhost:8000', changeOrigin: true },
       '/api': { target: 'http://localhost:3000', changeOrigin: true },
       '/risk-map': { target: 'http://localhost:3000', changeOrigin: true },
       '/overview': { target: 'http://localhost:3000', changeOrigin: true },
