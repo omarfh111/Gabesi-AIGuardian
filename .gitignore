@@ -93,3 +93,10 @@ data_an/
 # Ignore the cloned branch directories as they are fully integrated
 warningsMarks/
 ai-assistant-agriculture/
+feature-medical-report-updates/
+
+# FastEmbed model cache
+backend/.cache/
+
+# Scratch scripts (temporary/debug)
+scratch/

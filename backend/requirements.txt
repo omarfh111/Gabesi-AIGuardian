@@ -46,6 +46,7 @@ flask-cors==5.0.1
 serpapi==0.1.5
 google-search-results==2.4.2
 
+
 # ── Feature 7: Strategic Intelligence ──────────────────────────────────────────
 pandas
 openpyxl
@@ -54,3 +55,7 @@ requests
 
 # ── Feature 8: Community Warnings Map ──────────────────────────────────────────
 supabase>=2.11.0
+
+# ── Feature 9: Medical Triage ──────────────────────────────────────────────────
+python-multipart==0.0.9
+fastembed>=0.3.0
