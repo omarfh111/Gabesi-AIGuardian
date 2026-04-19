@@ -1,6 +1,7 @@
-import React from 'react';
+import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import NavBar from './components/NavBar';
+import LoadingScreen from './components/LoadingScreen';
 import Chat from './pages/Chat';
 import Pollution from './pages/Pollution';
 import Irrigation from './pages/Irrigation';
@@ -15,6 +16,19 @@ import Energy from './pages/Energy';
 import './i18n';
 
 function App() {
+  const [showLoader, setShowLoader] = useState(() => {
+    return !sessionStorage.getItem('gabesi_loaded');
+  });
+
+  const handleComplete = () => {
+    sessionStorage.setItem('gabesi_loaded', 'true');
+    setShowLoader(false);
+  };
+
+  if (showLoader) {
+    return <LoadingScreen onComplete={handleComplete} />;
+  }
+
   return (
     <Router>
       <div className="min-h-screen bg-background flex flex-col">
