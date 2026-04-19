@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Send, Zap } from 'lucide-react';
+import { Send } from 'lucide-react';
+import { Button } from '../ui';
 
 const ChatInput = ({ onSend, disabled }) => {
   const [text, setText] = useState('');
@@ -21,12 +22,8 @@ const ChatInput = ({ onSend, disabled }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="relative group">
-      <div className="absolute -inset-1 bg-gradient-to-r from-accent to-purple rounded-2xl blur opacity-10 group-focus-within:opacity-25 transition duration-500"></div>
-      <div className="relative flex gap-3 items-center glass-card p-2">
-        <div className="hidden sm:flex items-center justify-center w-10 h-10 rounded-xl bg-accent/10 text-accent">
-          <Zap className="w-5 h-5" />
-        </div>
+    <form onSubmit={handleSubmit}>
+      <div className="relative flex gap-3 items-center rounded-xl border border-gray-200 bg-white p-2 shadow-sm">
         <textarea
           rows={1}
           value={text}
@@ -34,15 +31,16 @@ const ChatInput = ({ onSend, disabled }) => {
           onKeyDown={handleKeyDown}
           placeholder={t('chat.placeholder')}
           disabled={disabled}
-          className="flex-1 resize-none bg-transparent border-none py-3 px-2 text-sm text-text-primary placeholder:text-text-muted focus:ring-0 outline-none disabled:opacity-50"
+          className="flex-1 resize-none bg-transparent border-none px-2 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-0 outline-none disabled:opacity-50"
         />
-        <button
+        <Button
           type="submit"
           disabled={!text.trim() || disabled}
-          className="flex items-center justify-center w-10 h-10 rounded-xl bg-accent text-primary hover:bg-accent/90 transition-all disabled:opacity-30 disabled:grayscale cursor-pointer shadow-lg shadow-accent/20"
+          size="sm"
+          className="h-10 min-w-10 px-3"
         >
-          <Send className="w-5 h-5" />
-        </button>
+          <Send className="h-4 w-4" />
+        </Button>
       </div>
     </form>
   );

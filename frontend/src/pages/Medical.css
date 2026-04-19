@@ -758,3 +758,246 @@ h1, h2, h3 {
     from { transform: translateY(20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
 }
+
+/* Unified UI overrides */
+.medical-page {
+    background: linear-gradient(135deg, #f8fafc 0%, #ffffff 45%, #eff6ff 100%);
+    min-height: calc(100vh - 64px);
+}
+
+.medical-page .sidebar {
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(8px);
+    border-right: 1px solid #e5e7eb;
+}
+
+.medical-page .content {
+    max-width: 1100px;
+    padding-top: 1.5rem;
+}
+
+.medical-page .top-bar {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.medical-page .form-section {
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.medical-page .form-section h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    border-bottom-color: #eef2ff;
+}
+
+.medical-page .nav-item {
+    border: 1px solid transparent;
+}
+
+.medical-page .nav-item:hover,
+.medical-page .nav-item.active {
+    border-color: #dbeafe;
+    background: #eff6ff;
+}
+
+.medical-page .btn-primary {
+    background: #0284c7;
+    border-radius: 10px;
+}
+
+.medical-page .btn-primary:hover {
+    background: #0369a1;
+}
+
+.medical-page .btn-secondary {
+    border-radius: 10px;
+}
+
+.medical-page .checkbox-grid label,
+.medical-page .checkbox-options label {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+    background: #fff;
+}
+
+.medical-page .checkbox-grid label:hover,
+.medical-page .checkbox-options label:hover {
+    border-color: #bfdbfe;
+    background: #f8fbff;
+}
+
+.medical-page .results-card,
+.medical-page .chat-container,
+.medical-page .history-modal-card {
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.18);
+}
+
+.medical-page .chat-messages {
+    background: #f8fafc;
+}
+
+.medical-page .message.agent {
+    border-color: #e5e7eb;
+}
+
+.medical-page .message.patient {
+    background: #0284c7;
+}
+
+/* UX enhancement pass: wider workspace + richer form treatment */
+.medical-page .content {
+    width: calc(100% - var(--sidebar-w));
+    max-width: none;
+    padding: 1.5rem 2rem 2.5rem;
+}
+
+.medical-page .triage-form {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.medical-page .triage-form .form-section {
+    grid-column: span 12;
+    margin-bottom: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+.medical-page .triage-form #profile,
+.medical-page .triage-form #environment,
+.medical-page .triage-form #complaint,
+.medical-page .triage-form #symptoms {
+    grid-column: span 6;
+}
+
+.medical-page .triage-form #red-flags,
+.medical-page .triage-form #history {
+    grid-column: span 12;
+}
+
+.medical-page .triage-form .form-section h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #edf2f7;
+    color: #0f172a;
+}
+
+.medical-page .triage-form .section-desc {
+    margin-bottom: 1.25rem;
+    color: #64748b;
+}
+
+.medical-page .triage-form .form-group {
+    margin-bottom: 1rem;
+}
+
+.medical-page .triage-form .grid-2 {
+    gap: 1rem;
+}
+
+.medical-page .triage-form .span-2 {
+    grid-column: span 2;
+}
+
+.medical-page .triage-form input,
+.medical-page .triage-form select,
+.medical-page .triage-form textarea {
+    border: 1px solid #dbe3ee;
+    background: #ffffff;
+    border-radius: 12px;
+    min-height: 44px;
+    color: #0f172a;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+.medical-page .triage-form textarea {
+    min-height: 90px;
+}
+
+.medical-page .triage-form input::placeholder,
+.medical-page .triage-form textarea::placeholder {
+    color: #94a3b8;
+}
+
+.medical-page .triage-form input:focus,
+.medical-page .triage-form select:focus,
+.medical-page .triage-form textarea:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.16);
+    background: #fff;
+}
+
+.medical-page .triage-form .checkbox-grid,
+.medical-page .triage-form .checkbox-options {
+    gap: 0.75rem;
+}
+
+.medical-page .triage-form .checkbox-grid label,
+.medical-page .triage-form .checkbox-options label {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fbff;
+    padding: 0.65rem 0.85rem;
+}
+
+.medical-page .triage-form .checkbox-grid label:hover,
+.medical-page .triage-form .checkbox-options label:hover {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+}
+
+.medical-page .triage-form .danger-zone {
+    background: linear-gradient(180deg, #fff9f9 0%, #fff3f3 100%);
+    border-color: #fecaca;
+}
+
+.medical-page .triage-form .form-actions {
+    grid-column: span 12;
+    margin-top: 0.25rem;
+    padding: 0.25rem 0;
+}
+
+.medical-page .triage-form .btn-primary,
+.medical-page .triage-form .btn-secondary {
+    min-height: 44px;
+    border-radius: 12px;
+}
+
+@media (max-width: 1200px) {
+    .medical-page .triage-form #profile,
+    .medical-page .triage-form #environment,
+    .medical-page .triage-form #complaint,
+    .medical-page .triage-form #symptoms {
+        grid-column: span 12;
+    }
+}
+
+@media (max-width: 768px) {
+    .medical-page .content {
+        width: 100%;
+        padding: 1rem;
+    }
+
+    .medical-page .triage-form {
+        grid-template-columns: 1fr;
+    }
+
+    .medical-page .triage-form .form-section,
+    .medical-page .triage-form .form-actions {
+        grid-column: span 1;
+    }
+}

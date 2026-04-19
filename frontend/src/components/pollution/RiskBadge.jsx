@@ -1,46 +1,33 @@
 import React from 'react';
+import { Badge, Card, CardContent } from '../ui';
+
+const RISK_CONFIG = {
+  low: { label: 'Healthy environment', badge: 'low', progress: 25 },
+  moderate: { label: 'Caution advised', badge: 'medium', progress: 50 },
+  high: { label: 'High exposure', badge: 'high', progress: 75 },
+  critical: { label: 'Severe risk', badge: 'high', progress: 100 },
+};
 
 const RiskBadge = ({ level }) => {
-  const configs = {
-    low: { color: '#10b981', label: 'Healthy Environment' },
-    moderate: { color: '#f59e0b', label: 'Caution Advised' },
-    high: { color: '#ef4444', label: 'High Exposure' },
-    critical: { color: '#ff0000', label: 'Severe Risk' },
-  };
-
-  const config = configs[level?.toLowerCase()] || { color: '#8b95b8', label: 'Unknown Status' };
+  const key = level?.toLowerCase();
+  const config = RISK_CONFIG[key] || { label: 'Unknown status', badge: 'neutral', progress: 0 };
 
   return (
-    <div 
-      className="glass-card p-6 flex flex-col items-center justify-center relative overflow-hidden h-full group transition-all duration-500"
-      style={{ borderLeft: `4px solid ${config.color}` }}
-    >
-      <div 
-        className="absolute top-0 right-0 w-32 h-32 blur-[80px] opacity-20 group-hover:opacity-40 transition-opacity"
-        style={{ background: config.color }}
-      />
-      
-      <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.3em] mb-2">Pollution Risk Index</span>
-      <span 
-        className="text-4xl font-black uppercase tracking-tighter mb-1"
-        style={{ color: config.color, textShadow: `0 0 20px ${config.color}40` }}
-      >
-        {level || 'Scanning...'}
-      </span>
-      <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{config.label}</span>
-      
-      {/* Animated progress bar below */}
-      <div className="w-full h-1 bg-white/5 rounded-full mt-4 overflow-hidden">
-        <div 
-          className="h-full rounded-full transition-all duration-1000 ease-out"
-          style={{ 
-            width: level?.toLowerCase() === 'low' ? '25%' : level?.toLowerCase() === 'moderate' ? '50%' : level?.toLowerCase() === 'high' ? '75%' : '100%',
-            backgroundColor: config.color,
-            boxShadow: `0 0 10px ${config.color}`
-          }}
-        />
-      </div>
-    </div>
+    <Card className="rounded-xl">
+      <CardContent className="space-y-3 p-5">
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-gray-500">Pollution Risk Index</p>
+          <Badge variant={config.badge}>{level || 'unknown'}</Badge>
+        </div>
+        <p className="text-sm font-medium text-gray-800">{config.label}</p>
+        <div className="h-2 w-full rounded-full bg-gray-100">
+          <div
+            className={`h-2 rounded-full ${config.badge === 'high' ? 'bg-red-500' : config.badge === 'medium' ? 'bg-amber-500' : 'bg-emerald-500'}`}
+            style={{ width: `${config.progress}%` }}
+          />
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

@@ -1,47 +1,64 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Phone, MapPin, Navigation } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AlertTriangle, MapPin, Navigation, Send, X } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Badge, Button, Input } from '../ui';
 
-const sessionId = 'emg_' + Math.random().toString(36).substr(2, 9);
+const sessionId = `emg_${Math.random().toString(36).slice(2, 11)}`;
 
-const EmergencyChat = ({ isOpen, onToggle, manualMarker, isSelecting, onRequestMapSelect }) => {
+const QUICK_ALERTS = ['Cannot breathe', 'Chest pain', 'Person unconscious', 'Asthma attack'];
+
+const EmergencyChat = ({ isOpen, onToggle, manualMarker, onRequestMapSelect }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [emergencyScore, setEmergencyScore] = useState(0);
   const [isAlarm, setIsAlarm] = useState(false);
+  const [inactivityProgress, setInactivityProgress] = useState(0);
   const timerRef = useRef(null);
+  const progressIntervalRef = useRef(null);
+  const timerStartedAtRef = useRef(null);
   const chatEndRef = useRef(null);
-
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
-
-  // When a manual marker is set from the map, auto-send the location
   const prevMarker = useRef(null);
-  useEffect(() => {
-    if (
-      manualMarker &&
-      (prevMarker.current?.lat !== manualMarker.lat || prevMarker.current?.lng !== manualMarker.lng)
-    ) {
-      prevMarker.current = manualMarker;
-      sendToAssistant('Location selected', manualMarker.lat, manualMarker.lng);
-    }
-  }, [manualMarker]);
 
-  const resetTimer = () => {
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const addMessage = useCallback((text, sender) => {
+    setMessages((prev) => [...prev, { text, sender, id: Date.now() + Math.random() }]);
+  }, []);
+
+  const resetTimer = useCallback(() => {
     clearTimeout(timerRef.current);
+    clearInterval(progressIntervalRef.current);
+    timerStartedAtRef.current = Date.now();
+    setInactivityProgress(0);
     setIsAlarm(false);
+
+    progressIntervalRef.current = setInterval(() => {
+      if (!timerStartedAtRef.current) return;
+      const elapsed = Date.now() - timerStartedAtRef.current;
+      const progress = Math.min(1, elapsed / 60000);
+      setInactivityProgress(progress);
+    }, 1000);
+
     timerRef.current = setTimeout(() => {
       if (isOpen) {
         setIsAlarm(true);
-        addMessage("🚨 ALERTE : Aucune réponse détectée depuis 1 minute. Appel d'urgence automatique au 190 en cours...", 'ai');
+        setInactivityProgress(1);
+        clearInterval(progressIntervalRef.current);
+        addMessage('ALERT: No response detected for 1 minute. Automatic emergency call sequence started.', 'ai');
       }
     }, 60000);
-  };
+  }, [addMessage, isOpen]);
 
-  const addMessage = (text, sender) => {
-    setMessages(prev => [...prev, { text, sender, id: Date.now() + Math.random() }]);
-  };
+  useEffect(() => () => {
+    clearTimeout(timerRef.current);
+    clearInterval(progressIntervalRef.current);
+  }, []);
 
-  const sendToAssistant = async (message, lat = null, lng = null) => {
+  const sendToAssistant = useCallback(async (message, lat = null, lng = null) => {
     resetTimer();
     if (message && message !== 'Location selected') addMessage(message, 'user');
     setInput('');
@@ -58,7 +75,10 @@ const EmergencyChat = ({ isOpen, onToggle, manualMarker, isSelecting, onRequestM
         }),
       });
       const data = await res.json();
-      if (data.error) { addMessage('Error connecting to assistant core.', 'ai'); return; }
+      if (data.error) {
+        addMessage('Error connecting to assistant core.', 'ai');
+        return;
+      }
       addMessage(data.response, 'ai');
       if (data.emergency_score != null) setEmergencyScore(data.emergency_score);
     } catch {
@@ -66,131 +86,174 @@ const EmergencyChat = ({ isOpen, onToggle, manualMarker, isSelecting, onRequestM
     } finally {
       setLoading(false);
     }
-  };
+  }, [addMessage, manualMarker, resetTimer]);
+
+  useEffect(() => {
+    if (
+      manualMarker &&
+      (prevMarker.current?.lat !== manualMarker.lat || prevMarker.current?.lng !== manualMarker.lng)
+    ) {
+      prevMarker.current = manualMarker;
+      sendToAssistant('Location selected', manualMarker.lat, manualMarker.lng);
+    }
+  }, [manualMarker, sendToAssistant]);
 
   const handleToggle = () => {
     onToggle();
-    if (!isOpen && messages.length === 0) {
-      sendToAssistant('');
-      resetTimer();
+    if (!isOpen) {
+      if (messages.length === 0) {
+        sendToAssistant('');
+      } else {
+        resetTimer();
+      }
     }
-    if (isOpen) { clearTimeout(timerRef.current); setIsAlarm(false); }
+    if (isOpen) {
+      clearTimeout(timerRef.current);
+      clearInterval(progressIntervalRef.current);
+      timerStartedAtRef.current = null;
+      setInactivityProgress(0);
+      setIsAlarm(false);
+    }
   };
 
   const handleAutoLocate = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        pos => sendToAssistant('Location selected', pos.coords.latitude, pos.coords.longitude),
-        () => alert("Location access denied. Please click '📍 Select on Map'.")
+        (pos) => sendToAssistant('Location selected', pos.coords.latitude, pos.coords.longitude),
+        () => alert("Location access denied. Please click 'Select on map'.")
       );
     }
   };
 
-  const ringGlow = emergencyScore >= 80
-    ? '0 0 35px #ef4444'
-    : emergencyScore >= 40 ? '0 0 15px #f59e0b' : '0 0 15px rgba(239,68,68,.5)';
+  const sendFromInput = () => {
+    if (input.trim()) sendToAssistant(input.trim());
+  };
+
+  const warningOpacity = Math.max(0, inactivityProgress - 0.15);
+  const warningBorder = 0.15 + warningOpacity * 0.75;
+  const shouldPulseChat = inactivityProgress > 0.5 && !isAlarm;
 
   return (
     <>
-      {/* Floating button */}
       <button
         onClick={handleToggle}
-        className="fixed bottom-8 right-8 w-14 h-14 rounded-full flex items-center justify-center text-2xl text-white z-[2000] transition-transform hover:scale-110"
-        style={{
-          background: 'linear-gradient(135deg,#ef4444,#f43f5e)',
-          boxShadow: isAlarm ? '0 0 60px #ff0000' : ringGlow,
-          animation: isAlarm ? 'alarmFlash 1s infinite' : undefined,
-        }}
+        className="fixed bottom-8 right-8 z-[2000] flex h-14 w-14 items-center justify-center rounded-full bg-red-600 text-white shadow-md transition-transform hover:scale-105 hover:bg-red-500"
       >
-        🚨
+        <AlertTriangle className="h-6 w-6" />
       </button>
 
-      {/* Widget */}
-      {isOpen && (
+      {isOpen ? (
         <div
-          className="fixed bottom-28 right-8 w-[360px] h-[520px] z-[2000] flex flex-col overflow-hidden rounded-2xl"
+          className={`fixed bottom-28 right-8 z-[2000] flex h-[520px] w-[360px] flex-col overflow-hidden rounded-xl border bg-white shadow-md transition-all duration-500 ${
+            shouldPulseChat ? 'animate-pulse' : ''
+          }`}
           style={{
-            background: 'rgba(12,16,32,.92)',
-            backdropFilter: 'blur(20px)',
-            border: isAlarm ? '1px solid #ef4444' : '1px solid rgba(239,68,68,.4)',
-            boxShadow: '0 10px 40px rgba(0,0,0,.6)',
-            animation: isAlarm ? 'alarmFlash 1s infinite' : undefined,
+            borderColor: `rgba(239,68,68,${warningBorder})`,
+            boxShadow: `0 12px 28px rgba(15,23,42,0.16), 0 0 0 2px rgba(239,68,68,${warningOpacity * 0.55})`,
+            backgroundImage: `linear-gradient(180deg, rgba(254,242,242,${warningOpacity * 0.35}) 0%, rgba(255,255,255,1) 38%)`,
           }}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-red-500/30"
-            style={{ background: 'rgba(239,68,68,.15)' }}>
-            <div className="text-[13px] font-black text-red-400 tracking-wide uppercase">
-              🚨 AI Emergency Decision System
+          <div className="h-1 w-full bg-gray-100">
+            <div
+              className="h-full bg-gradient-to-r from-amber-400 via-red-500 to-red-700 transition-all duration-1000"
+              style={{ width: `${Math.round(inactivityProgress * 100)}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between border-b border-gray-100 bg-red-50 px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-red-700">Emergency Assistant</p>
+              <p className="text-xs text-red-600">Real-time triage guidance</p>
             </div>
-            <button onClick={handleToggle} className="text-gray-500 hover:text-gray-300 text-lg">✕</button>
+            <div className="flex items-center gap-2">
+              <Badge variant={emergencyScore >= 80 ? 'high' : emergencyScore >= 40 ? 'medium' : 'low'}>
+                score {emergencyScore}
+              </Badge>
+              <button onClick={handleToggle} className="rounded p-1 text-gray-500 hover:bg-white hover:text-gray-700">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3"
-            style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(239,68,68,.3) transparent' }}>
-            {messages.map(msg => (
+          <div className="flex-1 space-y-2 overflow-y-auto bg-gray-50 p-3">
+            {messages.map((msg) => (
               <div
                 key={msg.id}
-                className="max-w-[85%] px-3 py-2.5 rounded-[14px] text-xs leading-relaxed whitespace-pre-wrap"
-                style={msg.sender === 'user'
-                  ? { background: 'linear-gradient(135deg,#ef4444,#f43f5e)', color: 'white', alignSelf: 'flex-end', borderBottomRightRadius: 4 }
-                  : { background: 'rgba(255,255,255,.05)', border: '1px solid #1e2548', color: '#eef0f8', alignSelf: 'flex-start', borderBottomLeftRadius: 4 }}
-                dangerouslySetInnerHTML={{ __html: msg.text.replace(/(Step \d+:)/g, '<strong>$1</strong>') }}
-              />
+                className={`max-w-[88%] rounded-lg px-3 py-2 text-xs leading-relaxed ${
+                  msg.sender === 'user'
+                    ? 'ml-auto bg-red-600 text-white'
+                    : 'border border-gray-200 bg-white text-gray-700'
+                }`}
+              >
+                {msg.sender === 'user' ? (
+                  msg.text
+                ) : (
+                  <div className="prose prose-sm max-w-none text-gray-800 prose-p:my-1 prose-p:text-gray-800 prose-strong:text-gray-900 prose-li:text-gray-800 prose-ul:my-1 prose-ol:my-1">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
+                  </div>
+                )}
+              </div>
             ))}
-            {loading && <div className="text-[10px] text-gray-500 ml-1">Assistant is analyzing...</div>}
+            {loading ? <div className="text-xs text-gray-500">Assistant is analyzing...</div> : null}
             <div ref={chatEndRef} />
           </div>
 
-          {/* Quick replies */}
-          <div className="px-4 py-2 border-t border-[#1e2548] flex flex-wrap gap-2">
-            <button onClick={handleAutoLocate}
-              className="flex items-center gap-1 px-3 py-1 rounded-full text-[11px] text-blue-400 transition-all hover:bg-blue-500 hover:text-white"
-              style={{ background: 'rgba(59,130,246,.15)', border: '1px solid rgba(59,130,246,.4)' }}>
-              <Navigation className="w-3 h-3" /> Use my location
-            </button>
-            <button onClick={onRequestMapSelect}
-              className="flex items-center gap-1 px-3 py-1 rounded-full text-[11px] text-blue-400 transition-all hover:bg-blue-500 hover:text-white"
-              style={{ background: 'rgba(59,130,246,.15)', border: '1px solid rgba(59,130,246,.4)' }}>
-              <MapPin className="w-3 h-3" /> Select on Map
-            </button>
-            {['Cannot breathe', 'Chest pain', 'Person unconscious', 'Asthma attack'].map(t => (
-              <button key={t} onClick={() => sendToAssistant(t)}
-                className="px-3 py-1 rounded-full text-[11px] text-gray-300 transition-all hover:bg-red-500 hover:text-white"
-                style={{ background: 'rgba(255,255,255,.08)', border: '1px solid #1e2548' }}>
-                {t}
-              </button>
-            ))}
-          </div>
+          <div className="border-t border-gray-100 px-3 py-2">
+            <div className="mb-2 flex flex-wrap gap-2">
+              <Button size="sm" variant="secondary" onClick={handleAutoLocate}>
+                <Navigation className="h-3.5 w-3.5" />
+                Use my location
+              </Button>
+              <Button size="sm" variant="secondary" onClick={onRequestMapSelect}>
+                <MapPin className="h-3.5 w-3.5" />
+                Select on map
+              </Button>
+              {QUICK_ALERTS.map((text) => (
+                <Button key={text} size="sm" variant="secondary" onClick={() => sendToAssistant(text)}>
+                  {text}
+                </Button>
+              ))}
+            </div>
 
-          {/* Input */}
-          <div className="px-4 py-3 border-t border-[#1e2548] flex gap-2"
-            style={{ background: 'rgba(0,0,0,.2)' }}>
-            <input
-              className="flex-1 bg-[#111630] border border-[#1e2548] rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-red-500"
-              placeholder="Type symptom..."
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && input.trim() && sendToAssistant(input.trim())}
-            />
-            <button
-              onClick={() => input.trim() && sendToAssistant(input.trim())}
-              className="bg-red-500 hover:bg-red-600 text-white px-3 rounded-lg text-xs font-bold transition-colors"
-            >
-              Send
-            </button>
+            <div className="flex gap-2">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && sendFromInput()}
+                placeholder="Describe symptoms..."
+              />
+              <Button onClick={sendFromInput}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
-      )}
+      ) : null}
 
-      <style>{`
-        @keyframes alarmFlash {
-          0%   { border-color:#ef4444; box-shadow:0 0 30px rgba(239,68,68,.6); background:rgba(40,0,0,.9); }
-          50%  { border-color:#ff0000; box-shadow:0 0 60px rgba(255,0,0,1);   background:rgba(80,0,0,.9); }
-          100% { border-color:#ef4444; box-shadow:0 0 30px rgba(239,68,68,.6); background:rgba(40,0,0,.9); }
-        }
-      `}</style>
+      {isAlarm ? (
+        <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-red-950/55 backdrop-blur-sm">
+          <div className="animate-pulse rounded-2xl border border-red-300 bg-red-600 p-6 text-white shadow-2xl">
+            <div className="mb-3 flex items-center gap-3">
+              <AlertTriangle className="h-6 w-6" />
+              <p className="text-lg font-semibold">Emergency Warning</p>
+            </div>
+            <p className="max-w-md text-sm leading-relaxed">
+              ALERT: No response detected for 1 minute. Automatic emergency call sequence started.
+            </p>
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAlarm(false);
+                  resetTimer();
+                }}
+                className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 };

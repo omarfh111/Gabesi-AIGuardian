@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { Bot } from 'lucide-react';
 import DiagnosisCard from './DiagnosisCard';
 import IrrigationCard from './IrrigationCard';
 import PollutionQACard from './PollutionQACard';
@@ -27,13 +27,15 @@ const MessageBubble = ({ message }) => {
       case 'unknown':
         return (
           <div className="flex items-start gap-3">
-            <span className="text-lg bg-accent/20 p-2 rounded-lg">🤖</span>
-            <div className="text-sm leading-relaxed">{response.message || response}</div>
+            <span className="rounded-lg bg-gray-100 p-2 text-gray-700">
+              <Bot className="h-4 w-4" />
+            </span>
+            <div className="text-sm leading-relaxed text-gray-700">{response.message || response}</div>
           </div>
         );
       default:
         return (
-          <div className="text-sm leading-relaxed">
+          <div className="text-sm leading-relaxed text-gray-700">
             {message.content || response.message || (typeof response === 'string' ? response : JSON.stringify(response))}
           </div>
         );
@@ -41,21 +43,17 @@ const MessageBubble = ({ message }) => {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      className={`flex w-full ${isAI ? 'justify-start' : 'justify-end'}`}
-    >
+    <div className={`flex w-full ${isAI ? 'justify-start' : 'justify-end'}`}>
       <div
-        className={`max-w-[85%] md:max-w-[70%] px-4 py-3 shadow-2xl ${
+        className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm transition-all duration-200 md:max-w-[70%] ${
           isAI
-            ? 'glass-card text-text-primary rounded-bl-none'
-            : 'bg-accent text-primary font-bold rounded-2xl rounded-br-none shadow-accent/20'
+            ? 'rounded-bl-none border border-gray-200 bg-white text-gray-800'
+            : 'rounded-br-none bg-sky-600 text-white'
         }`}
       >
         {renderContent()}
       </div>
-    </motion.div>
+    </div>
   );
 };
 

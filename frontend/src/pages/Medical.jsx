@@ -7,7 +7,6 @@ const Medical = () => {
 
   useEffect(() => {
     if (!containerRef.current) return;
-    let isMounted = true;
     try {
         const translations = {
             en: {
@@ -478,7 +477,9 @@ const Medical = () => {
                 try {
                     const errData = await response.json();
                     detail = errData?.detail || detail;
-                } catch (_) {}
+                } catch {
+                    // Ignore parse failures and keep fallback detail message.
+                }
                 throw new Error(detail);
             }
             const blob = await response.blob();
@@ -1115,7 +1116,9 @@ const Medical = () => {
                             try {
                                 const errData = await response.json();
                                 detail = errData?.detail || detail;
-                            } catch (_) {}
+                            } catch {
+                                // Ignore parse failures and keep fallback detail message.
+                            }
                             throw new Error(detail);
                         }
                         const blob = await response.blob();

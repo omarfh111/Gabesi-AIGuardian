@@ -139,19 +139,6 @@ function MapPicker({ value, onChange }) {
 
 /* ─── Open-Meteo fetch helper ─────────────────────────────────── */
 async function fetchSolarData(lat, lng) {
-  // Annual solar irradiance + temp via Open-Meteo (no key needed)
-  const url =
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
-    `&hourly=shortwave_radiation,temperature_2m,direct_normal_irradiance&forecast_days=1` +
-    `&timezone=Africa%2FTunis`;
-
-  // For annual data we use the climate API
-  const climateUrl =
-    `https://climate-api.open-meteo.com/v1/climate?latitude=${lat}&longitude=${lng}` +
-    `&start_date=2000-01-01&end_date=2022-12-31` +
-    `&models=EC_Earth3P_HR` +
-    `&daily=temperature_2m_max,temperature_2m_min`;
-
   // Simpler: use current-weather for avg temp + derive solar hours for Gabès
   const weatherUrl =
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
@@ -185,7 +172,7 @@ async function fetchSolarData(lat, lng) {
   return { avgTemp, annualSunHours, orientation };
 }
 
-function deriveOrientation(lng) {
+function deriveOrientation() {
   // Gabès longitude ~10.1°E — buildings facing south is ideal in North Africa
   // We keep it as "sud" since this is an auto-suggestion
   return "sud";
@@ -288,8 +275,12 @@ export default function ProfileForm({ onBack, onSubmit }) {
   useEffect(() => {
     const kwh = parseFloat(form.consommation.consommation_kwh_mensuelle);
     if (!isNaN(kwh) && kwh > 0) {
-      patch("consommation", "taux_co2_kg_par_an", computeCO2(kwh));
+      const co2Update = setTimeout(() => {
+        patch("consommation", "taux_co2_kg_par_an", computeCO2(kwh));
+      }, 0);
+      return () => clearTimeout(co2Update);
     }
+    return undefined;
   }, [form.consommation.consommation_kwh_mensuelle, patch]);
 
   /* ── Fetch solar/meteo data when coords change ───────────── */
@@ -436,7 +427,7 @@ export default function ProfileForm({ onBack, onSubmit }) {
   }
 
   return (
-    <div className="pf-root">
+    <div className="pf-root energy-unified-profile">
       {/* Header */}
       <div className="pf-header">
         <button className="pf-back-btn" onClick={onBack}>← Retour</button>
@@ -845,7 +836,7 @@ function StepTransport({ form, patch }) {
 /* ══════════════════ Success Screen ═════════════════════════ */
 function JsonSuccess({ data, onDownload, onBack, downloaded, onLaunch }) {
   return (
-    <div className="pf-root">
+    <div className="pf-root energy-unified-profile">
       <div className="pf-success">
         <div className="pf-success__icon">🎉</div>
         <h2 className="pf-success__title">Profil généré avec succès !</h2>

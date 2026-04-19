@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import EmergencyMap from '../components/emergency/EmergencyMap';
-import EmergencyChat from '../components/emergency/EmergencyChat';
+import React, { useCallback, useEffect, useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import AgricultureChat from '../components/emergency/AgricultureChat';
+import EmergencyChat from '../components/emergency/EmergencyChat';
+import EmergencyMap from '../components/emergency/EmergencyMap';
 import EmergencySidebar from '../components/emergency/EmergencySidebar';
 
 const Emergency = () => {
@@ -13,9 +14,7 @@ const Emergency = () => {
   const [agriChatOpen, setAgriChatOpen] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
   const [manualMarker, setManualMarker] = useState(null);
-
-  // Map ref so sidebar can call flyTo
-  const mapRef = useRef(null);
+  const [flyTarget, setFlyTarget] = useState(null);
 
   const loadAll = useCallback(async () => {
     try {
@@ -26,7 +25,10 @@ const Emergency = () => {
         fetch('/overview'),
       ]);
       const [riskData, locData, logData, ovData] = await Promise.all([
-        riskRes.json(), locRes.json(), logRes.json(), ovRes.json(),
+        riskRes.json(),
+        locRes.json(),
+        logRes.json(),
+        ovRes.json(),
       ]);
       setCircles(riskData.circles || []);
       setLocations(locData.locations || []);
@@ -37,13 +39,20 @@ const Emergency = () => {
     }
   }, []);
 
-  useEffect(() => { loadAll(); }, [loadAll]);
+  useEffect(() => {
+    const initialLoad = setTimeout(() => {
+      loadAll();
+    }, 0);
+    return () => clearTimeout(initialLoad);
+  }, [loadAll]);
 
   const handleDeleteLocation = async (id) => {
     try {
       await fetch(`/locations/${id}`, { method: 'DELETE' });
       loadAll();
-    } catch { /* ignore */ }
+    } catch {
+      // noop
+    }
   };
 
   const handleLocationSelected = (lat, lng) => {
@@ -52,8 +61,6 @@ const Emergency = () => {
     if (!chatOpen) setChatOpen(true);
   };
 
-  // flyTo: we use a simple event approach since the map is in a child component
-  const [flyTarget, setFlyTarget] = useState(null);
   const handleFlyTo = (lat, lng) => setFlyTarget({ lat, lng, zoom: 15 });
   const handleFlyToCircle = (lat, lng) => setFlyTarget({ lat, lng, zoom: 13 });
 
@@ -62,11 +69,21 @@ const Emergency = () => {
   const riskColor = riskLevel === 'danger' ? '#ef4444' : riskLevel === 'warning' ? '#f59e0b' : '#10b981';
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] bg-[#06080f] text-white overflow-hidden">
-      {/* Main 2-column layout */}
-      <div className="flex flex-1 min-h-0">
-        {/* Sidebar (400px) */}
-        <div className="w-[400px] flex-shrink-0">
+    <div className="h-[calc(100vh-64px)] overflow-hidden bg-gradient-to-br from-slate-50 via-white to-red-50">
+      <div className="flex items-center justify-between border-b border-gray-200 bg-white/80 px-4 py-2 backdrop-blur">
+        <div className="flex items-center gap-2">
+          <div className="rounded-lg bg-red-100 p-1.5 text-red-700">
+            <AlertTriangle className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-900">Emergency Operations</p>
+            <p className="text-xs text-gray-500">Live map, risk monitoring, and assisted response</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex h-[calc(100%-53px)] min-h-0">
+        <div className="w-[400px] shrink-0 border-r border-gray-200 bg-slate-950/95">
           <EmergencySidebar
             overview={overview}
             circles={circles}
@@ -79,8 +96,7 @@ const Emergency = () => {
           />
         </div>
 
-        {/* Map */}
-        <div className="flex-1 relative min-w-0">
+        <div className="min-w-0 flex-1">
           <EmergencyMap
             circles={circles}
             locations={locations}
@@ -96,11 +112,10 @@ const Emergency = () => {
         </div>
       </div>
 
-      {/* Floating Emergency Chat */}
       <EmergencyChat
         isOpen={chatOpen}
         onToggle={() => {
-          setChatOpen(v => !v);
+          setChatOpen((v) => !v);
           if (!chatOpen) setAgriChatOpen(false);
         }}
         manualMarker={manualMarker}
@@ -112,11 +127,10 @@ const Emergency = () => {
         }}
       />
 
-      {/* Floating Agriculture Chat */}
       <AgricultureChat
         isOpen={agriChatOpen}
         onToggle={() => {
-          setAgriChatOpen(v => !v);
+          setAgriChatOpen((v) => !v);
           if (!agriChatOpen) setChatOpen(false);
         }}
         manualMarker={manualMarker}

@@ -184,7 +184,7 @@ export default function Dashboard({ data }) {
   const co25  = co2_projections.filter(r => r.annee % 5 === 0 || r.annee === 1);
 
   return (
-    <div className="dashboard">
+    <div className="dashboard energy-unified-dashboard">
 
       {/* ─── KPIs ──────────────────────────────────────── */}
       <SectionTitle icon="📊" title="Tableau de bord synthèse" sub="Métriques clés calculées par l'orchestrateur" />

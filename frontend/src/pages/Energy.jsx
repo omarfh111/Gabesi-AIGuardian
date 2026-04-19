@@ -1,57 +1,66 @@
-import { useState, useEffect } from "react";
-import EnergyProfileForm from "./EnergyProfileForm";
-import EnergyDashboard from "./EnergyDashboard";
-import "./Energy.css";
+import { useEffect, useState } from 'react';
+import { Activity, Bolt, Brain, Leaf, PiggyBank, RefreshCw } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import EnergyDashboard from './EnergyDashboard';
+import EnergyProfileForm from './EnergyProfileForm';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
 
-// API helpers scoped to the integrated route
-const API_BASE = "/api/v1/energy";
+const API_BASE = '/api/v1/energy';
 
 async function fetchUserData() {
   const res = await fetch(`${API_BASE}/user-data`);
-  if (!res.ok) throw new Error("Failed to fetch user data");
+  if (!res.ok) throw new Error('Failed to fetch user data');
   return res.json();
 }
 
 async function runParallelAnalysis(userData = null) {
   const res = await fetch(`${API_BASE}/analyse`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: userData ? JSON.stringify(userData) : "{}",
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: userData ? JSON.stringify(userData) : '{}',
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Analysis failed");
+    throw new Error(err.detail || 'Analysis failed');
   }
   return res.json();
 }
 
 async function healthCheck() {
   const res = await fetch(`${API_BASE}/health`);
-  if (!res.ok) throw new Error("API unreachable");
+  if (!res.ok) throw new Error('API unreachable');
   return res.json();
 }
 
+function formatAnalysis(text) {
+  if (!text) return <span className="text-sm text-gray-500">No analysis available.</span>;
+  return (
+    <div className="prose prose-sm max-w-none prose-headings:text-slate-900 prose-p:text-slate-700 prose-strong:text-slate-900 prose-li:text-slate-700 prose-code:text-slate-800">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+    </div>
+  );
+}
+
 function Energy() {
-  const [page, setPage] = useState("home"); // Changed to "home" by default for integration
+  const [page, setPage] = useState('home');
   const [userData, setUserData] = useState(null);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [apiStatus, setApiStatus] = useState("checking"); // "ok" | "error" | "checking"
-  const [langsmithStatus, setLangsmithStatus] = useState("off");
+  const [apiStatus, setApiStatus] = useState('checking');
+  const [langsmithStatus, setLangsmithStatus] = useState('off');
 
-  // Health check on mount
   useEffect(() => {
     async function init() {
       try {
         const health = await healthCheck();
-        setApiStatus("ok");
-        setLangsmithStatus(health.langsmith_tracing === "true" ? "on" : "off");
-
+        setApiStatus('ok');
+        setLangsmithStatus(health.langsmith_tracing === 'true' ? 'on' : 'off');
         const data = await fetchUserData();
         setUserData(data);
       } catch {
-        setApiStatus("error");
+        setApiStatus('error');
       }
     }
     init();
@@ -71,369 +80,151 @@ function Energy() {
     }
   };
 
-  const initials = userData
-    ? `${(userData.identite?.prenom || "S")[0]}${(userData.identite?.nom || "B")[0]}`
-    : "??";
-
-  // Handler pour la soumission du formulaire
   const handleFormSubmit = (data) => {
     setUserData(data);
-    setPage("home");
+    setPage('home');
     handleAnalyse(data);
   };
 
-  /**
-   * Format agent analysis text by converting markdown-like patterns to JSX.
-   */
-  function formatAnalysis(text) {
-    if (!text) return <span style={{ color: "var(--energy-text-muted)" }}>Aucune analyse disponible.</span>;
-
-    return text.split("\n").map((line, i) => {
-      if (line.startsWith("###")) {
-        return (
-          <h4 key={i} style={{ color: "var(--energy-text-primary)", margin: "16px 0 8px", fontSize: "0.95rem", fontWeight: 700 }}>
-            {line.replace(/^###\s*/, "")}
-          </h4>
-        );
-      }
-      if (line.startsWith("##")) {
-        return (
-          <h3 key={i} style={{ color: "var(--energy-text-primary)", margin: "18px 0 8px", fontSize: "1rem", fontWeight: 700 }}>
-            {line.replace(/^##\s*/, "")}
-          </h3>
-        );
-      }
-      if (line.startsWith("- ") || line.startsWith("• ")) {
-        return (
-          <div key={i} style={{ paddingLeft: "16px", position: "relative", marginBottom: "4px" }}>
-            <span style={{ position: "absolute", left: 0, color: "var(--energy-accent-emerald)" }}>•</span>
-            {renderBold(line.slice(2))}
-          </div>
-        );
-      }
-      const numMatch = line.match(/^(\d+)\.\s/);
-      if (numMatch) {
-        return (
-          <div key={i} style={{ paddingLeft: "20px", position: "relative", marginBottom: "4px" }}>
-            <span style={{ position: "absolute", left: 0, color: "var(--energy-accent-cyan)", fontWeight: 700, fontSize: "0.85rem" }}>
-              {numMatch[1]}.
-            </span>
-            {renderBold(line.replace(/^\d+\.\s/, ""))}
-          </div>
-        );
-      }
-      if (line.trim() === "") return <br key={i} />;
-      return <p key={i} style={{ marginBottom: "6px" }}>{renderBold(line)}</p>;
-    });
-  }
-
-  function renderBold(text) {
-    const parts = text.split(/(\*\*[^*]+\*\*)/g);
-    return parts.map((part, i) => {
-      if (part.startsWith("**") && part.endsWith("**")) {
-        return <strong key={i}>{part.slice(2, -2)}</strong>;
-      }
-      return part;
-    });
-  }
-
-  // Page router — must be after all hooks
-  if (page === "form") {
+  if (page === 'form') {
     return (
-      <div className="energy-page">
-        <EnergyProfileForm onBack={() => setPage("home")} onSubmit={handleFormSubmit} />
+      <div className="energy-page min-h-[calc(100vh-64px)] bg-gradient-to-br from-slate-50 via-white to-emerald-50 p-6">
+        <EnergyProfileForm onBack={() => setPage('home')} onSubmit={handleFormSubmit} />
       </div>
     );
   }
 
+  const initials = userData
+    ? `${(userData.identite?.prenom || 'S')[0]}${(userData.identite?.nom || 'B')[0]}`
+    : '??';
+
   return (
-    <div className="energy-page">
-      <div className="app">
-        {/* Header */}
-        <header className="header">
-          <div className="header__badge">
-            <span className="pulse-dot"></span>
-            Énergie Renouvelable — Gabès
-          </div>
-          <h1 className="header__title">Conseiller IA Énergie</h1>
-          <p className="header__subtitle">
-            4 agents IA analysent votre profil énergétique et financier pour un plan de transition personnalisé.
-          </p>
-        </header>
+    <div className="energy-page min-h-[calc(100vh-64px)] bg-gradient-to-br from-slate-50 via-white to-emerald-50 p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <Card className="rounded-xl">
+          <CardHeader className="p-5">
+            <CardTitle className="text-lg font-semibold text-gray-900">AI Energy Advisor</CardTitle>
+            <p className="text-sm text-gray-600">4 agents analyze your environmental, energy, and financial profile.</p>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-2 px-5 pb-5 pt-0">
+            <Badge variant={apiStatus === 'ok' ? 'low' : apiStatus === 'error' ? 'high' : 'medium'}>
+              API {apiStatus}
+            </Badge>
+            <Badge variant={langsmithStatus === 'on' ? 'low' : 'neutral'}>LangSmith {langsmithStatus}</Badge>
+            <Badge variant="neutral">GPT-4o-mini</Badge>
+          </CardContent>
+        </Card>
 
-        {/* Status Bar */}
-        <div className="status-bar">
-          <div className="status-item">
-            <span className={`status-dot ${apiStatus === "ok" ? "status-dot--ok" : apiStatus === "error" ? "status-dot--err" : "status-dot--warn"}`}></span>
-            API FastAPI {apiStatus === "ok" ? "connectée" : apiStatus === "error" ? "hors-ligne" : "vérification..."}
-          </div>
-          <div className="status-item">
-            <span className={`status-dot ${langsmithStatus === "on" ? "status-dot--ok" : "status-dot--warn"}`}></span>
-            LangSmith {langsmithStatus === "on" ? "actif" : "inactif"}
-          </div>
-          <div className="status-item">
-            <span className="status-dot status-dot--ok"></span>
-            GPT-4o-mini
-          </div>
-        </div>
+        {userData ? (
+          <Card className="rounded-xl">
+            <CardContent className="p-5">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 font-semibold text-emerald-700">
+                  {initials}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {userData.identite?.prenom} {userData.identite?.nom}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {userData.logement?.emplacement} - {userData.logement?.environement}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">Salary</p>
+                  <p className="text-sm font-medium text-gray-800">
+                    {userData.identite?.salaire_tnd_accumule || userData.identite?.['salaire_tnd_accumulé']} TND
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">STEG bill</p>
+                  <p className="text-sm font-medium text-gray-800">{userData.consommation?.avg_facture_steg_tnd} TND</p>
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">Consumption</p>
+                  <p className="text-sm font-medium text-gray-800">{userData.consommation?.consommation_kwh_mensuelle} kWh</p>
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">CO2 estimate</p>
+                  <p className="text-sm font-medium text-gray-800">{userData.consommation?.taux_co2_kg_par_an} kg/yr</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
 
-        {/* User Profile Card */}
-        {userData && (
-          <div className="profile-card">
-            <div className="profile-card__header">
-              <div className="profile-card__avatar">{initials}</div>
-              <div>
-                <div className="profile-card__name">
-                  {userData.identite?.prenom} {userData.identite?.nom}
-                </div>
-                <div className="profile-card__location">
-                  📍 {userData.logement?.emplacement} — {userData.logement?.environement}
-                </div>
-              </div>
-            </div>
-            <div className="profile-grid">
-              <div className="profile-stat">
-                <div className="profile-stat__label">Salaire mensuel</div>
-                <div className="profile-stat__value profile-stat__value--green">
-                  {userData.identite?.["salaire_tnd_accumulé"] || userData.identite?.salaire_tnd_accumule} TND
-                </div>
-              </div>
-              <div className="profile-stat">
-                <div className="profile-stat__label">Facture STEG</div>
-                <div className="profile-stat__value profile-stat__value--amber">
-                  {userData.consommation?.avg_facture_steg_tnd} TND/mois
-                </div>
-              </div>
-              <div className="profile-stat">
-                <div className="profile-stat__label">Consommation</div>
-                <div className="profile-stat__value profile-stat__value--blue">
-                  {userData.consommation?.consommation_kwh_mensuelle} kWh/mois
-                </div>
-              </div>
-              <div className="profile-stat">
-                <div className="profile-stat__label">Type logement</div>
-                <div className="profile-stat__value">
-                  {userData.logement?.type_maison}
-                </div>
-              </div>
-              <div className="profile-stat">
-                <div className="profile-stat__label">Surface</div>
-                <div className="profile-stat__value">
-                  {userData.logement?.surface_m2} m²
-                </div>
-              </div>
-              <div className="profile-stat">
-                <div className="profile-stat__label">CO₂ estimé</div>
-                <div className="profile-stat__value profile-stat__value--amber">
-                  {userData.consommation?.taux_co2_kg_par_an} kg/an
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {error ? (
+          <Card className="rounded-xl border-red-200 bg-red-50">
+            <CardContent className="p-4 text-sm text-red-700">{error}</CardContent>
+          </Card>
+        ) : null}
 
-        {/* Error Banner */}
-        {error && (
-          <div className="error-banner">
-            <span className="error-banner__icon">⚠️</span>
-            <span>{error}</span>
-            <button className="error-banner__dismiss" onClick={() => setError(null)}>✕</button>
-          </div>
-        )}
+        <Card className="rounded-xl">
+          <CardContent className="flex flex-wrap items-center gap-2 p-5">
+            <Button onClick={() => handleAnalyse()} disabled={loading || apiStatus !== 'ok'}>
+              {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
+              {loading ? 'Running analysis...' : 'Run analysis'}
+            </Button>
+            <Button variant="secondary" onClick={() => setPage('form')}>
+              Update profile
+            </Button>
+            <p className="text-xs text-gray-500">Flow: ENV to Energy plus Finance to Expert synthesis</p>
+          </CardContent>
+        </Card>
 
-        {/* Action Button */}
-        <div className="action-section">
-          <button
-            className="btn-analyse"
-            onClick={() => handleAnalyse()}
-            disabled={loading || apiStatus !== "ok"}
-            id="btn-run-analysis"
-          >
-            {!loading && <span className="btn-analyse__shimmer"></span>}
-            {loading ? (
-              <>
-                <span className="spinner"></span>
-                Analyse en cours…
-              </>
-            ) : (
-              <>🚀 Lancer l'analyse</>
-            )}
-          </button>
-          <button
-            className="btn-create-profile"
-            onClick={() => setPage("form")}
-            id="btn-create-profile"
-          >
-            ✏️ Créer / mettre à jour le profil
-          </button>
-          <span className="btn-hint">
-            4 agents IA : ENV → Énergie + Finance → Expert Synthèse
-          </span>
-        </div>
+        {loading ? (
+          <Card className="rounded-xl">
+            <CardContent className="flex items-center gap-2 p-5 text-sm text-gray-600">
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              4 agents are executing...
+            </CardContent>
+          </Card>
+        ) : null}
 
-        {/* Loading State */}
-        {loading && (
-          <div className="loading-overlay">
-            <div className="loading-orbs">
-              <div className="loading-orb"></div>
-              <div className="loading-orb"></div>
-              <div className="loading-orb"></div>
-            </div>
-            <div className="loading-text">4 agents en cours d'exécution…</div>
-            <div className="loading-sub">
-              🌱 ENV → ⚡ Énergie (séq.) &amp; 💰 Finance (///) → 🧠 Expert Synthèse
-            </div>
-          </div>
-        )}
-
-        {/* Results */}
-        {results && (
+        {results ? (
           <>
-            {/* Timing strip */}
-            <div className="timing-strip">
-              <div className="timing-item">
-                <div className="timing-item__label">Temps total</div>
-                <div className="timing-item__value">{results.total_time_seconds}s</div>
-              </div>
-              <div className="timing-item">
-                <div className="timing-item__label">🌱 Env</div>
-                <div className="timing-item__value timing-item__value--blue">
-                  {results.env_result.execution_time_seconds}s
-                </div>
-              </div>
-              <div className="timing-item">
-                <div className="timing-item__label">⚡ Énergie</div>
-                <div className="timing-item__value" style={{ color: "#a78bfa" }}>
-                  {results.energie_result.execution_time_seconds}s
-                </div>
-              </div>
-              <div className="timing-item">
-                <div className="timing-item__label">💰 Finance</div>
-                <div className="timing-item__value timing-item__value--amber">
-                  {results.finance_result.execution_time_seconds}s
-                </div>
-              </div>
-              <div className="timing-item">
-                <div className="timing-item__label">🧠 Expert</div>
-                <div className="timing-item__value" style={{ color: "#f59e0b" }}>
-                  {results.expert_result.execution_time_seconds}s
-                </div>
-              </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+              <Card className="rounded-xl"><CardContent className="p-3"><p className="text-xs text-gray-500">Total</p><p className="text-sm font-medium">{results.total_time_seconds}s</p></CardContent></Card>
+              <Card className="rounded-xl"><CardContent className="p-3"><p className="text-xs text-gray-500">ENV</p><p className="text-sm font-medium">{results.env_result.execution_time_seconds}s</p></CardContent></Card>
+              <Card className="rounded-xl"><CardContent className="p-3"><p className="text-xs text-gray-500">Energy</p><p className="text-sm font-medium">{results.energie_result.execution_time_seconds}s</p></CardContent></Card>
+              <Card className="rounded-xl"><CardContent className="p-3"><p className="text-xs text-gray-500">Finance</p><p className="text-sm font-medium">{results.finance_result.execution_time_seconds}s</p></CardContent></Card>
+              <Card className="rounded-xl"><CardContent className="p-3"><p className="text-xs text-gray-500">Expert</p><p className="text-sm font-medium">{results.expert_result.execution_time_seconds}s</p></CardContent></Card>
             </div>
 
-            {/* Top row: Env + Finance */}
-            <div className="results-grid">
-              <div className="agent-card agent-card--env">
-                <div className="agent-card__header">
-                  <div className="agent-card__title-group">
-                    <div className="agent-card__icon">🌱</div>
-                    <div>
-                      <div className="agent-card__title">Agent Environnement</div>
-                      <div className="agent-card__subtitle">Analyse écologique &amp; solaire</div>
-                    </div>
-                  </div>
-                  <span className="agent-card__badge agent-card__badge--success">✓ Terminé</span>
-                </div>
-                <div className="agent-card__body">
-                  <div className="agent-card__analysis">{formatAnalysis(results.env_result.analysis)}</div>
-                </div>
-                <div className="agent-card__footer">
-                  <span>{results.env_result.raw_messages_count} messages LangGraph</span>
-                  <span>Tracé sur LangSmith</span>
-                </div>
-              </div>
-
-              <div className="agent-card agent-card--fin">
-                <div className="agent-card__header">
-                  <div className="agent-card__title-group">
-                    <div className="agent-card__icon">💰</div>
-                    <div>
-                      <div className="agent-card__title">Agent Finance</div>
-                      <div className="agent-card__subtitle">Plan d'investissement énergie</div>
-                    </div>
-                  </div>
-                  <span className="agent-card__badge agent-card__badge--success">✓ Terminé</span>
-                </div>
-                <div className="agent-card__body">
-                  <div className="agent-card__analysis">{formatAnalysis(results.finance_result.analysis)}</div>
-                </div>
-                <div className="agent-card__footer">
-                  <span>{results.finance_result.raw_messages_count} messages LangGraph</span>
-                  <span>Tracé sur LangSmith</span>
-                </div>
-              </div>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <Card className="rounded-xl">
+                <CardHeader className="p-5 pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base font-medium"><Leaf className="h-4 w-4" /> Environment Agent</CardTitle>
+                </CardHeader>
+                <CardContent className="p-5 pt-2">{formatAnalysis(results.env_result.analysis)}</CardContent>
+              </Card>
+              <Card className="rounded-xl">
+                <CardHeader className="p-5 pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base font-medium"><PiggyBank className="h-4 w-4" /> Finance Agent</CardTitle>
+                </CardHeader>
+                <CardContent className="p-5 pt-2">{formatAnalysis(results.finance_result.analysis)}</CardContent>
+              </Card>
             </div>
 
-            {/* Energie Agent — full width, purple */}
-            <div className="agent-card agent-card--energie">
-              <div className="agent-card__header">
-                <div className="agent-card__title-group">
-                  <div className="agent-card__icon">⚡</div>
-                  <div>
-                    <div className="agent-card__title">Agent Énergies Renouvelables</div>
-                    <div className="agent-card__subtitle">
-                      Recommandations personnalisées basées sur l'analyse environnementale
-                    </div>
-                  </div>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "0.7rem", color: "#a78bfa", background: "rgba(139,92,246,0.12)", padding: "2px 8px", borderRadius: "20px", fontWeight: 700 }}>
-                    SÉQUENTIEL (ENV →)
-                  </span>
-                  <span className="agent-card__badge agent-card__badge--success">✓ Terminé</span>
-                </div>
-              </div>
-              <div className="agent-card__body">
-                <div className="agent-card__analysis">{formatAnalysis(results.energie_result.analysis)}</div>
-              </div>
-              <div className="agent-card__footer">
-                <span>{results.energie_result.raw_messages_count} messages LangGraph</span>
-                <span style={{ color: "#a78bfa" }}>⚡ Alimenté par Agent Env</span>
-              </div>
-            </div>
+            <Card className="rounded-xl">
+              <CardHeader className="p-5 pb-2">
+                <CardTitle className="flex items-center gap-2 text-base font-medium"><Bolt className="h-4 w-4" /> Renewable Energy Agent</CardTitle>
+              </CardHeader>
+              <CardContent className="p-5 pt-2">{formatAnalysis(results.energie_result.analysis)}</CardContent>
+            </Card>
 
-            {/* Expert Agent — full width, gold */}
-            <div className="agent-card agent-card--expert">
-              <div className="agent-card__header">
-                <div className="agent-card__title-group">
-                  <div className="agent-card__icon">🧠</div>
-                  <div>
-                    <div className="agent-card__title">Agent Expert — Synthèse Finale</div>
-                    <div className="agent-card__subtitle">
-                      Coûts réels · Gains 5/10/25 ans · Plan d'installation · Subventions
-                    </div>
-                  </div>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "0.7rem", color: "#f59e0b", background: "rgba(245,158,11,0.12)", padding: "2px 8px", borderRadius: "20px", fontWeight: 700 }}>
-                    SYNTHÈSE FINALE
-                  </span>
-                  <span className="agent-card__badge agent-card__badge--success">✓ Terminé</span>
-                </div>
-              </div>
-              <div className="agent-card__body">
-                <div className="agent-card__analysis">{formatAnalysis(results.expert_result.analysis)}</div>
-              </div>
-              <div className="agent-card__footer">
-                <span>{results.expert_result.raw_messages_count} messages LangGraph</span>
-                <span style={{ color: "#f59e0b" }}>🧠 Alimenté par Énergie + Finance</span>
-              </div>
-            </div>
+            <Card className="rounded-xl">
+              <CardHeader className="p-5 pb-2">
+                <CardTitle className="flex items-center gap-2 text-base font-medium"><Brain className="h-4 w-4" /> Expert Synthesis Agent</CardTitle>
+              </CardHeader>
+              <CardContent className="p-5 pt-2">{formatAnalysis(results.expert_result.analysis)}</CardContent>
+            </Card>
 
-            {/* Dashboard — statistiques + graphiques + XAI */}
-            {results.dashboard && (
-              <EnergyDashboard data={results.dashboard} />
-            )}
+            {results.dashboard ? <EnergyDashboard data={results.dashboard} /> : null}
           </>
-        )}
-
-        {/* Footer */}
-        <footer className="footer">
-          Powered by <a href="https://python.langchain.com/docs/langgraph" target="_blank" rel="noreferrer">LangGraph</a>
-          {" "}+ <a href="https://fastapi.tiangolo.com" target="_blank" rel="noreferrer">FastAPI</a>
-          {" "}+ <a href="https://react.dev" target="_blank" rel="noreferrer">React</a>
-          {" "}• Tracked by <a href="https://smith.langchain.com" target="_blank" rel="noreferrer">LangSmith</a>
-        </footer>
+        ) : null}
       </div>
     </div>
   );

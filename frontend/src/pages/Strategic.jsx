@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Wind, Anchor, Droplets, Map, AlertTriangle, Trash2, Upload, Target } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { AlertTriangle, Anchor, Droplets, Map, RefreshCw, Target, Trash2, Upload, Wind } from 'lucide-react';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
 
 const Strategic = () => {
   const [data, setData] = useState(null);
@@ -14,319 +15,347 @@ const Strategic = () => {
       const res = await fetch('/api/strategic/analysis');
       const json = await res.json();
       setData(json);
-      
+
       const filesRes = await fetch('/api/strategic/files');
       if (filesRes.ok) {
-          const filesJson = await filesRes.json();
-          setActiveFiles(filesJson);
+        const filesJson = await filesRes.json();
+        setActiveFiles(filesJson);
       }
-    } catch(e) {
+    } catch (e) {
       console.error(e);
-      // Fallback if backend is down
       setData({
         global_risk: 0.82,
         confidence: 0.76,
-        zone: "gabes",
+        zone: 'gabes',
         modules: {
-          pollution: { level: "élevé", source: "GCT" },
-          marine: { spread: "élevé", wind_effect: "vers la côte", wind_speed: 25 },
-          fishing: { trend: "en baisse", insight: "Diminution de 30% récemment" },
-          tourism: { status: "faible", avg_stay_days: 1.4 }
+          pollution: { level: 'elevated', source: 'GCT' },
+          marine: { spread: 'elevated', wind_effect: 'toward coast', wind_speed: 25 },
+          fishing: { trend: 'declining', insight: 'Decline over recent period' },
+          tourism: { status: 'weak', avg_stay_days: 1.4 },
         },
         recommendations: [
-          { text: "Réduire les rejets près des côtes à cause du vent", priority: "high" },
-          { text: "Lancer une campagne de surveillance sur la zone sud", priority: "normal" }
-        ]
+          { text: 'Reduce discharges near coastal zones due to prevailing winds', priority: 'high' },
+          { text: 'Launch targeted monitoring campaign for southern area', priority: 'normal' },
+        ],
       });
     }
     setLoading(false);
-  }
+  };
 
   useEffect(() => {
-    fetchAnalysis();
+    const initialLoad = setTimeout(() => {
+      fetchAnalysis();
+    }, 0);
+    return () => clearTimeout(initialLoad);
   }, []);
 
   const handleFileUpload = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    
+
     setUploading(true);
-    setUploadStatus(`Analysing ${files.length} file(s)...`);
-    
+    setUploadStatus(`Analyzing ${files.length} file(s)...`);
+
     const formData = new FormData();
-    for (let i = 0; i < files.length; i++) {
+    for (let i = 0; i < files.length; i += 1) {
       formData.append('file', files[i]);
     }
-    
+
     try {
       const res = await fetch('/api/strategic/upload', {
         method: 'POST',
         body: formData,
       });
       const result = await res.json();
-      setUploadStatus(result.message || 'Success!');
+      setUploadStatus(result.message || 'Success');
       setTimeout(() => {
         setUploadStatus('');
         fetchAnalysis();
-      }, 2000);
-    } catch(err) {
-      setUploadStatus('Upload Error');
+      }, 1500);
+    } catch {
+      setUploadStatus('Upload error');
     }
     setUploading(false);
   };
 
   const handleDeleteFile = async (type, filename) => {
-    if (!window.confirm(`Are you sure you want to delete ${filename}? The AI will lose all associated data.`)) return;
+    if (!window.confirm(`Delete ${filename}?`)) return;
     try {
-        setUploadStatus(`Purging ${filename}...`);
-        const res = await fetch(`/api/strategic/files/${type}/${filename}`, { method: 'DELETE' });
-        if (res.ok) {
-           setUploadStatus('File deleted. Re-analysis complete.');
-           setTimeout(() => { setUploadStatus(''); fetchAnalysis(); }, 2000);
-        } else {
-           setUploadStatus('Delete Error');
-        }
-    } catch(e) {
-        setUploadStatus('Network Error');
+      setUploadStatus(`Deleting ${filename}...`);
+      const res = await fetch(`/api/strategic/files/${type}/${filename}`, { method: 'DELETE' });
+      if (res.ok) {
+        setUploadStatus('File deleted. Re-analysis complete.');
+        setTimeout(() => {
+          setUploadStatus('');
+          fetchAnalysis();
+        }, 1500);
+      } else {
+        setUploadStatus('Delete error');
+      }
+    } catch {
+      setUploadStatus('Network error');
     }
   };
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-accent animate-pulse">Loading Strategic Insights...</p>
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 bg-gray-50">
+        <RefreshCw className="h-8 w-8 animate-spin text-sky-600" />
+        <p className="text-sm text-gray-600">Loading strategic insights...</p>
       </div>
     );
   }
 
-  const riskColor = (data?.global_risk ?? 0) > 0.7 ? '#ef4444' : '#f59e0b';
+  const risk = Math.round((data?.global_risk || 0) * 100);
+  const confidence = Math.round((data?.confidence || 0) * 100);
+  const riskVariant = risk > 70 ? 'high' : risk > 45 ? 'medium' : 'low';
+  const circumference = 2 * Math.PI * 74;
+  const ringOffset = circumference - (risk / 100) * circumference;
+
+  const moduleTone = {
+    pollution: {
+      icon: 'text-red-500',
+      title: 'text-gray-900',
+      border: 'border-red-200',
+      bg: 'from-red-50 via-white to-white',
+      value: 'text-red-600',
+    },
+    marine: {
+      icon: 'text-cyan-500',
+      title: 'text-gray-900',
+      border: 'border-cyan-200',
+      bg: 'from-cyan-50 via-white to-white',
+      value: 'text-cyan-700',
+    },
+    fishing: {
+      icon: 'text-emerald-500',
+      title: 'text-gray-900',
+      border: 'border-emerald-200',
+      bg: 'from-emerald-50 via-white to-white',
+      value: 'text-emerald-700',
+    },
+    tourism: {
+      icon: 'text-violet-500',
+      title: 'text-gray-900',
+      border: 'border-violet-200',
+      bg: 'from-violet-50 via-white to-white',
+      value: 'text-violet-700',
+    },
+  };
+
+  const modules = [
+    {
+      key: 'pollution',
+      title: 'Industrial Pollution',
+      Icon: Droplets,
+      content: [
+        `Level: ${data?.modules?.pollution?.level || 'unknown'}`,
+        `Source: ${
+          Array.isArray(data?.modules?.pollution?.source)
+            ? data.modules.pollution.source.join(', ')
+            : data?.modules?.pollution?.source || 'n/a'
+        }`,
+      ],
+    },
+    {
+      key: 'marine',
+      title: 'Marine Dynamics',
+      Icon: Wind,
+      content: [
+        `Wind speed: ${data?.modules?.marine?.wind_speed || 0} km/h`,
+        `Spread: ${data?.modules?.marine?.wind_effect || 'n/a'}`,
+      ],
+    },
+    {
+      key: 'fishing',
+      title: 'Fisheries Status',
+      Icon: Anchor,
+      content: [
+        `Trend: ${data?.modules?.fishing?.trend || 'unknown'}`,
+        `Insight: ${data?.modules?.fishing?.insight || 'n/a'}`,
+      ],
+    },
+    {
+      key: 'tourism',
+      title: 'Tourism Impact',
+      Icon: Map,
+      content: [
+        `Status: ${data?.modules?.tourism?.status || 'unknown'}`,
+        `Average stay: ${data?.modules?.tourism?.avg_stay_days || 0} days`,
+      ],
+    },
+  ];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-700">
-      {/* Header */}
-      <div className="flex justify-between items-end border-b border-border pb-6">
-        <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-text-secondary bg-clip-text text-transparent">
-            Strategic Intelligence Dashboard
-          </h1>
-          <p className="text-text-secondary mt-2">Gulf of Gabès: Multi-Agent Environmental Analysis</p>
-        </div>
-        <button 
-          onClick={fetchAnalysis}
-          className="px-4 py-2 glass-card hover:bg-accent/10 text-accent transition-all text-sm font-medium"
-        >
-          Force Refresh
-        </button>
-      </div>
+    <div className="min-h-[calc(100vh-64px)] bg-gradient-to-br from-slate-50 via-white to-sky-50 p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <Card className="rounded-xl border border-gray-200 bg-white shadow-sm">
+          <CardHeader className="flex-row items-center justify-between p-5">
+            <div>
+              <CardTitle className="text-3xl font-semibold leading-tight text-gray-900">Strategic Intelligence Dashboard</CardTitle>
+              <p className="mt-1 text-base text-gray-600">Multi-agent environmental analysis for Gulf of Gabes.</p>
+            </div>
+            <Button variant="secondary" onClick={fetchAnalysis}>
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+          </CardHeader>
+        </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Global Risk Card */}
-        <div className="lg:col-span-4 glass-card p-8 flex flex-col items-center justify-center text-center">
-          <h3 className="text-text-secondary mb-8 font-medium">Global Risk Index</h3>
-          <div 
-            className="relative w-56 h-56 rounded-full border-[12px] flex items-center justify-center shadow-2xl transition-all duration-1000 mb-8"
-            style={{ 
-              borderColor: riskColor,
-              boxShadow: `0 0 50px ${riskColor}20`
-            }}
-          >
-            <div className="text-center">
-              <span className="text-6xl font-black text-white leading-none">
-                {data?.global_risk ? Math.round(data.global_risk * 100) : 0}<span className="text-2xl opacity-50 ml-1">%</span>
-              </span>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3 px-6 py-3 bg-white/5 rounded-2xl border border-white/10">
-            <AlertTriangle size={20} className={(data?.global_risk ?? 0) > 0.7 ? "text-danger" : "text-warning"} />
-            <div className="text-left">
-              <p className="text-[10px] uppercase font-black text-text-muted leading-tight">AI Confidence Score</p>
-              <p className="text-white font-bold">{data?.confidence ? Math.round(data.confidence * 100) : 0}%</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Modules Grid */}
-        <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          <div className="glass-card p-6 border-l-4 border-l-accent">
-            <div className="flex items-center gap-3 mb-4">
-              <Droplets className="text-accent" />
-              <h3 className="font-semibold text-lg">Industrial Pollution</h3>
-            </div>
-            <div className="space-y-3 text-sm">
-              <p className="text-text-secondary">Level: <span className="text-white font-bold">{data.modules?.pollution?.level?.toUpperCase() || 'UNKNOWN'}</span></p>
-              <p className="text-text-secondary text-xs">Primary Source: <span className="text-warning font-bold">
-                {Array.isArray(data.modules?.pollution?.source) ? data.modules.pollution.source.join(', ') : (data.modules?.pollution?.source || 'N/A')}
-              </span></p>
-              
-              {/* Detailed Capacities Context */}
-              {data.modules?.pollution?.insight?.capacités_de_production && (
-                <div className="mt-3 p-2 bg-white/5 rounded-lg border border-white/5 grid grid-cols-2 gap-x-4 gap-y-1">
-                  {Object.entries(data.modules.pollution.insight.capacités_de_production).slice(0, 4).map(([cat, val]) => (
-                    <div key={cat} className="text-[10px] text-text-muted flex justify-between">
-                      <span className="truncate mr-1">{cat.split('_').pop()}:</span>
-                      <span className="text-white font-mono">{Object.values(val)[0]}</span>
-                    </div>
-                  ))}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <Card className="rounded-xl border border-gray-200 bg-white shadow-sm lg:col-span-4">
+            <CardContent className="space-y-5 p-6 text-center">
+              <p className="text-2xl font-medium text-gray-700">Global Risk Index</p>
+              <div className="relative mx-auto h-56 w-56">
+                <svg viewBox="0 0 180 180" className="h-full w-full -rotate-90">
+                  <circle cx="90" cy="90" r="74" className="stroke-gray-200" strokeWidth="12" fill="none" />
+                  <circle
+                    cx="90"
+                    cy="90"
+                    r="74"
+                    stroke={risk > 70 ? '#ef4444' : risk > 45 ? '#f59e0b' : '#22c55e'}
+                    strokeWidth="12"
+                    fill="none"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={ringOffset}
+                    strokeLinecap="round"
+                    className="transition-all duration-700"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <p className="text-6xl font-semibold text-gray-900">
+                    {risk}
+                    <span className="text-3xl text-gray-500">%</span>
+                  </p>
                 </div>
-              )}
-            </div>
-          </div>
-
-          <div className="glass-card p-6 border-l-4 border-l-emerald-400">
-            <div className="flex items-center gap-3 mb-4">
-              <Wind className="text-emerald-400" />
-              <h3 className="font-semibold text-lg">Marine Dynamics</h3>
-            </div>
-            <div className="space-y-2 text-sm">
-              <p className="text-text-secondary">Wind Speed: <span className="text-white font-bold">{data.modules?.marine?.wind_speed || 0} km/h</span></p>
-              <p className="text-text-secondary">Spread Direction: <span className="text-warning font-bold">{data.modules?.marine?.wind_effect?.replace('_', ' ') || 'N/A'}</span></p>
-            </div>
-          </div>
-
-          <div className="glass-card p-6 border-l-4 border-l-blue-400">
-            <div className="flex items-center gap-3 mb-4">
-              <Anchor className="text-blue-400" />
-              <h3 className="font-semibold text-lg">Fisheries Status</h3>
-            </div>
-            <div className="space-y-2 text-sm">
-              <p className="text-text-secondary">Economic Trend: <span className={`font-bold ${data.modules?.fishing?.trend?.includes('hausse') ? 'text-emerald-400' : 'text-danger'}`}>
-                {data.modules?.fishing?.trend?.toUpperCase() || 'UNKNOWN'}
-              </span></p>
-              <p className="text-text-secondary">Production: <span className="text-white font-mono">{data.modules?.fishing?.estimated_production_tons || 0} Tons</span></p>
-              <p className="text-text-secondary text-xs">Expected Catch: <span className="text-white/80 italic">{data.modules?.fishing?.fish_types_expected?.join(', ') || '...'}</span></p>
-            </div>
-          </div>
-
-          <div className="glass-card p-6 border-l-4 border-l-purple-400">
-            <div className="flex items-center gap-3 mb-4">
-              <Map className="text-purple-400" />
-              <h3 className="font-semibold text-lg">Tourism Impact</h3>
-            </div>
-            <div className="space-y-2 text-sm">
-              <p className="text-text-secondary">Sector Status: <span className="text-white font-bold">{data.modules?.tourism?.status?.toUpperCase() || 'UNKNOWN'}</span></p>
-              <p className="text-text-secondary">Avg. Stay: <span className="text-white font-bold">{data.modules?.tourism?.avg_stay_days || 0} days</span></p>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Plan Section */}
-        <div className="lg:col-span-12 glass-card p-8">
-            <div className="flex items-center gap-3 mb-6">
-                <Target className="text-accent" />
-                <h2 className="text-xl font-bold">Strategic Action Plan</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {data?.recommendations?.map((rec, i) => (
-                    <div key={i} className="bg-white/5 p-5 rounded-2xl border border-white/10 border-l-4 transition-all hover:bg-white/10"
-                        style={{ borderLeftColor: rec.priority === 'high' ? '#ef4444' : '#06b6d4' }}>
-                        <span className={`text-[10px] font-black uppercase px-2 py-1 rounded ${rec.priority === 'high' ? 'bg-danger/20 text-danger' : 'bg-accent/20 text-accent'}`}>
-                            {rec.priority || 'NORMAL'} PRIORITY
-                        </span>
-                        <p className="mt-3 text-white text-sm leading-relaxed">{rec.text}</p>
-                    </div>
-                )) || <p className="col-span-full text-text-muted italic text-center py-8">No strategic recommendations available at this time.</p>}
-            </div>
-        </div>
-
-        {/* XAI Explanation */}
-        {data.xai_explanation && (
-          <div className="lg:col-span-12 glass-card p-8 border-t-2 border-t-accent/30 bg-gradient-to-br from-secondary to-primary">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-accent/10 rounded-lg text-accent">
-                <AlertTriangle size={24} />
               </div>
-              <h2 className="text-xl font-bold">XAI: Decision Transparency</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-              <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
-                <h4 className="text-accent font-black uppercase text-xs mb-3 tracking-widest">Tourism Reasoning</h4>
-                <p className="text-text-secondary text-sm leading-relaxed">{data.xai_explanation.tourism_reasoning}</p>
+              <div className="mx-auto flex w-fit items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+                <Badge variant={riskVariant}>risk</Badge>
+                <Badge variant="neutral">confidence {confidence}%</Badge>
               </div>
-              <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
-                <h4 className="text-purple-400 font-black uppercase text-xs mb-3 tracking-widest">Pollution & Marine Logic</h4>
-                <p className="text-text-secondary text-sm leading-relaxed">{data.xai_explanation.pollution_reasoning}</p>
-              </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="p-4 bg-purple-400/10 rounded-xl border border-purple-400/20">
-                <h4 className="text-purple-400 font-bold mb-2 text-xs uppercase tracking-wider">🏖️ Tourism Authorities</h4>
-                <p className="text-text-secondary text-[11px] leading-relaxed">{data.xai_explanation.actionable_targets?.tourism_authorities}</p>
-              </div>
-              <div className="p-4 bg-accent/10 rounded-xl border border-accent/20">
-                <h4 className="text-accent font-bold mb-2 text-xs uppercase tracking-wider">🎣 Local Fishermen</h4>
-                <p className="text-text-secondary text-[11px] leading-relaxed">{data.xai_explanation.actionable_targets?.fishermen}</p>
-              </div>
-              <div className="p-4 bg-emerald-400/10 rounded-xl border border-emerald-400/20">
-                <h4 className="text-emerald-400 font-bold mb-2 text-xs uppercase tracking-wider">🏭 Industry Sector</h4>
-                <p className="text-text-secondary text-[11px] leading-relaxed">{data.xai_explanation.actionable_targets?.industrial_sector}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Knowledge Management */}
-        <div className="lg:col-span-12 glass-card p-8">
-          <div className="flex justify-between items-center mb-8">
-            <h3 className="text-lg font-bold">Knowledge Management</h3>
-            <div className="flex items-center gap-4">
-              {uploadStatus && (
-                <span className="text-accent text-sm flex items-center gap-2">
-                  <div className="w-2 h-2 bg-accent rounded-full animate-ping" />
-                  {uploadStatus}
-                </span>
-              )}
-              <label className="flex items-center gap-2 px-6 py-2.5 bg-accent text-primary rounded-xl font-black cursor-pointer hover:bg-white transition-all shadow-lg shadow-accent/20 text-xs uppercase tracking-widest">
-                <Upload size={16} />
-                Upload New Data
-                <input type="file" multiple accept=".pdf,.xlsx,.csv" className="hidden" onChange={handleFileUpload} disabled={uploading}/>
-              </label>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            <div className="space-y-4">
-              <h4 className="text-accent text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                <Droplets size={14} /> Industrial Audits (Qdrant RAG)
-              </h4>
-              <div className="space-y-2">
-                {activeFiles.industry.length > 0 ? activeFiles.industry.map(f => (
-                  <div key={f} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl group border border-transparent hover:border-white/10 transition-all">
-                    <span className="text-xs text-text-secondary overflow-hidden text-ellipsis whitespace-nowrap max-w-[80%] flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-accent" />
-                        {f}
-                    </span>
-                    <button onClick={() => handleDeleteFile('industry', f)} className="p-2 text-text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Trash2 size={16} />
-                    </button>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:col-span-8">
+            {modules.map((module) => (
+              <Card
+                key={module.key}
+                className={`rounded-xl border ${moduleTone[module.key].border} bg-gradient-to-br ${moduleTone[module.key].bg} shadow-sm`}
+              >
+                <CardContent className="p-5">
+                  <p className={`mb-3 flex items-center gap-2 text-base font-semibold ${moduleTone[module.key].title}`}>
+                    <module.Icon className={`h-6 w-6 ${moduleTone[module.key].icon}`} />
+                    {module.title}
+                  </p>
+                  <div className="space-y-2">
+                    {module.content.map((line) => (
+                      <p key={line} className="text-sm leading-snug text-gray-600">
+                        <span className="font-medium text-gray-500">{line.split(':')[0]}:</span>{' '}
+                        <span className={`font-semibold ${moduleTone[module.key].value}`}>{line.split(':').slice(1).join(':').trim()}</span>
+                      </p>
+                    ))}
                   </div>
-                )) : <p className="text-text-muted text-xs italic p-4 bg-white/5 rounded-2xl">No PDF documents indexed in vector database.</p>}
-              </div>
-            </div>
-            <div className="space-y-4">
-              <h4 className="text-blue-400 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                <Anchor size={14} /> Fishery Data (Excel/CSV)
-              </h4>
-              <div className="space-y-2">
-                {activeFiles.fishing.length > 0 ? activeFiles.fishing.map(f => (
-                  <div key={f} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl group border border-transparent hover:border-white/10 transition-all">
-                    <span className="text-xs text-text-secondary overflow-hidden text-ellipsis whitespace-nowrap max-w-[80%] flex items-center gap-2">
-                         <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                        {f}
-                    </span>
-                    <button onClick={() => handleDeleteFile('fishing', f)} className="p-2 text-text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                )) : <p className="text-text-muted text-xs italic p-4 bg-white/5 rounded-2xl">No historical fishery data files uploaded.</p>}
-              </div>
-            </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
+
+          <Card className="rounded-xl border border-gray-200 bg-white shadow-sm lg:col-span-12">
+            <CardHeader className="p-5 pb-2">
+              <CardTitle className="flex items-center gap-2 text-base font-medium text-gray-900">
+                <Target className="h-4 w-4 text-cyan-600" />
+                Strategic Action Plan
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-3 p-5 pt-2 md:grid-cols-2 lg:grid-cols-3">
+              {data?.recommendations?.length ? (
+                data.recommendations.map((rec, i) => (
+                  <div
+                    key={i}
+                    className={`rounded-xl border p-4 ${
+                      rec.priority === 'high' ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'
+                    }`}
+                  >
+                    <Badge variant={rec.priority === 'high' ? 'high' : 'medium'}>{rec.priority || 'normal'}</Badge>
+                    <p className="mt-2 text-sm leading-relaxed text-gray-700">{rec.text}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500">No recommendations available.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-xl border border-gray-200 bg-white shadow-sm lg:col-span-12">
+            <CardHeader className="flex-row items-center justify-between p-5">
+              <CardTitle className="text-base font-medium text-gray-900">Knowledge Management</CardTitle>
+              <div className="flex items-center gap-3">
+                {uploadStatus ? <p className="text-sm text-gray-600">{uploadStatus}</p> : null}
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-500">
+                  <Upload className="h-4 w-4" />
+                  Upload data
+                  <input type="file" multiple accept=".pdf,.xlsx,.csv" className="hidden" onChange={handleFileUpload} disabled={uploading} />
+                </label>
+              </div>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-6 p-5 pt-2 md:grid-cols-2">
+              <div>
+                <p className="mb-2 text-sm font-medium text-gray-800">Industrial Audits</p>
+                <div className="space-y-2">
+                  {activeFiles.industry.length ? (
+                    activeFiles.industry.map((f) => (
+                      <div key={f} className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3">
+                        <p className="max-w-[85%] truncate text-sm text-gray-700">{f}</p>
+                        <button onClick={() => handleDeleteFile('industry', f)} className="text-gray-500 hover:text-red-600">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500">No industrial files uploaded.</p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="mb-2 text-sm font-medium text-gray-800">Fishery Data</p>
+                <div className="space-y-2">
+                  {activeFiles.fishing.length ? (
+                    activeFiles.fishing.map((f) => (
+                      <div key={f} className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3">
+                        <p className="max-w-[85%] truncate text-sm text-gray-700">{f}</p>
+                        <button onClick={() => handleDeleteFile('fishing', f)} className="text-gray-500 hover:text-red-600">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500">No fishery files uploaded.</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {data?.xai_explanation ? (
+            <Card className="rounded-xl border border-gray-200 bg-white shadow-sm lg:col-span-12">
+              <CardHeader className="p-5 pb-2">
+                <CardTitle className="flex items-center gap-2 text-base font-medium text-gray-900">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  XAI Decision Transparency
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 gap-4 p-5 pt-2 md:grid-cols-2">
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                  <p className="text-xs text-gray-500">Tourism reasoning</p>
+                  <p className="mt-1 text-sm text-gray-700">{data.xai_explanation.tourism_reasoning}</p>
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                  <p className="text-xs text-gray-500">Pollution and marine reasoning</p>
+                  <p className="mt-1 text-sm text-gray-700">{data.xai_explanation.pollution_reasoning}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
       </div>
     </div>

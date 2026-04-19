@@ -44,11 +44,11 @@ const DiagnosisCard = ({ data }) => {
         </div>
       )}
 
-      <div className="bg-white/5 border-l-4 border-accent p-3 rounded-r-xl">
+      <div className="rounded-r-xl border-l-4 border-sky-500 bg-sky-50 p-3">
         <span className="text-[10px] font-black text-accent block mb-1 uppercase tracking-widest">
           {t('common.recommendedAction')}
         </span>
-        <p className="text-sm leading-relaxed text-text-primary">{data.recommended_action}</p>
+        <p className="text-sm leading-relaxed text-gray-900">{data.recommended_action}</p>
       </div>
 
       <div className="flex items-center justify-between pt-4 border-t border-white/10 text-[10px]">

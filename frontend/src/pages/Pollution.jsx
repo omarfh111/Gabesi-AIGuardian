@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { usePollution } from '../hooks/usePollution';
+import axios from 'axios';
+import { AlertTriangle, Download, ShieldAlert, Wind } from 'lucide-react';
+import EventsTable from '../components/pollution/EventsTable';
 import PollutionMap from '../components/pollution/PollutionMap';
 import RiskBadge from '../components/pollution/RiskBadge';
-import EventsTable from '../components/pollution/EventsTable';
 import TrendChart from '../components/pollution/TrendChart';
-import { FileDown, TrendingUp, TrendingDown, Minus, Activity, ShieldAlert, BarChart3, Wind } from 'lucide-react';
-import axios from 'axios';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
 import { API_BASE_URL } from '../config';
+import { usePollution } from '../hooks/usePollution';
 
 const Pollution = () => {
   const { t } = useTranslation();
@@ -55,136 +56,105 @@ const Pollution = () => {
     }
   };
 
-  const getTrendIcon = (trend) => {
-    if (trend === 'increasing') return <TrendingUp className="w-8 h-8 text-danger" />;
-    if (trend === 'decreasing') return <TrendingDown className="w-8 h-8 text-green-400" />;
-    return <Minus className="w-8 h-8 text-text-muted" />;
-  };
-
   if (isLoading) {
     return (
-      <div className="flex flex-col justify-center items-center h-[calc(100vh-64px)] bg-primary text-accent">
-        <div className="relative w-16 h-16 mb-6">
-          <div className="absolute inset-0 border-4 border-accent/20 rounded-full"></div>
-          <div className="absolute inset-0 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-        </div>
-        <p className="text-xs font-black uppercase tracking-[0.2em] animate-pulse">Calculating exposure risk...</p>
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-gray-50">
+        <div className="text-sm text-gray-600">Calculating exposure risk...</div>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="flex justify-center items-center h-[calc(100vh-64px)] bg-primary">
-        <div className="glass-card border-danger/30 p-8 flex flex-col items-center gap-4">
-            <ShieldAlert className="w-12 h-12 text-danger" />
-            <span className="text-sm font-black uppercase tracking-widest text-danger">{error || 'No data available'}</span>
-        </div>
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-gray-50 p-6">
+        <Card className="w-full max-w-md rounded-xl border-red-200 bg-red-50">
+          <CardContent className="flex flex-col items-center gap-3 p-6 text-center">
+            <ShieldAlert className="h-8 w-8 text-red-600" />
+            <p className="text-sm font-medium text-red-700">{error || 'No data available'}</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="bg-primary min-h-[calc(100vh-64px)] overflow-hidden flex flex-col">
-      {/* Dashboard Sub-Header */}
-      <div className="px-6 py-4 glass border-b border-border flex justify-between items-center relative z-20">
-        <div className="flex items-center gap-4">
-          <div className="p-3 glass-card bg-accent/10 border-accent/20">
-            <Wind className="w-6 h-6 text-accent" />
-          </div>
-          <div>
-            <h1 className="text-xl font-black uppercase tracking-tighter text-text-primary leading-none">
-              {t('pollution.title')}
-            </h1>
-            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">
-              Exposure Risk Dossier · Gabès Oasis Plot A
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={handleDownload}
-          disabled={isDownloading}
-          className="flex items-center gap-2 px-6 py-3 rounded-xl bg-danger text-white text-[11px] font-black uppercase tracking-widest hover:bg-red-600 transition-all shadow-lg shadow-danger/20 disabled:opacity-50"
-        >
-          <FileDown className="w-4 h-4" />
-          {isDownloading ? 'Processing...' : t('pollution.downloadPdf')}
-        </button>
-      </div>
+    <div className="min-h-[calc(100vh-64px)] bg-gradient-to-br from-slate-50 via-white to-sky-50 p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <Card className="rounded-xl">
+          <CardHeader className="flex-row items-start justify-between p-5">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                <Wind className="h-5 w-5 text-gray-600" />
+                {t('pollution.title')}
+              </CardTitle>
+              <p className="mt-1 text-sm text-gray-600">Exposure risk dossier for Gabes Oasis Plot A.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="smoke">30-day window</Badge>
+              <Button onClick={handleDownload} disabled={isDownloading}>
+                <Download className="h-4 w-4" />
+                {isDownloading ? 'Processing...' : t('pollution.downloadPdf')}
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
 
-      <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-y-auto">
-        {/* Left: Map Section */}
-        <div className="lg:col-span-7 glass-card overflow-hidden h-[400px] lg:h-full group relative">
-          <div className="absolute top-4 left-4 z-10 flex gap-2">
-            <span className="px-3 py-1.5 glass rounded-full text-[10px] font-black uppercase tracking-widest text-accent border-accent/30">
-              Live Satellite Feed
-            </span>
-          </div>
-          <PollutionMap />
-        </div>
-
-        {/* Right: Insights Section */}
-        <div className="lg:col-span-5 flex flex-col gap-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="col-span-1 md:col-span-2">
-              <RiskBadge level={data.insights.risk_level} />
-            </div>
-            
-            <div className="glass-card p-6 flex flex-col items-center justify-center relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Activity className="w-12 h-12" />
-              </div>
-              <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-3">SO₂ Average</span>
-              <span className="text-3xl font-black text-text-primary">
-                {Math.round(data.so2_stats?.mean || 0)} 
-                <span className="text-xs text-text-muted ml-2">µg/m³</span>
-              </span>
-            </div>
-            
-            <div className="glass-card p-6 flex flex-col items-center justify-center relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-                <BarChart3 className="w-12 h-12" />
-              </div>
-              <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-3">NO₂ Average</span>
-              <span className="text-3xl font-black text-text-primary">
-                {Math.round(data.no2_stats?.mean || 0)} 
-                <span className="text-xs text-text-muted ml-2">µg/m³</span>
-              </span>
-            </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="space-y-6 lg:col-span-7">
+            <Card className="h-[420px] overflow-hidden rounded-xl">
+              <PollutionMap />
+            </Card>
+            <Card className="rounded-xl">
+              <CardHeader className="p-5 pb-2">
+                <CardTitle className="text-base font-medium text-gray-900">SO2 Concentration Timeline</CardTitle>
+              </CardHeader>
+              <CardContent className="p-5 pt-2">
+                <TrendChart events={data.events} />
+              </CardContent>
+            </Card>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="glass-card p-6 border-warning/20 group hover:border-warning/40">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-[10px] font-black text-warning uppercase tracking-widest">Elevated Events</span>
-                <Activity className="w-4 h-4 text-warning" />
-              </div>
-              <span className="text-4xl font-black text-warning">{data.total_elevated_days}</span>
-              <div className="mt-2 text-[9px] font-bold text-text-muted uppercase">Last 30 Days</div>
-            </div>
-            <div className="glass-card p-6 border-danger/20 group hover:border-danger/40">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-[10px] font-black text-danger uppercase tracking-widest">Severe Events</span>
-                <ShieldAlert className="w-4 h-4 text-danger" />
-              </div>
-              <span className="text-4xl font-black text-danger">{data.total_severe_days}</span>
-              <div className="mt-2 text-[9px] font-bold text-text-muted uppercase">Immediate Action Zone</div>
-            </div>
-          </div>
+          <div className="space-y-6 lg:col-span-5">
+            <RiskBadge level={data.insights.risk_level} />
 
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-3">
-                <Activity className="w-4 h-4 text-accent" />
-                SO₂ Concentration Timeline
-              </h3>
-              <span className="text-[10px] font-black text-accent uppercase tracking-widest">30 Day Trend</span>
+            <div className="grid grid-cols-2 gap-4">
+              <Card className="rounded-xl">
+                <CardContent className="p-4">
+                  <p className="text-xs text-gray-500">SO2 average</p>
+                  <p className="mt-1 text-xl font-semibold text-gray-900">{Math.round(data.so2_stats?.mean || 0)} ug/m3</p>
+                </CardContent>
+              </Card>
+              <Card className="rounded-xl">
+                <CardContent className="p-4">
+                  <p className="text-xs text-gray-500">NO2 average</p>
+                  <p className="mt-1 text-xl font-semibold text-gray-900">{Math.round(data.no2_stats?.mean || 0)} ug/m3</p>
+                </CardContent>
+              </Card>
+              <Card className="rounded-xl border-amber-200 bg-amber-50">
+                <CardContent className="p-4">
+                  <p className="text-xs text-amber-700">Elevated events</p>
+                  <p className="mt-1 text-xl font-semibold text-amber-800">{data.total_elevated_days}</p>
+                </CardContent>
+              </Card>
+              <Card className="rounded-xl border-red-200 bg-red-50">
+                <CardContent className="p-4">
+                  <p className="flex items-center gap-1 text-xs text-red-700">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    Severe events
+                  </p>
+                  <p className="mt-1 text-xl font-semibold text-red-800">{data.total_severe_days}</p>
+                </CardContent>
+              </Card>
             </div>
-            <TrendChart events={data.events} />
-          </div>
 
-          <div className="glass-card p-6 flex-1 min-h-[300px]">
-            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-6">Critical Event Log</h3>
-            <EventsTable events={data.events?.slice(0, 5)} />
+            <Card className="rounded-xl">
+              <CardHeader className="p-5 pb-2">
+                <CardTitle className="text-base font-medium text-gray-900">Critical Event Log</CardTitle>
+              </CardHeader>
+              <CardContent className="p-5 pt-2">
+                <EventsTable events={data.events?.slice(0, 5)} />
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

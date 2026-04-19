@@ -1640,4 +1640,214 @@
   line-height: 1.8;
 }
 
+/* Unified modern overrides for remaining Energy internals */
+.energy-page .energy-unified-profile,
+.energy-page .energy-unified-dashboard {
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --bg-glass: #f8fafc;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+}
 
+.energy-page .energy-unified-profile .pf-header,
+.energy-page .energy-unified-dashboard .dash-chart-card,
+.energy-page .energy-unified-dashboard .kpi-card,
+.energy-page .energy-unified-dashboard .solution-score-card,
+.energy-page .energy-unified-dashboard .xai-agent-card,
+.energy-page .energy-unified-dashboard .xai-header {
+  background: #ffffff;
+  border-color: #e5e7eb;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.energy-page .energy-unified-profile .pf-title,
+.energy-page .energy-unified-dashboard .dash-section-title__text,
+.energy-page .energy-unified-dashboard .xai-header__title,
+.energy-page .energy-unified-dashboard .kpi-card__value,
+.energy-page .energy-unified-dashboard .solution-score-card__name {
+  color: #111827;
+}
+
+.energy-page .energy-unified-profile .pf-subtitle,
+.energy-page .energy-unified-profile .pf-label,
+.energy-page .energy-unified-profile .pf-map-hint,
+.energy-page .energy-unified-dashboard .dash-section-title__sub,
+.energy-page .energy-unified-dashboard .kpi-card__label,
+.energy-page .energy-unified-dashboard .kpi-card__sub,
+.energy-page .energy-unified-dashboard .dash-chart-note,
+.energy-page .energy-unified-dashboard .xai-header__sub {
+  color: #6b7280;
+}
+
+.energy-page .energy-unified-profile .pf-card,
+.energy-page .energy-unified-profile .pf-step,
+.energy-page .energy-unified-profile .pf-stat-card,
+.energy-page .energy-unified-profile .pf-summary-box,
+.energy-page .energy-unified-profile .pf-api-field,
+.energy-page .energy-unified-profile .pf-chip,
+.energy-page .energy-unified-profile .pf-radio,
+.energy-page .energy-unified-profile .pf-vehicle-btn {
+  background: #ffffff;
+  border-color: #e5e7eb;
+  color: #374151;
+}
+
+.energy-page .energy-unified-profile .pf-step--active .pf-step__circle,
+.energy-page .energy-unified-profile .pf-chip--active,
+.energy-page .energy-unified-profile .pf-radio--active,
+.energy-page .energy-unified-profile .pf-vehicle-btn--active {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #0369a1;
+}
+
+.energy-page .energy-unified-profile .pf-input,
+.energy-page .energy-unified-profile .pf-api-field__input {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  color: #111827;
+}
+
+.energy-page .energy-unified-profile .pf-input:focus,
+.energy-page .energy-unified-profile .pf-api-field__input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+}
+
+.energy-page .energy-unified-profile .pf-json-preview {
+  background: #0f172a;
+  border-color: #1e293b;
+  color: #67e8f9;
+}
+
+.energy-page .energy-unified-dashboard .dash-tooltip {
+  background: #ffffff;
+  border-color: #e5e7eb;
+  color: #1f2937;
+}
+
+.energy-page .energy-unified-dashboard .dash-tooltip__label {
+  color: #6b7280;
+}
+
+.energy-page .energy-unified-dashboard .xai-list li {
+  color: #374151;
+}
+
+/* Strong scoped reset for legacy profile form skin */
+.energy-page .energy-unified-profile.pf-root {
+  min-height: calc(100vh - 64px) !important;
+  background: transparent !important;
+  color: #111827 !important;
+  padding: 0 0 32px !important;
+}
+
+.energy-page .energy-unified-profile.pf-root::before,
+.energy-page .energy-unified-profile.pf-root::after {
+  display: none !important;
+}
+
+.energy-page .energy-unified-profile .pf-header {
+  max-width: 860px;
+  margin: 0 auto 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  padding: 20px 24px;
+}
+
+.energy-page .energy-unified-profile .pf-back-btn {
+  position: static;
+  margin-bottom: 12px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  color: #334155;
+}
+
+.energy-page .energy-unified-profile .pf-back-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.energy-page .energy-unified-profile .pf-title {
+  background: none !important;
+  -webkit-text-fill-color: #111827 !important;
+  color: #111827 !important;
+}
+
+.energy-page .energy-unified-profile .pf-subtitle {
+  color: #6b7280;
+}
+
+.energy-page .energy-unified-profile .pf-card {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
+}
+
+.energy-page .energy-unified-profile .pf-step__circle {
+  background: #f8fafc;
+  border-color: #d1d5db;
+  color: #64748b;
+}
+
+.energy-page .energy-unified-profile .pf-step--active .pf-step__circle {
+  background: #eff6ff;
+  border-color: #60a5fa;
+  color: #0369a1;
+  box-shadow: none;
+}
+
+.energy-page .energy-unified-profile .pf-step--done .pf-step__circle {
+  background: #ecfdf5;
+  border-color: #34d399;
+  color: #059669;
+}
+
+.energy-page .energy-unified-profile .pf-step__label {
+  color: #6b7280;
+}
+
+.energy-page .energy-unified-profile .pf-step--active .pf-step__label {
+  color: #0369a1;
+}
+
+.energy-page .energy-unified-profile .pf-step--done .pf-step__label {
+  color: #059669;
+}
+
+.energy-page .energy-unified-profile .pf-step__line {
+  background: #e5e7eb;
+}
+
+.energy-page .energy-unified-profile .pf-label,
+.energy-page .energy-unified-profile .pf-section-title {
+  color: #6b7280;
+  border-color: #e5e7eb;
+}
+
+.energy-page .energy-unified-profile .pf-input {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  color: #111827;
+}
+
+.energy-page .energy-unified-profile .pf-input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+}
+
+.energy-page .energy-unified-profile .pf-input option {
+  background: #ffffff;
+  color: #111827;
+}
+
+.energy-page .energy-unified-profile .pf-api-item--info,
+.energy-page .energy-unified-profile .pf-summary-box {
+  background: #f8fafc;
+  border-color: #e5e7eb;
+  color: #334155;
+}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Globe, ShieldAlert } from 'lucide-react';
@@ -8,9 +8,12 @@ const NavBar = () => {
 
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
-    document.documentElement.dir = lng === 'ar' ? 'rtl' : 'ltr';
-    document.documentElement.lang = lng;
   };
+
+  useEffect(() => {
+    document.documentElement.dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = i18n.language;
+  }, [i18n.language]);
 
   const navLinks = [
     { to: '/', label: t('nav.chat') },
@@ -25,66 +28,60 @@ const NavBar = () => {
   ];
 
   return (
-    <nav className="sticky top-0 z-50 h-16 glass border-b border-border px-6 flex items-center justify-between shadow-2xl">
-      {/* Left: Logo & Title (Friend's Style) */}
-      <div className="flex items-center gap-4">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl bg-gradient-to-br from-accent to-purple shadow-lg shadow-accent/20">
-          🌍
-        </div>
-        <div>
-          <h1 className="text-lg font-black tracking-tighter leading-none bg-gradient-to-r from-accent to-purple bg-clip-text text-transparent uppercase">
-            {t('appName')}
-          </h1>
-          <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">
-            Environmental Intelligence Platform
-          </p>
-        </div>
-      </div>
-
-      {/* Center: Navigation Links */}
-      <div className="hidden md:flex items-center gap-1 p-1 bg-primary/40 rounded-xl border border-border">
-        {navLinks.map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            className={({ isActive }) =>
-              `px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
-                isActive 
-                  ? link.isEmergency 
-                    ? 'bg-danger text-white shadow-lg shadow-danger/30' 
-                    : 'bg-accent/10 text-accent shadow-inner'
-                  : link.isEmergency
-                    ? 'text-danger hover:bg-danger/10'
-                    : 'text-text-secondary hover:text-accent hover:bg-white/5'
-              }`
-            }
-          >
-            <div className="flex items-center gap-2">
-              {link.isEmergency && <ShieldAlert className="w-3 h-3 animate-pulse" />}
-              {link.label}
-            </div>
-          </NavLink>
-        ))}
-      </div>
-
-      {/* Right: Status & Language */}
-      <div className="flex items-center gap-6">
-        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">System Active</span>
+    <nav className="sticky top-0 z-50 border-b border-gray-200 bg-white/95 px-4 py-2 shadow-sm backdrop-blur">
+      <div className="mx-auto flex max-w-[1800px] items-center justify-between gap-4">
+        <div className="flex min-w-[240px] items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-sky-100 bg-white shadow-sm">
+            <img src="/logo.png" alt="Gabesi AIGuardian logo" className="h-full w-full object-cover" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold leading-none text-slate-900">{t('appName')}</h1>
+            <p className="text-[10px] uppercase tracking-wide text-slate-500">Environmental Intelligence Platform</p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Globe className="w-4 h-4 text-text-muted" />
-          <div className="flex gap-1 p-1 bg-primary/40 rounded-lg border border-border">
+        <div className="hidden min-w-0 flex-1 lg:block">
+          <div className="flex items-center gap-1 overflow-x-auto rounded-xl border border-gray-200 bg-slate-50 p-1">
+            {navLinks.map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                className={({ isActive }) =>
+                  `whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide transition ${
+                    isActive
+                      ? link.isEmergency
+                        ? 'bg-red-500 text-white'
+                        : 'bg-sky-600 text-white'
+                      : link.isEmergency
+                      ? 'text-red-600 hover:bg-red-50'
+                      : 'text-slate-600 hover:bg-white hover:text-sky-700'
+                  }`
+                }
+              >
+                <span className="flex items-center gap-1.5">
+                  {link.isEmergency ? <ShieldAlert className="h-3.5 w-3.5" /> : null}
+                  {link.label}
+                </span>
+              </NavLink>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="hidden items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 lg:flex">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">System Active</span>
+          </div>
+
+          <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-slate-50 p-1">
+            <Globe className="mx-1 h-4 w-4 text-slate-500" />
             {['en', 'fr', 'ar'].map((lang) => (
               <button
                 key={lang}
+                type="button"
                 onClick={() => changeLanguage(lang)}
-                className={`w-7 h-7 flex items-center justify-center text-[10px] font-black uppercase rounded transition-all ${
-                  i18n.language === lang 
-                    ? 'bg-accent text-primary' 
-                    : 'text-text-muted hover:text-text-secondary hover:bg-white/5'
+                className={`h-7 rounded px-2 text-[10px] font-semibold uppercase transition ${
+                  i18n.language === lang ? 'bg-sky-600 text-white' : 'text-slate-600 hover:bg-white hover:text-sky-700'
                 }`}
               >
                 {lang}
