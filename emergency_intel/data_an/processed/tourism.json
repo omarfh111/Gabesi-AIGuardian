@@ -1,0 +1,12 @@
+{
+  "zone": "gabes",
+  "tourists_per_year": 10000,
+  "avg_stay_days": 2.5,
+  "status": "critical",
+  "issues": [
+    "pollution",
+    "economic dependence on chemical industry",
+    "infrastructure challenges"
+  ],
+  "insight": "Gab\u00e8s is currently in a critical state regarding tourism, primarily due to severe environmental issues stemming from industrial pollution. The ongoing protests against the chemical complex highlight the community's struggle with health crises linked to air and marine pollution, leading to declines in tourism attractiveness and economic vitality."
+}

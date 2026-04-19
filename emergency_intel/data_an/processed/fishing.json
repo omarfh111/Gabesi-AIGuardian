@@ -1,0 +1,366 @@
+[
+  {
+    "year": 2024,
+    "fish_type": "Nbre_ports",
+    "production_tons": 1.0,
+    "zone": "\u0642\u0627\u0628\u0633 \u0627\u0644\u0645\u062f\u064a\u0646\u0629",
+    "source_file": "infrastructures-peche.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Nbre_ports",
+    "production_tons": 1.0,
+    "zone": "\u0645\u0627\u0631\u062b",
+    "source_file": "infrastructures-peche.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Nbre_ports",
+    "production_tons": 2.0,
+    "zone": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639",
+    "source_file": "infrastructures-peche.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Nbre_ateliers",
+    "production_tons": 20.0,
+    "zone": "\u0642\u0627\u0628\u0633 \u0627\u0644\u0645\u062f\u064a\u0646\u0629",
+    "source_file": "infrastructures-peche.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Nbre_ateliers",
+    "production_tons": 2.0,
+    "zone": "\u0645\u0627\u0631\u062b",
+    "source_file": "infrastructures-peche.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Nbre_ateliers",
+    "production_tons": 22.0,
+    "zone": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639",
+    "source_file": "infrastructures-peche.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Nbre_usines_refrigeration",
+    "production_tons": 5.0,
+    "zone": "\u0642\u0627\u0628\u0633 \u0627\u0644\u0645\u062f\u064a\u0646\u0629",
+    "source_file": "infrastructures-peche.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Nbre_usines_refrigeration",
+    "production_tons": 3.0,
+    "zone": "\u0645\u0627\u0631\u062b",
+    "source_file": "infrastructures-peche.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Nbre_usines_refrigeration",
+    "production_tons": 8.0,
+    "zone": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639",
+    "source_file": "infrastructures-peche.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Nbre_moyens_transport_frigorifique",
+    "production_tons": 90.0,
+    "zone": "\u0642\u0627\u0628\u0633 \u0627\u0644\u0645\u062f\u064a\u0646\u0629",
+    "source_file": "infrastructures-peche.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Nbre_moyens_transport_frigorifique",
+    "production_tons": 20.0,
+    "zone": "\u0645\u0627\u0631\u062b",
+    "source_file": "infrastructures-peche.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Nbre_moyens_transport_frigorifique",
+    "production_tons": 110.0,
+    "zone": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639",
+    "source_file": "infrastructures-peche.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_normale",
+    "production_tons": 41.0,
+    "zone": "\u0642\u0627\u0628\u0633 \u0627\u0644\u0645\u062f\u064a\u0646\u0629",
+    "source_file": "peche-flotille-edited.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_normale",
+    "production_tons": 242.0,
+    "zone": "\u063a\u0646\u0648\u0634",
+    "source_file": "peche-flotille-edited.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_normale",
+    "production_tons": 36.0,
+    "zone": "\u0627\u0644\u0645\u0637\u0648\u064a\u0629 (\u0627\u0644\u0639\u0643\u0627\u0631\u064a\u062a)",
+    "source_file": "peche-flotille-edited.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_normale",
+    "production_tons": 11.0,
+    "zone": "\u0645\u0627\u0631\u062b (\u0627\u0644\u0632\u0631\u0627\u062a)",
+    "source_file": "peche-flotille-edited.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_normale",
+    "production_tons": 330.0,
+    "zone": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639",
+    "source_file": "peche-flotille-edited.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_equipe",
+    "production_tons": 162.0,
+    "zone": "\u0642\u0627\u0628\u0633 \u0627\u0644\u0645\u062f\u064a\u0646\u0629",
+    "source_file": "peche-flotille-edited.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_equipe",
+    "production_tons": 131.0,
+    "zone": "\u063a\u0646\u0648\u0634",
+    "source_file": "peche-flotille-edited.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_equipe",
+    "production_tons": 33.0,
+    "zone": "\u0645\u0627\u0631\u062b (\u0627\u0644\u0632\u0631\u0627\u062a)",
+    "source_file": "peche-flotille-edited.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_equipe",
+    "production_tons": 326.0,
+    "zone": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639",
+    "source_file": "peche-flotille-edited.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Sennes",
+    "production_tons": 68.0,
+    "zone": "\u0642\u0627\u0628\u0633 \u0627\u0644\u0645\u062f\u064a\u0646\u0629",
+    "source_file": "peche-flotille-edited.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Sennes",
+    "production_tons": 10.0,
+    "zone": "\u0645\u0627\u0631\u062b (\u0627\u0644\u0632\u0631\u0627\u062a)",
+    "source_file": "peche-flotille-edited.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Sennes",
+    "production_tons": 78.0,
+    "zone": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639",
+    "source_file": "peche-flotille-edited.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_thon",
+    "production_tons": 2.0,
+    "zone": "\u0642\u0627\u0628\u0633 \u0627\u0644\u0645\u062f\u064a\u0646\u0629",
+    "source_file": "peche-flotille-edited.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_thon",
+    "production_tons": 2.0,
+    "zone": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639",
+    "source_file": "peche-flotille-edited.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_normale",
+    "production_tons": 37.0,
+    "zone": "\u0642\u0627\u0628\u0633 \u0627\u0644\u0645\u062f\u064a\u0646\u0629",
+    "source_file": "peche-flotille.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_normale",
+    "production_tons": 235.0,
+    "zone": "\u063a\u0646\u0648\u0634",
+    "source_file": "peche-flotille.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_normale",
+    "production_tons": 34.0,
+    "zone": "\u0627\u0644\u0645\u0637\u0648\u064a\u0629 (\u0627\u0644\u0639\u0643\u0627\u0631\u064a\u062a)",
+    "source_file": "peche-flotille.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_normale",
+    "production_tons": 10.0,
+    "zone": "\u0645\u0627\u0631\u062b (\u0627\u0644\u0632\u0631\u0627\u062a)",
+    "source_file": "peche-flotille.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_normale",
+    "production_tons": 316.0,
+    "zone": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639",
+    "source_file": "peche-flotille.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_equipe",
+    "production_tons": 158.0,
+    "zone": "\u0642\u0627\u0628\u0633 \u0627\u0644\u0645\u062f\u064a\u0646\u0629",
+    "source_file": "peche-flotille.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_equipe",
+    "production_tons": 126.0,
+    "zone": "\u063a\u0646\u0648\u0634",
+    "source_file": "peche-flotille.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_equipe",
+    "production_tons": 30.0,
+    "zone": "\u0645\u0627\u0631\u062b (\u0627\u0644\u0632\u0631\u0627\u062a)",
+    "source_file": "peche-flotille.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_cotiere_equipe",
+    "production_tons": 314.0,
+    "zone": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639",
+    "source_file": "peche-flotille.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Sennes",
+    "production_tons": 65.0,
+    "zone": "\u0642\u0627\u0628\u0633 \u0627\u0644\u0645\u062f\u064a\u0646\u0629",
+    "source_file": "peche-flotille.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Sennes",
+    "production_tons": 9.0,
+    "zone": "\u0645\u0627\u0631\u062b (\u0627\u0644\u0632\u0631\u0627\u062a)",
+    "source_file": "peche-flotille.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Sennes",
+    "production_tons": 74.0,
+    "zone": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639",
+    "source_file": "peche-flotille.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_thon",
+    "production_tons": 2.0,
+    "zone": "\u0642\u0627\u0628\u0633 \u0627\u0644\u0645\u062f\u064a\u0646\u0629",
+    "source_file": "peche-flotille.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Barques_peche_thon",
+    "production_tons": 2.0,
+    "zone": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639",
+    "source_file": "peche-flotille.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Peche_cotiere",
+    "production_tons": 4994.0,
+    "zone": "\u0642\u0627\u0628\u0633 \u0627\u0644\u0645\u062f\u064a\u0646\u0629",
+    "source_file": "peche-production.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Peche_cotiere",
+    "production_tons": 575.0,
+    "zone": "\u063a\u0646\u0648\u0634",
+    "source_file": "peche-production.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Peche_cotiere",
+    "production_tons": 222.0,
+    "zone": "\u0627\u0644\u0645\u0637\u0648\u064a\u0629 (\u0627\u0644\u0639\u0643\u0627\u0631\u064a\u062a)",
+    "source_file": "peche-production.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Peche_cotiere",
+    "production_tons": 1905.0,
+    "zone": "\u0645\u0627\u0631\u062b (\u0627\u0644\u0632\u0631\u0627\u062a)",
+    "source_file": "peche-production.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Peche_cotiere",
+    "production_tons": 7696.0,
+    "zone": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639",
+    "source_file": "peche-production.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Peche_lumiere",
+    "production_tons": 4951.0,
+    "zone": "\u0642\u0627\u0628\u0633 \u0627\u0644\u0645\u062f\u064a\u0646\u0629",
+    "source_file": "peche-production.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Peche_lumiere",
+    "production_tons": 1021.0,
+    "zone": "\u0645\u0627\u0631\u062b (\u0627\u0644\u0632\u0631\u0627\u062a)",
+    "source_file": "peche-production.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Peche_lumiere",
+    "production_tons": 5972.0,
+    "zone": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639",
+    "source_file": "peche-production.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Peche_thon",
+    "production_tons": 117.0,
+    "zone": "\u0642\u0627\u0628\u0633 \u0627\u0644\u0645\u062f\u064a\u0646\u0629",
+    "source_file": "peche-production.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Peche_thon",
+    "production_tons": 117.0,
+    "zone": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639",
+    "source_file": "peche-production.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Peche_aquaculture",
+    "production_tons": 3.0,
+    "zone": "\u0642\u0627\u0628\u0633 \u0627\u0644\u0645\u062f\u064a\u0646\u0629",
+    "source_file": "peche-production.xlsx"
+  },
+  {
+    "year": 2024,
+    "fish_type": "Peche_aquaculture",
+    "production_tons": 3.0,
+    "zone": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639",
+    "source_file": "peche-production.xlsx"
+  }
+]

@@ -1,0 +1,30 @@
+{
+  "appName": "🌿 جابسي حارس الواحة",
+  "nav": {
+    "chat": "مساعد الفلاح",
+    "pollution": "تحليل التلوث",
+    "irrigation": "خبير الري",
+    "emergency": "الإسعاف الاستعجالي",
+    "strategic": "لوحة القيادة",
+    "strategic_chat": "الحوار الاستراتيجي"
+  },
+  "chat": {
+    "title": "تحدث مع مساعدك الذكي",
+    "placeholder": "اكتب سؤالك هنا...",
+    "send": "إرسال"
+  },
+  "pollution": {
+    "title": "لوحة متابعة التلوث",
+    "riskLevel": "مستوى خطر التلوث",
+    "downloadPdf": "تحميل ملف PDF"
+  },
+  "irrigation": {
+    "title": "نصائح الري",
+    "applyWater": "طبق {{mm}} ملم من الماء اليوم"
+  },
+  "common": {
+    "probableCause": "السبب المحتمل",
+    "recommendedAction": "الإجراء الموصى به",
+    "sources": "المصادر"
+  }
+}

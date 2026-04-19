@@ -1,0 +1,37 @@
+{
+    "date_palm": {
+        "Kc_initial": 0.90,
+        "Kc_mid": 0.95,
+        "Kc_end": 0.95,
+        "root_depth_m": 1.5,
+        "source": "FAO-56 Table 12"
+    },
+    "pomegranate": {
+        "Kc_initial": 0.60,
+        "Kc_mid": 0.80,
+        "Kc_end": 0.65,
+        "root_depth_m": 1.0,
+        "source": "FAO-56 Table 12"
+    },
+    "olive": {
+        "Kc_initial": 0.65,
+        "Kc_mid": 0.70,
+        "Kc_end": 0.65,
+        "root_depth_m": 1.2,
+        "source": "FAO-56 Table 12"
+    },
+    "fig": {
+        "Kc_initial": 0.60,
+        "Kc_mid": 1.05,
+        "Kc_end": 0.70,
+        "root_depth_m": 1.0,
+        "source": "FAO-56 Table 12"
+    },
+    "vegetables": {
+        "Kc_initial": 0.70,
+        "Kc_mid": 1.0,
+        "Kc_end": 0.95,
+        "root_depth_m": 0.6,
+        "source": "FAO-56 Table 12 (General vegetables)"
+    }
+}

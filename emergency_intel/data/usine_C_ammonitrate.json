@@ -1,0 +1,59 @@
+{
+  "facility_label": "Usine C - Ammonitrate",
+  "public_anchor": "Complexe GCT de Ghannouch (Gabès)",
+  "exceedances": [
+    {
+      "month": "2026-06",
+      "co2": 1860,
+      "reason": "Retour à pleine charge après inspection et demande accrue des utilités en période chaude."
+    }
+  ],
+  "notes": "La chute d'avril est volontairement plus marquée pour représenter une inspection corrective post-crise.",
+  "start_month_assumption": "2026-01",
+  "period_months": 6,
+  "unit": "tonnes_CO2/month",
+  "bounds": {
+    "min": 1200,
+    "max": 2000
+  },
+  "internal_exceedance_threshold": 1850,
+  "months": [
+    {
+      "month": "2026-01",
+      "co2": 1680,
+      "tags": ["hiver", "approvisionnement agricole", "effet grève résiduel"]
+    },
+    {
+      "month": "2026-02",
+      "co2": 1740,
+      "tags": ["pré-Ramadan", "production de stock", "cadence forte"]
+    },
+    {
+      "month": "2026-03",
+      "co2": 1480,
+      "tags": ["Ramadan", "horaires réduits", "maintenance"]
+    },
+    {
+      "month": "2026-04",
+      "co2": 1450,
+      "tags": ["inspection", "correction sécurité", "arrêt partiel"]
+    },
+    {
+      "month": "2026-05",
+      "co2": 1780,
+      "tags": ["reprise de feedstock", "marché agricole", "retour vers la normale"]
+    },
+    {
+      "month": "2026-06",
+      "co2": 1860,
+      "tags": ["été", "froid industriel", "pointe d'utilités"]
+    }
+  ],
+  "statistics": {
+    "mean": 1665.0,
+    "variance_sample": 27510.0,
+    "lag1_autocorrelation": 0.215,
+    "min": 1450,
+    "max": 1860
+  }
+}

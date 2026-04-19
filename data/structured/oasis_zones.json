@@ -1,0 +1,60 @@
+{
+    "oases": [
+        {
+            "name": "Bahria",
+            "local_name": "Chott Essalem",
+            "lat": 33.8833,
+            "lon": 10.0833,
+            "area_ha": 412,
+            "primary_crops": [
+                "date_palm",
+                "pomegranate",
+                "fig"
+            ],
+            "delegation": "Gabes Sud",
+            "water_source": "shallow_aquifer",
+            "salinity_risk": "high"
+        },
+        {
+            "name": "Chenini-Nahal",
+            "lat": 33.9167,
+            "lon": 9.9833,
+            "area_ha": 380,
+            "primary_crops": [
+                "date_palm",
+                "olive"
+            ],
+            "delegation": "Gabes Ouest",
+            "water_source": "deep_aquifer",
+            "salinity_risk": "medium"
+        },
+        {
+            "name": "Zrig",
+            "lat": 33.8667,
+            "lon": 10.1000,
+            "area_ha": 185,
+            "primary_crops": [
+                "date_palm",
+                "pomegranate",
+                "vegetables"
+            ],
+            "delegation": "Gabes Sud",
+            "water_source": "shallow_aquifer",
+            "salinity_risk": "high"
+        },
+        {
+            "name": "Oiesta",
+            "lat": 33.8900,
+            "lon": 10.0600,
+            "area_ha": 160,
+            "primary_crops": [
+                "date_palm",
+                "fig",
+                "vegetables"
+            ],
+            "delegation": "Gabes Medina",
+            "water_source": "shallow_aquifer",
+            "salinity_risk": "medium"
+        }
+    ]
+}

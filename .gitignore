@@ -1,0 +1,102 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+*.so
+
+# Environment — NEVER commit secrets
+.env
+*.env
+!.env.example
+
+# Data — too large for git, contains sensitive documents
+data/papers/
+data/pdl_reports/
+data/references/
+data/processed/
+
+# Logs
+logs/
+
+# Evaluation outputs
+eval_data/
+eval_results/
+backend/.deepeval/
+backend/.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Future: model weights, checkpoints
+*.bin
+*.pt
+*.ckpt
+
+# Frontend build artifacts and caches
+node_modules/
+.next/
+dist/
+build/
+.deepeval/
+brain/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Test outputs
+backend/tests/test_results.json
+backend/tests/test_results.md
+
+# Optional (if you generate more later)
+backend/tests/*.log
+backend/tests/*.tmp
+
+# Large PDF data from legacy work
+emergency_intel/data/dataassistantmed/
+emergency_intel/data/datamed/
+
+# Gabesi Strategic Pipeline Data
+architecture_pipeline/
+data_an/
+
+# Allow essential data for dashboard functionality
+!emergency_intel/data_an/
+!emergency_intel/data_an/**/*.json
+!emergency_intel/data_an/**/*.xlsx
+!emergency_intel/data_an/**/*.csv
+
+# Still ignore large binary archives or system junk if any
+*.zip
+*.7z
+*.tar.gz
+*.rar
+
+# Ignore the cloned branch directories as they are fully integrated
+warningsMarks/
+ai-assistant-agriculture/
+feature-medical-report-updates/
+
+# FastEmbed model cache
+backend/.cache/
+
+# Scratch scripts (temporary/debug)
+scratch/

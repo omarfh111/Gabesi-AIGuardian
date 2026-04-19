@@ -1,0 +1,30 @@
+{
+  "appName": "🌿 Gabesi AIGuardian",
+  "nav": {
+    "chat": "Conseiller Agricole",
+    "pollution": "Analyse Pollution",
+    "irrigation": "Expert Irrigation",
+    "emergency": "Urgence Médicale",
+    "strategic": "Tableau Stratégique",
+    "strategic_chat": "Chat Stratégique"
+  },
+  "chat": {
+    "title": "Discutez avec votre assistant IA",
+    "placeholder": "Tapez votre question...",
+    "send": "Envoyer"
+  },
+  "pollution": {
+    "title": "Tableau de Bord Pollution",
+    "riskLevel": "Niveau de risque de pollution",
+    "downloadPdf": "Télécharger le Dossier PDF"
+  },
+  "irrigation": {
+    "title": "Conseils d'Irrigation",
+    "applyWater": "Appliquez {{mm}} mm d'eau aujourd'hui"
+  },
+  "common": {
+    "probableCause": "Cause probable",
+    "recommendedAction": "Action recommandée",
+    "sources": "Sources"
+  }
+}

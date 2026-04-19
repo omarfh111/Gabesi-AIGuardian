@@ -1,0 +1,7 @@
+{
+  "zone": "gabes",
+  "wind_speed": 6.5,
+  "wind_direction": 96,
+  "risk_level": "low",
+  "computed_spread": "towards_coast"
+}

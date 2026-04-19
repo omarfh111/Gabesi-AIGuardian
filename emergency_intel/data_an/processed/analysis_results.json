@@ -1,0 +1,133 @@
+{
+  "analysis_id": "4cb2a659-d53c-4e1f-bb85-dfd638dbae94",
+  "timestamp": "2026-04-18T19:42:01.292825Z",
+  "zone": "gabes",
+  "source": [
+    "qdrant:gabes_industry",
+    "marine.json",
+    "fishing.json",
+    "tourism.json"
+  ],
+  "modules": {
+    "pollution": {
+      "level": "\u00e9lev\u00e9",
+      "source": [
+        "rapport_audit_es-gct-gabes-def_25_07_2025.pdf",
+        "rapport_audit_es-gct-gabes-contradictoire.pdf"
+      ],
+      "insight": {
+        "capacit\u00e9s_de_production": {
+          "Acide_Sulfurique": {
+            "U500": "900 T/j",
+            "U2500": "1500 T/j",
+            "U3500_I": "1500 T/j",
+            "U3500_II": "1500 T/j"
+          },
+          "Acide_Phosphorique": {
+            "U600": "500 T/j",
+            "U700": "350 T/j",
+            "U2600": "600 T/j",
+            "U3600": "600 T/j"
+          },
+          "DCP": {
+            "Capacit\u00e9": "100 000 T/an"
+          },
+          "DAP": {
+            "U_DAP_A": "2000 T/j",
+            "U_DAP_B": "2000 T/j"
+          },
+          "Ammonitrate": {
+            "Capacit\u00e9": "330 000 T/an"
+          }
+        },
+        "niveaux_de_pollution": {
+          "pollution_air": {
+            "CO2": "Non-conformit\u00e9 majeure",
+            "Ammoniac": "Non-conformit\u00e9 majeure",
+            "NOx": "Non-conformit\u00e9 majeure",
+            "SOx": "Non-conformit\u00e9 majeure",
+            "N2O": "Non-conformit\u00e9 majeure"
+          },
+          "sources": [
+            "\u00c9missions des unit\u00e9s DAP",
+            "\u00c9missions des unit\u00e9s d'Acide Nitrique",
+            "\u00c9missions des tours de prilling",
+            "\u00c9missions des unit\u00e9s sulfuriques",
+            "Gaz malodorants des unit\u00e9s AP"
+          ]
+        },
+        "projets_et_solutions": {
+          "2024-2026": [
+            "Installer un syst\u00e8me de lavage des gaz dans les proc\u00e9d\u00e9s de fabrication du DAP pour la r\u00e9duction des \u00e9manations d'ammoniac.",
+            "Installer des \u00e9quipements de r\u00e9duction catalytique des NOx (syst\u00e8me DENOX, r\u00e9duction \u00e0 environ 50 ppm).",
+            "Installer un laveur \u00e9quip\u00e9 de candles irrigu\u00e9es avec de l'acide nitrique.",
+            "R\u00e9trofit des deux unit\u00e9s de production d'acide sulfurique pour r\u00e9duction SO2 par double absorption.",
+            "Nouvelle technologie : photo-ionisation catalys\u00e9e, biofiltre, enzyme, absorption par charbon actif.",
+            "Installer des \u00e9quipements de destruction catalytique des N2O au niveau du proc\u00e9d\u00e9 de fabrication de l'usine d'Ammonitrate."
+          ],
+          "2025-2028": [
+            "Substituer le fioul par le gaz naturel pour r\u00e9duire les \u00e9missions de CO\u2082.",
+            "Mettre en place stations de mesure continue avec reporting.",
+            "Instaurer un registre, \u00e9tiquetage, inspection trimestrielle pour la gestion des d\u00e9chets dangereux.",
+            "Mettre en place un plan d'inventaire des diff\u00e9rents types de d\u00e9chets dangereux.",
+            "Mettre en place un programme de traitement, transfert ou destination finale des d\u00e9chets dangereux."
+          ]
+        }
+      }
+    },
+    "fishing": {
+      "trend": "en hausse",
+      "insight": "La production totale de p\u00eache dans le golfe de Gab\u00e8s a montr\u00e9 une augmentation significative, atteignant 7696 tonnes. Cela indique une tendance positive dans l'activit\u00e9 de p\u00eache malgr\u00e9 les d\u00e9fis environnementaux.",
+      "fish_types_expected": [
+        "Peche_cotiere",
+        "Peche_lumiere",
+        "Peche_thon",
+        "Peche_aquaculture"
+      ],
+      "best_zones": [
+        "\u0642\u0627\u0628\u0633 \u0627\u0644\u0645\u062f\u064a\u0646\u0629",
+        "\u0645\u0627\u0631\u062b",
+        "\u063a\u0646\u0648\u0634"
+      ],
+      "quality_status": "Menac\u00e9e",
+      "estimated_production_tons": 7696
+    },
+    "marine": {
+      "spread": "low",
+      "wind_effect": "towards_coast",
+      "wind_speed": 6.5,
+      "insight": "Wind at 6.5 km/h is pushing towards coast."
+    },
+    "tourism": {
+      "status": "weak",
+      "avg_stay_days": 2.5,
+      "issues": [
+        "pollution",
+        "economic dependence on chemical industry",
+        "infrastructure challenges"
+      ],
+      "insight": "Tourism is weak with issues like pollution, economic dependence on chemical industry, infrastructure challenges."
+    }
+  },
+  "global_risk": 0.85,
+  "confidence": 0.75,
+  "insights": [
+    "Aujourd'hui, avec un vent soufflant \u00e0 6.5 km/h en direction de la c\u00f4te, les \u00e9missions polluantes des unit\u00e9s industrielles, notamment les \u00e9missions de SOx et d'ammoniac, sont susceptibles d'\u00eatre transport\u00e9es vers les zones de p\u00eache. Cela pourrait affecter la qualit\u00e9 de l'eau et la sant\u00e9 des esp\u00e8ces marines, mena\u00e7ant ainsi la production de p\u00eache qui, bien que montrant une tendance \u00e0 la hausse avec 7696 tonnes, reste menac\u00e9e par la pollution. Les p\u00eacheurs doivent donc \u00eatre vigilants quant \u00e0 la qualit\u00e9 de l'eau dans les zones de p\u00eache.",
+    "La situation actuelle de la p\u00eache dans le golfe de Gab\u00e8s est pr\u00e9occupante. Bien que la production de p\u00eache soit en hausse, la qualit\u00e9 de l'eau est menac\u00e9e par des niveaux de pollution \u00e9lev\u00e9s, notamment des non-conformit\u00e9s majeures en mati\u00e8re d'\u00e9missions de CO2, d'ammoniac et de NOx. Le vent, qui pousse vers la c\u00f4te, pourrait exacerber cette situation en transportant des polluants vers les zones de p\u00eache, ce qui pourrait avoir un impact n\u00e9gatif sur les esp\u00e8ces cibl\u00e9es par les p\u00eacheurs."
+  ],
+  "recommendations": [
+    {
+      "text": "Aujourd'hui, il est formellement conseill\u00e9 aux p\u00eacheurs de ne pas naviguer dans les zones proches des unit\u00e9s industrielles, notamment autour de Gab\u00e8s et de la r\u00e9gion de Marsa, en raison des \u00e9missions polluantes. Il est pr\u00e9f\u00e9rable de se diriger vers des zones plus \u00e9loign\u00e9es de la c\u00f4te, comme les zones de p\u00eache c\u00f4ti\u00e8re au large de la ville de Gab\u00e8s, o\u00f9 le vent pourrait ne pas transporter les polluants. De plus, il est recommand\u00e9 de v\u00e9rifier la qualit\u00e9 de l'eau avant de p\u00eacher.",
+      "priority": "high"
+    }
+  ],
+  "xai_explanation": {
+    "tourism_reasoning": "Le tourisme est impact\u00e9 par la pollution qui affecte la qualit\u00e9 de l'eau et l'attrait des plages. Les visiteurs peuvent \u00eatre dissuad\u00e9s par des conditions environnementales d\u00e9favorables, ce qui nuit \u00e0 l'\u00e9conomie locale d\u00e9pendante du secteur touristique.",
+    "pollution_reasoning": "Les \u00e9missions des unit\u00e9s industrielles, notamment les SOx et les NOx, sont \u00e0 des niveaux alarmants, ce qui entra\u00eene une d\u00e9gradation de la qualit\u00e9 de l'air et de l'eau. Ces polluants peuvent avoir des effets n\u00e9fastes sur la faune marine et, par cons\u00e9quent, sur l'industrie de la p\u00eache.",
+    "actionable_targets": {
+      "tourism_authorities": "Action requise pour am\u00e9liorer la qualit\u00e9 de l'environnement c\u00f4tier, notamment en r\u00e9duisant les \u00e9missions industrielles et en promouvant des initiatives de nettoyage des plages.",
+      "fishermen": "Il est recommand\u00e9 d'\u00e9viter les zones de p\u00eache proches des c\u00f4tes industrielles aujourd'hui et de privil\u00e9gier des zones plus \u00e9loign\u00e9es pour minimiser l'exposition aux polluants.",
+      "industrial_sector": "Contrainte d'\u00e9mission stricte \u00e0 mettre en place pour r\u00e9duire les niveaux de pollution, notamment par l'installation de technologies de r\u00e9duction des \u00e9missions."
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "facility_label": "Usine Gaz — Ghannouch",
+  "public_anchor": "Ghannouch Gas Processing Plant",
+  "exceedances": [
+    {
+      "month": "2026-06",
+      "co2": 1910,
+      "reason": "Demande gaz maximale estivale, torchage accru, fuites résiduelles."
+    }
+  ],
+  "notes": "Unité de traitement de gaz naturel. Émissions liées au torchage, aux fuites fugitives et à la consommation des compresseurs.",
+  "start_month_assumption": "2026-01",
+  "period_months": 6,
+  "unit": "tonnes_CO2/month",
+  "bounds": {
+    "min": 1200,
+    "max": 2000
+  },
+  "internal_exceedance_threshold": 1850,
+  "months": [
+    {
+      "month": "2026-01",
+      "co2": 1650,
+      "tags": ["hiver", "demande gaz chauffage", "torchage modéré"]
+    },
+    {
+      "month": "2026-02",
+      "co2": 1710,
+      "tags": ["pré-Ramadan", "flux gaz stable", "maintenance compresseur"]
+    },
+    {
+      "month": "2026-03",
+      "co2": 1520,
+      "tags": ["Ramadan", "demande réduite", "maintenance pipeline"]
+    },
+    {
+      "month": "2026-04",
+      "co2": 1680,
+      "tags": ["reprise", "flux normalisé", "compresseurs pleine charge"]
+    },
+    {
+      "month": "2026-05",
+      "co2": 1830,
+      "tags": ["chaleur", "demande climatisation", "torchage accru"]
+    },
+    {
+      "month": "2026-06",
+      "co2": 1910,
+      "tags": ["canicule", "fuites fugitives", "surcharge compresseurs"]
+    }
+  ],
+  "statistics": {
+    "mean": 1716.7,
+    "variance_sample": 19466.7,
+    "lag1_autocorrelation": 0.38,
+    "min": 1520,
+    "max": 1910
+  }
+}

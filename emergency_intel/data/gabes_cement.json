@@ -1,0 +1,59 @@
+{
+  "facility_label": "Cimenterie de Gabès",
+  "public_anchor": "Gabes Cement Company, zone industrielle sud",
+  "exceedances": [
+    {
+      "month": "2026-06",
+      "co2": 1870,
+      "reason": "Production maximale BTP estivale combinée à la chaleur des fours."
+    }
+  ],
+  "notes": "Cimenterie de taille moyenne. Émissions liées aux fours rotatifs et au broyage du clinker. Pic BTP en été.",
+  "start_month_assumption": "2026-01",
+  "period_months": 6,
+  "unit": "tonnes_CO2/month",
+  "bounds": {
+    "min": 1200,
+    "max": 2000
+  },
+  "internal_exceedance_threshold": 1850,
+  "months": [
+    {
+      "month": "2026-01",
+      "co2": 1580,
+      "tags": ["hiver", "demande BTP modérée", "fours à régime normal"]
+    },
+    {
+      "month": "2026-02",
+      "co2": 1620,
+      "tags": ["pré-Ramadan", "stockage ciment", "cadence légèrement accrue"]
+    },
+    {
+      "month": "2026-03",
+      "co2": 1410,
+      "tags": ["Ramadan", "chantiers ralentis", "maintenance four 1"]
+    },
+    {
+      "month": "2026-04",
+      "co2": 1540,
+      "tags": ["reprise chantiers", "inspection réglementaire", "montée en charge"]
+    },
+    {
+      "month": "2026-05",
+      "co2": 1730,
+      "tags": ["haute saison BTP", "export ciment Libye", "fours à pleine charge"]
+    },
+    {
+      "month": "2026-06",
+      "co2": 1870,
+      "tags": ["été", "demande maximale", "surconsommation refroidissement"]
+    }
+  ],
+  "statistics": {
+    "mean": 1625.0,
+    "variance_sample": 26150.0,
+    "lag1_autocorrelation": 0.35,
+    "min": 1410,
+    "max": 1870
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "facility_label": "Usine E - Fluorure d'aluminium",
+  "public_anchor": "Industries Chimiques du Fluor, Gabès Port / Ghannouch",
+  "exceedances": [],
+  "notes": "La dépendance à la logistique portuaire et à l'approvisionnement en acide rend la série relativement lisse, avec une hausse estivale modérée.",
+  "start_month_assumption": "2026-01",
+  "period_months": 6,
+  "unit": "tonnes_CO2/month",
+  "bounds": {
+    "min": 1200,
+    "max": 2000
+  },
+  "internal_exceedance_threshold": 1850,
+  "months": [
+    {
+      "month": "2026-01",
+      "co2": 1450,
+      "tags": ["port", "export", "profil régulier"]
+    },
+    {
+      "month": "2026-02",
+      "co2": 1490,
+      "tags": ["hiver", "production stable", "couplage acide"]
+    },
+    {
+      "month": "2026-03",
+      "co2": 1410,
+      "tags": ["Ramadan", "léger repli", "cadence réduite"]
+    },
+    {
+      "month": "2026-04",
+      "co2": 1470,
+      "tags": ["reprise", "logistique portuaire", "stabilisation"]
+    },
+    {
+      "month": "2026-05",
+      "co2": 1580,
+      "tags": ["hausse progressive", "chaleur croissante", "utilités accrues"]
+    },
+    {
+      "month": "2026-06",
+      "co2": 1630,
+      "tags": ["été", "ventilation et refroidissement", "profil haut"]
+    }
+  ],
+  "statistics": {
+    "mean": 1505.0,
+    "variance_sample": 6950.0,
+    "lag1_autocorrelation": 0.614,
+    "min": 1410,
+    "max": 1630
+  }
+}
