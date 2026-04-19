@@ -6,7 +6,12 @@ from uuid import uuid4
 import uuid
 from openai import OpenAI
 from qdrant_client import QdrantClient, models
-from fastembed import SparseTextEmbedding
+try:
+    from fastembed import SparseTextEmbedding
+    FASTEMBED_AVAILABLE = True
+except ImportError:
+    FASTEMBED_AVAILABLE = False
+    SparseTextEmbedding = None
 from langsmith import traceable
 from dotenv import load_dotenv
 
@@ -29,17 +34,22 @@ class RAGService:
         # Initialize collections if they don't exist
         self._ensure_collections()
         
-        # Re-enabled sparse search logic (with offline-safe fallback)
-        cache_dir = os.path.join(os.getcwd(), ".cache")
-        try:
-            self.sparse_model = SparseTextEmbedding(
-                model_name="prithivida/Splade_PP_en_v1",
-                cache_dir=cache_dir
-            )
-        except Exception as e:
+        if FASTEMBED_AVAILABLE and SparseTextEmbedding is not None:
+            # Re-enabled sparse search logic (with offline-safe fallback)
+            cache_dir = os.path.join(os.getcwd(), ".cache")
+            try:
+                self.sparse_model = SparseTextEmbedding(
+                    model_name="prithivida/Splade_PP_en_v1",
+                    cache_dir=cache_dir
+                )
+            except Exception as e:
+                self.sparse_enabled = False
+                self.sparse_model = None
+                log.warning(f"Sparse model disabled (fallback to dense retrieval): {e}")
+        else:
             self.sparse_enabled = False
             self.sparse_model = None
-            log.warning(f"Sparse model disabled (fallback to dense retrieval): {e}")
+            log.info("FastEmbed not installed - running in dense-only mode.")
 
     def _ensure_collections(self):
         """Creates historical_cases collection if it doesn't exist."""
@@ -70,15 +80,17 @@ class RAGService:
         return response.data[0].embedding
 
     def get_sparse_embedding(self, text: str) -> Dict[str, Any]:
-        if not self.sparse_enabled or self.sparse_model is None:
+        if FASTEMBED_AVAILABLE and self.sparse_enabled and self.sparse_model is not None:
+            # FastEmbed returns a generator of sparse vectors
+            sparse_embeddings = list(self.sparse_model.embed([text]))
+            vector = sparse_embeddings[0]
+            return {
+                "indices": vector.indices.tolist(),
+                "values": vector.values.tolist()
+            }
+        else:
+            # fall back to dense-only search, skip sparse
             return {"indices": [], "values": []}
-        # FastEmbed returns a generator of sparse vectors
-        sparse_embeddings = list(self.sparse_model.embed([text]))
-        vector = sparse_embeddings[0]
-        return {
-            "indices": vector.indices.tolist(),
-            "values": vector.values.tolist()
-        }
 
     @traceable(run_type="retriever", name="Hybrid Knowledge Ranking")
     def search(self, query: str, limit: int = 5) -> str:
@@ -87,7 +99,7 @@ class RAGService:
         try:
             dense_vector = self.get_dense_embedding(query)
 
-            if self.sparse_enabled:
+            if FASTEMBED_AVAILABLE and self.sparse_enabled:
                 sparse_vector = self.get_sparse_embedding(query)
                 # Perform Hybrid Search with Fusion (Dense + Sparse)
                 search_results = self.qdrant_client.query_points(
