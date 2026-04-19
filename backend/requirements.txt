@@ -44,4 +44,4 @@ supabase>=2.11.0
 
 # ── Feature 9: Medical Triage ──────────────────────────────────────────────────
 python-multipart==0.0.9
-fastembed==0.3.6
+fastembed>=0.3.0

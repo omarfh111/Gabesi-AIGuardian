@@ -13,7 +13,7 @@ pandas
 openpyxl
 PyMuPDF
 requests
-fastembed==0.3.6
+fastembed>=0.3.0
 python-multipart==0.0.9
 supabase>=2.11.0
 pypdf==6.10.1
