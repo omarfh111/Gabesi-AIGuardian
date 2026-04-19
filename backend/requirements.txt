@@ -17,12 +17,6 @@ langsmith==0.7.32
 # ── Vector database ────────────────────────────────────────────────────────────
 qdrant-client==1.16.2
 
-# ── Embeddings & chunking ──────────────────────────────────────────────────────
---extra-index-url https://download.pytorch.org/whl/cpu
-sentence-transformers==4.1.0
-chonkie[semantic]==0.5.1
-tiktoken==0.7.0
-
 # ── Document processing ────────────────────────────────────────────────────────
 python-docx==1.2.0
 pypdf==6.10.1
@@ -31,14 +25,6 @@ reportlab==4.4.1
 # ── Utilities ──────────────────────────────────────────────────────────────────
 python-dotenv==1.1.1
 tqdm==4.67.1
-
-# ── Evaluation ─────────────────────────────────────────────────────────────────
-deepeval==3.9.7
-ollama==0.4.8
-
-# ── Testing ────────────────────────────────────────────────────────────────────
-pytest==8.3.2
-pytest-asyncio==0.23.8
 
 # ── Feature 6: Emergency Intelligence ──────────────────────────────────────────
 flask==3.1.0

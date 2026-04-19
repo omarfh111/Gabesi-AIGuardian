@@ -488,4 +488,4 @@ if __name__ == '__main__':
     if not os.getenv('OPENAI_API_KEY'):
         print('[!] WARNING: OPENAI_API_KEY is not set in .env')
 
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=False)
