@@ -294,17 +294,17 @@ graph TD
 ---
 
 ## 9. Module 6: GabèsEnergy AI — Renewable Energy Advisor
-**Purpose**: guides Gabès residents through renewable energy transition — 3000-3200 sun hours/year (top 10% globally), Mediterranean coastal winds ~5 m/s
-**Pipeline architecture**: hybrid parallel/sequential via asyncio.gather() — Phase 1: agent_env → agent_energie (sequential) runs parallel with agent_finance; Phase 2: agent_expert (sequential, receives both); Phase 3: orchestrator.py (pure Python, zero LLM, <0.1s). Total: ~25-45s vs ~50-70s without parallelism
-**Agent ENV** (agent_env.py): 3 tools — analyse_solar_potential (solar score 0-100: maison type 5-30pts + orientation Sud=25/Est-Ouest=15/Nord=5pts + sun hours ≥3000h=25pts + no existing panels=10pts, max 90pts), calculate_co2_footprint (0.48 kg/kWh ANME Tunisia 2022 + transport by vehicle type), evaluate_energy_efficiency (A→D rating)
-**Agent Énergie** (agent_energie.py): 3 tools — match_renewable_sources (scores 5 technologies: PV/Thermique/Éolien/Biogaz/Géothermie using score_pv = 0.44×score_soleil + 0.33×score_orientation + 0.23×score_logement, threshold ≥40/100), size_installations (kWp = kWh_annuel/(heures_soleil × 0.80), market price 3200 TND/kWp, PROSOL subsidy 30%), create_transition_plan (3 phases: <3 months / 3-12 months / 1-3 years)
-**Agent Finance** (agent_finance.py): 3 tools — analyse_budget_capacity (income/expenses/savings/debt ratio), calculate_solar_roi (economie_mensuelle = facture_steg × 0.80, payback_mois = cout_net/economie_mensuelle, gains_25_ans = Σ(economie_annuelle × 1.02^year) with +5%/yr STEG historical inflation), evaluate_energy_savings_plan (quick wins vs heavy investments). Subsidies: PROSOL Élec 30%, PROSOL Thermique 30%, Crédit BFPME
-**Agent Expert** (agent_expert.py): 4 tools — web_search_prices (DuckDuckGo, real 2024 Tunisian market prices), calculate_personalized_gains (5/10/25yr projections with -0.5%/yr PV degradation and +5%/yr STEG inflation), generate_installation_map (spatial placement per zone: rooftop/balcony/garden), build_final_report (★★★★★ scored solution table)
-**Orchestrator** (orchestrator.py): pure Python, zero LLM calls, <100ms — 6 modules: _financial_projections (25 data points, 1/year), _co2_projections (kg CO₂ avoided with degradation), _energy_mix (current 100% STEG vs target % renewable), _solution_comparison (score/cost/payback/CO₂ per technology), _compute_kpis (12 KPIs for dashboard cards), _build_xai (variable weights, decision trees, confidence scores per agent)
-**XAI Section**: variable importance (sun hours 28%, STEG bill 22%, housing type 18%, solar orientation 15%, renovation budget 10%, ownership 7%), decision trees per agent, confidence scores (ENV 91%, Finance 85%, Énergie 92%, Expert 89%), identified biases and model limits
-**Frontend**: React 18 + Vite, Recharts 6 charts (AreaChart 25yr financial projections, BarChart annual savings, AreaChart CO₂ reduction, PieChart×2 current vs target energy mix, horizontal BarChart solution comparison, RadarChart multi-criteria score/ROI/budget/CO₂), Leaflet GPS selection limited to Gabès region, Open-Meteo auto-fetch (temperature + sun hours), Nominatim OSM reverse geocoding, JSON profile export
-**External APIs**: Open-Meteo (free, auto weather), Nominatim OSM (free, GPS→address), DuckDuckGo Instant API (free, real market prices), OpenAI GPT-4o-mini, LangSmith tracing
-**Models**: gpt-4o-mini for all 4 agents, no embeddings (no vector DB — pure LLM + deterministic orchestration)
+*   **Purpose**: guides Gabès residents through renewable energy transition — 3000-3200 sun hours/year (top 10% globally), Mediterranean coastal winds ~5 m/s
+*   **Pipeline Architecture**: hybrid parallel/sequential via `asyncio.gather()` — Phase 1: `agent_env` → `agent_energie` (sequential) runs parallel with `agent_finance`; Phase 2: `agent_expert` (sequential, receives both); Phase 3: `orchestrator.py` (pure Python, zero LLM, <0.1s). Total: ~25-45s vs ~50-70s without parallelism
+*   **Agent ENV** (`agent_env.py`): 3 tools — `analyse_solar_potential` (solar score 0-100: maison type 5-30pts + orientation Sud=25/Est-Ouest=15/Nord=5pts + sun hours ≥3000h=25pts + no existing panels=10pts, max 90pts), `calculate_co2_footprint` (0.48 kg/kWh ANME Tunisia 2022 + transport by vehicle type), `evaluate_energy_efficiency` (A→D rating)
+*   **Agent Énergie** (`agent_energie.py`): 3 tools — `match_renewable_sources` (scores 5 technologies: PV/Thermique/Éolien/Biogaz/Géothermie using `score_pv = 0.44×score_soleil + 0.33×score_orientation + 0.23×score_logement`, threshold ≥40/100), `size_installations` (kWp = kWh_annuel/(heures_soleil × 0.80), market price 3200 TND/kWp, PROSOL subsidy 30%), `create_transition_plan` (3 phases: <3 months / 3-12 months / 1-3 years)
+*   **Agent Finance** (`agent_finance.py`): 3 tools — `analyse_budget_capacity` (income/expenses/savings/debt ratio), `calculate_solar_roi` (economie_mensuelle = facture_steg × 0.80, payback_mois = cout_net/economie_mensuelle, gains_25_ans = Σ(economie_annuelle × 1.02^year) with +5%/yr STEG historical inflation), `evaluate_energy_savings_plan` (quick wins vs heavy investments). Subsidies: PROSOL Élec 30%, PROSOL Thermique 30%, Crédit BFPME
+*   **Agent Expert** (`agent_expert.py`): 4 tools — `web_search_prices` (DuckDuckGo, real 2024 Tunisian market prices), `calculate_personalized_gains` (5/10/25yr projections with -0.5%/yr PV degradation and +5%/yr STEG inflation), `generate_installation_map` (spatial placement per zone: rooftop/balcony/garden), `build_final_report` (★★★★★ scored solution table)
+*   **Orchestrator** (`orchestrator.py`): pure Python, zero LLM calls, <100ms — 6 modules: `_financial_projections` (25 data points, 1/year), `_co2_projections` (kg CO₂ avoided with degradation), `_energy_mix` (current 100% STEG vs target % renewable), `_solution_comparison` (score/cost/payback/CO₂ per technology), `_compute_kpis` (12 KPIs for dashboard cards), `_build_xai` (variable weights, decision trees, confidence scores per agent)
+*   **XAI Section**: variable importance (sun hours 28%, STEG bill 22%, housing type 18%, solar orientation 15%, renovation budget 10%, ownership 7%), decision trees per agent, confidence scores (ENV 91%, Finance 85%, Énergie 92%, Expert 89%), identified biases and model limits
+*   **Frontend**: React 18 + Vite, Recharts 6 charts (AreaChart 25yr financial projections, BarChart annual savings, AreaChart CO₂ reduction, PieChart×2 current vs target energy mix, horizontal BarChart solution comparison, RadarChart multi-criteria score/ROI/budget/CO₂), Leaflet GPS selection limited to Gabès region, Open-Meteo auto-fetch (temperature + sun hours), Nominatim OSM reverse geocoding, JSON profile export
+*   **External APIs**: Open-Meteo (free, auto weather), Nominatim OSM (free, GPS→address), DuckDuckGo Instant API (free, real market prices), OpenAI GPT-4o-mini, LangSmith tracing
+*   **Models**: gpt-4o-mini for all 4 agents, no embeddings (no vector DB — pure LLM + deterministic orchestration)
 
 ```mermaid
 graph TD
@@ -321,9 +321,9 @@ graph TD
 ---
 
 ## 10. Module 7: Gabes Medical Triage
-**Purpose**: clinical triage and consultation for Gabès industrial exposure risk profiles — structured intake with 20+ clinical/environmental signals, specialist routing with confidence gating, longitudinal patient dossier by CIN, blood-test analysis, downloadable PDF clinical reports
-**Pipeline**: PatientIntake → triage_service (LLM analysis, domain ranking, urgency) → router_service (confidence gate — defaults to Generalist when unclear) → specialist agent consultation loop → optional handoff via [SUGGEST_TRANSFER: ...] → ToxicologueAgent synthesis → BilanExpertAgent blood test interpretation → Step 3 orchestrator → final PDF report
-**8 RAG Agents** (all inherit BaseAgent, CIN-linked dossier, Qdrant-backed):
+*   **Purpose**: clinical triage and consultation for Gabès industrial exposure risk profiles — structured intake with 20+ clinical/environmental signals, specialist routing with confidence gating, longitudinal patient dossier by CIN, blood-test analysis, downloadable PDF clinical reports
+*   **Pipeline**: PatientIntake → triage_service (LLM analysis, domain ranking, urgency) → router_service (confidence gate — defaults to Generalist when unclear) → specialist agent consultation loop → optional handoff via [SUGGEST_TRANSFER: ...] → ToxicologueAgent synthesis → BilanExpertAgent blood test interpretation → Step 3 orchestrator → final PDF report
+*   **8 RAG Agents** (all inherit BaseAgent, CIN-linked dossier, Qdrant-backed):
 *   GeneralistAgent: first-line when confidence low or symptoms vague, one question/turn, can transfer, collection: generaliste_collection
 *   PneumologueAgent: respiratory/pulmonary irritation, mandatory clarification before toxicology transfer unless life-threatening, collection: pneumologue_collection
 *   CardiologueAgent: chest pain/palpitations/hemodynamic, mandatory clarification before transfer unless red flag, collection: cardiologue_collection
@@ -333,14 +333,14 @@ graph TD
 *   ToxicologueAgent: exposure-specific synthesis, treatment pathway, urgency decision, can request blood tests via [REQUEST_BILAN_SANGUIN], collection: toxicologue_collection
 *   BilanExpertAgent: blood-test PDF interpretation (markers, toxicology signals, confidence), hands off to toxicologist finalization, collection: bilan_expert_collection
 
-**Embeddings**: text-embedding-3-large, 3072 dims. Sparse retrieval fallback: FastEmbed SPLADE (prithivida/Splade_PP_en_v1)
-**Qdrant collections** (9 total): historical_cases (dossier + chat history + blood test docs + indexed case payloads), gabes_knowledge, generaliste_collection, pneumologue_collection, cardiologue_collection, neurologue_collection, oncologue_collection, dermatologue_collection, toxicologue_collection, bilan_expert_collection
-**Blood test pipeline**: PDF upload → pypdf extraction → Qdrant indexing → BilanExpertAgent interpretation → ToxicologueAgent integrated synthesis
-**Step 3 orchestrator**: BilanExpertAgent + ToxicologueAgent finalization → structured physician PDF (ReportLab) → downloadable report_pdf_url
-**Medical History**: GET /api/patient/history by CIN returns all previous records, per-record PDF download
-**Optional**: Supabase metadata sink
-**Models**: gpt-4o-mini (all agents), text-embedding-3-large 3072 dims, LangSmith tracing on all agents
-**Safety design**: router confidence gate defaults ambiguous to Generalist; mandatory clarification before toxicology escalation; final report includes urgency statement for clinician handoff; system is clinical decision-support, not autonomous care
+*   **Embeddings**: `text-embedding-3-large`, 3072 dims. Sparse retrieval fallback: FastEmbed SPLADE (`prithivida/Splade_PP_en_v1`)
+*   **Qdrant collections** (9 total): `historical_cases` (dossier + chat history + blood test docs + indexed case payloads), `gabes_knowledge`, `generaliste_collection`, `pneumologue_collection`, `cardiologue_collection`, `neurologue_collection`, `oncologue_collection`, `dermatologue_collection`, `toxicologue_collection`, `bilan_expert_collection`
+*   **Blood test pipeline**: PDF upload → `pypdf` extraction → Qdrant indexing → `BilanExpertAgent` interpretation → `ToxicologueAgent` integrated synthesis
+*   **Step 3 orchestrator**: `BilanExpertAgent` + `ToxicologueAgent` finalization → structured physician PDF (`ReportLab`) → downloadable `report_pdf_url`
+*   **Medical History**: `GET /api/patient/history` by CIN returns all previous records, per-record PDF download
+*   **Optional**: Supabase metadata sink
+*   **Models**: `gpt-4o-mini` (all agents), `text-embedding-3-large` 3072 dims, LangSmith tracing on all agents
+*   **Safety design**: router confidence gate defaults ambiguous to Generalist; mandatory clarification before toxicology escalation; final report includes urgency statement for clinician handoff; system is clinical decision-support, not autonomous care
 
 ```mermaid
 graph TD
